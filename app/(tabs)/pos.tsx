@@ -1,0 +1,1057 @@
+import React, { useState } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  FlatList,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  Platform,
+} from 'react-native';
+import { usePOS } from '@/hooks/pos-store';
+import { ProductCard } from '@/components/ProductCard';
+import { CategoryFilter } from '@/components/CategoryFilter';
+import { TheatreColors } from '@/constants/theatre-colors';
+import { TabletUtils } from '@/constants/tablet-utils';
+import { useTabletLayout } from '@/hooks/use-tablet-layout';
+import { Search, ShoppingCart, X, Ticket, Candy } from 'lucide-react-native';
+import { useAuth } from '@/hooks/auth-store';
+import { PaymentScreen } from '@/components/PaymentScreen';
+import * as Haptics from 'expo-haptics';
+
+type Department = 'box-office' | 'candy-counter' | null;
+
+export default function POSScreen() {
+  const { user } = useAuth();
+  const { isTablet, isLandscape, getProductGridColumns, getCartWidth } = useTabletLayout();
+  const {
+    filteredProducts,
+    cart,
+    searchQuery,
+    setSearchQuery,
+    selectedCategory,
+    setSelectedCategory,
+    addToCart,
+    removeFromCart,
+    updateCartQuantity,
+    clearCart,
+    checkout,
+    calculateTotalsWithFee,
+    settings,
+  } = usePOS();
+
+  const [showCart, setShowCart] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState<Department>(null);
+  const [showPayment, setShowPayment] = useState(false);
+
+  // All hooks must be called before any conditional returns
+  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  // Filter products based on department selection
+  const departmentFilteredProducts = React.useMemo(() => {
+    if (!selectedDepartment) return filteredProducts;
+    
+    if (selectedDepartment === 'box-office') {
+      return filteredProducts.filter(product => product.category === 'tickets');
+    } else if (selectedDepartment === 'candy-counter') {
+      // Candy counter includes all products (concessions, beverages, merchandise, and tickets for after-closing)
+      return filteredProducts;
+    }
+    
+    return filteredProducts;
+  }, [filteredProducts, selectedDepartment]);
+
+  const handleAddToCart = async (product: any) => {
+    if (Platform.OS !== 'web') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    addToCart(product);
+  };
+
+  const handleCheckout = () => {
+    if (cart.length === 0) return;
+    setShowPayment(true);
+  };
+
+  const handlePayment = async (method: 'cash' | 'card', cashAmount?: string) => {
+    // Check if candy counter is selling tickets (after closing scenario)
+    const hasTickets = cart.some(item => item.product.category === 'tickets');
+    const isAfterClosing = selectedDepartment === 'candy-counter' && hasTickets;
+    
+    const order = checkout(method, user?.id, user?.name, selectedDepartment || undefined, isAfterClosing, user?.role);
+    if (order) {
+      if (Platform.OS !== 'web') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      
+      let alertMessage = `Order #${order.id.slice(-6)} completed\nSubtotal: ${order.subtotal.toFixed(2)}`;
+      
+      if (order.creditCardFee && order.creditCardFee > 0) {
+        alertMessage += `\nCard Fee: ${order.creditCardFee.toFixed(2)}`;
+      }
+      
+      alertMessage += `\nTotal: ${order.total.toFixed(2)}`;
+      
+      if (method === 'cash' && cashAmount && parseFloat(cashAmount) > order.total) {
+        const change = parseFloat(cashAmount) - order.total;
+        alertMessage += `\nCash Received: ${parseFloat(cashAmount).toFixed(2)}\nChange: ${change.toFixed(2)}`;
+      }
+      
+      Alert.alert('Order Complete', alertMessage, [
+        { 
+          text: 'OK', 
+          onPress: () => {
+            setShowCart(false);
+            setShowPayment(false);
+          } 
+        }
+      ]);
+    }
+  };
+
+  // Show department selection for ushers
+  if (user?.role === 'usher' && !selectedDepartment) {
+    const departmentLayout = TabletUtils.getDepartmentCardLayout();
+    
+    return (
+      <View style={styles.container}>
+        <ScrollView 
+          contentContainerStyle={styles.departmentSelection}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.departmentTitle}>Select Your Department</Text>
+          <Text style={styles.departmentSubtitle}>Choose which area you'll be working in today</Text>
+          
+          <View style={[
+            styles.departmentOptions,
+            { 
+              flexDirection: departmentLayout.direction,
+              maxWidth: departmentLayout.maxWidth,
+              gap: departmentLayout.gap
+            }
+          ]}>
+            <TouchableOpacity
+              style={[
+                styles.departmentCard,
+                { flex: departmentLayout.direction === 'row' ? 1 : 0 }
+              ]}
+              onPress={() => setSelectedDepartment('box-office')}
+            >
+              <View style={styles.departmentIcon}>
+                <Ticket size={TabletUtils.getResponsiveFontSize(48, 64, 72)} color={TheatreColors.accent} />
+              </View>
+              <Text style={styles.departmentName}>Box Office</Text>
+              <Text style={styles.departmentDescription}>Ticket sales and admissions</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.departmentCard,
+                { flex: departmentLayout.direction === 'row' ? 1 : 0 }
+              ]}
+              onPress={() => setSelectedDepartment('candy-counter')}
+            >
+              <View style={styles.departmentIcon}>
+                <Candy size={TabletUtils.getResponsiveFontSize(48, 64, 72)} color={TheatreColors.accent} />
+              </View>
+              <Text style={styles.departmentName}>Candy Counter</Text>
+              <Text style={styles.departmentDescription}>Concessions, beverages, merchandise & tickets</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      {/* Tablet Layout: Cart on left, Products on right */}
+      {isTablet ? (
+        <View style={styles.tabletLayout}>
+          {/* Cart Sidebar - Always visible on left for tablets */}
+          <View style={[
+            styles.cartContainer,
+            styles.tabletCartContainer,
+            {
+              width: isLandscape ? '35%' : '40%',
+              minWidth: 400,
+              maxWidth: 500
+            }
+          ]}>
+            <View style={styles.cartHeader}>
+              <Text style={styles.cartHeaderItem}>Item</Text>
+              <Text style={styles.cartHeaderQty}>Qty</Text>
+              <Text style={styles.cartHeaderTotal}>Total</Text>
+            </View>
+
+            <ScrollView style={styles.cartItems}>
+              {cart.length === 0 ? (
+                <View style={styles.emptyCartMessage}>
+                  <Text style={styles.emptyCartText}>No items in cart</Text>
+                </View>
+              ) : (
+                cart.map(item => (
+                  <View key={item.product.id} style={styles.cartRow}>
+                    <Text style={styles.cartItemName} numberOfLines={1}>{item.product.name}</Text>
+                    <View style={styles.cartQtyContainer}>
+                      <TouchableOpacity 
+                        style={styles.qtyButton}
+                        onPress={() => updateCartQuantity(item.product.id, Math.max(0, item.quantity - 1))}
+                      >
+                        <Text style={styles.qtyButtonText}>-</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.cartQty}>{item.quantity}</Text>
+                      <TouchableOpacity 
+                        style={styles.qtyButton}
+                        onPress={() => updateCartQuantity(item.product.id, item.quantity + 1)}
+                      >
+                        <Text style={styles.qtyButtonText}>+</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={styles.cartTotal}>${(item.quantity * item.product.price).toFixed(2)}</Text>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+
+            {cart.length > 0 && (
+              <View style={styles.cartFooter}>
+                <TouchableOpacity 
+                  style={styles.checkoutButton}
+                  onPress={handleCheckout}
+                >
+                  <Text style={styles.checkoutButtonText}>Checkout</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={styles.clearCartButton}
+                  onPress={() => {
+                    Alert.alert('Clear Cart', 'Remove all items from cart?', [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Clear', style: 'destructive', onPress: clearCart },
+                    ]);
+                  }}
+                >
+                  <Text style={styles.clearButtonText}>Clear Cart</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+          
+          {/* Main Content - Products section on the right */}
+          <View style={[
+            styles.mainContent,
+            styles.tabletRightSideContent
+          ]}>
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+              <Search size={20} color={TheatreColors.textSecondary} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Product Name"
+                placeholderTextColor={TheatreColors.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <X size={20} color={TheatreColors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Department Header for Ushers */}
+            {user?.role === 'usher' && selectedDepartment && (
+              <View style={styles.departmentHeader}>
+                <View style={styles.departmentInfo}>
+                  {selectedDepartment === 'box-office' ? (
+                    <Ticket size={24} color={TheatreColors.accent} />
+                  ) : (
+                    <Candy size={24} color={TheatreColors.accent} />
+                  )}
+                  <Text style={styles.departmentHeaderText}>
+                    {selectedDepartment === 'box-office' ? 'Box Office' : 'Candy Counter'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.changeDepartmentButton}
+                  onPress={() => setSelectedDepartment(null)}
+                >
+                  <Text style={styles.changeDepartmentText}>Change</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Products Grid */}
+            <FlatList
+              data={departmentFilteredProducts}
+              keyExtractor={item => item.id}
+              numColumns={isLandscape ? 4 : 3}
+              key={`${isLandscape ? 4 : 3}-${isLandscape}-tablet`}
+              columnWrapperStyle={styles.row}
+              contentContainerStyle={[
+                styles.productList,
+                { paddingBottom: TabletUtils.getResponsivePadding(160, 180, 200) }
+              ]}
+              renderItem={({ item }) => (
+                <View style={[
+                  styles.productWrapper, 
+                  { 
+                    width: `${(100 / (isLandscape ? 4 : 3)) - 2}%`,
+                    maxWidth: TabletUtils.getResponsivePadding(200, 220, 240)
+                  }
+                ]}>
+                  <ProductCard
+                    product={item}
+                    onPress={() => handleAddToCart(item)}
+                  />
+                </View>
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyText}>No products found</Text>
+                </View>
+              }
+            />
+            
+            {/* Category Filter at Bottom */}
+            <View style={styles.bottomCategoryFilter}>
+              <CategoryFilter
+                selected={selectedCategory}
+                onSelect={setSelectedCategory}
+                selectedDepartment={selectedDepartment}
+              />
+            </View>
+          </View>
+        </View>
+      ) : (
+        /* Phone Layout: Traditional modal cart */
+        <View style={styles.container}>
+          {/* Main POS View */}
+          <View style={styles.mainContent}>
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+              <Search size={20} color={TheatreColors.textSecondary} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search products..."
+                placeholderTextColor={TheatreColors.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <X size={20} color={TheatreColors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Category Filter */}
+            <CategoryFilter
+              selected={selectedCategory}
+              onSelect={setSelectedCategory}
+              selectedDepartment={selectedDepartment}
+            />
+
+            {/* Department Header for Ushers */}
+            {user?.role === 'usher' && selectedDepartment && (
+              <View style={styles.departmentHeader}>
+                <View style={styles.departmentInfo}>
+                  {selectedDepartment === 'box-office' ? (
+                    <Ticket size={24} color={TheatreColors.accent} />
+                  ) : (
+                    <Candy size={24} color={TheatreColors.accent} />
+                  )}
+                  <Text style={styles.departmentHeaderText}>
+                    {selectedDepartment === 'box-office' ? 'Box Office' : 'Candy Counter'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.changeDepartmentButton}
+                  onPress={() => setSelectedDepartment(null)}
+                >
+                  <Text style={styles.changeDepartmentText}>Change</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Products Grid */}
+            <FlatList
+              data={departmentFilteredProducts}
+              keyExtractor={item => item.id}
+              numColumns={TabletUtils.getProductGridColumns()}
+              key={`${TabletUtils.getProductGridColumns()}-${isLandscape}-${TabletUtils.getDeviceType()}`}
+              columnWrapperStyle={TabletUtils.getProductGridColumns() > 1 ? styles.row : undefined}
+              contentContainerStyle={[
+                styles.productList,
+                { paddingBottom: TabletUtils.getResponsivePadding(100, 120, 140) }
+              ]}
+              renderItem={({ item }) => (
+                <View style={[
+                  styles.productWrapper, 
+                  { 
+                    width: `${(100 / TabletUtils.getProductGridColumns()) - 2}%`,
+                    maxWidth: TabletUtils.getResponsivePadding(200, 250, 300)
+                  }
+                ]}>
+                  <ProductCard
+                    product={item}
+                    onPress={() => handleAddToCart(item)}
+                  />
+                </View>
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyText}>No products found</Text>
+                </View>
+              }
+            />
+          </View>
+
+          {/* Cart Modal for phones */}
+          {showCart && (
+            <View style={[
+              styles.cartContainer,
+              styles.phoneCartContainer,
+              {
+                width: getCartWidth(),
+                maxWidth: TabletUtils.getMaxCartWidth()
+              }
+            ]}>
+              <View style={styles.cartHeader}>
+                <Text style={styles.cartTitle}>Cart ({cartCount} items)</Text>
+                <TouchableOpacity onPress={() => setShowCart(false)}>
+                  <X size={24} color={TheatreColors.text} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.cartItems}>
+                {cart.map(item => (
+                  <View key={item.product.id} style={styles.cartRow}>
+                    <Text style={styles.cartItemName} numberOfLines={1}>{item.product.name}</Text>
+                    <View style={styles.cartQtyContainer}>
+                      <TouchableOpacity 
+                        style={styles.qtyButton}
+                        onPress={() => updateCartQuantity(item.product.id, Math.max(0, item.quantity - 1))}
+                      >
+                        <Text style={styles.qtyButtonText}>-</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.cartQty}>{item.quantity}</Text>
+                      <TouchableOpacity 
+                        style={styles.qtyButton}
+                        onPress={() => updateCartQuantity(item.product.id, item.quantity + 1)}
+                      >
+                        <Text style={styles.qtyButtonText}>+</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={styles.cartTotal}>${(item.quantity * item.product.price).toFixed(2)}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+
+              {cart.length > 0 && (
+                <View style={styles.cartFooter}>
+                  <TouchableOpacity 
+                    style={styles.checkoutButton}
+                    onPress={handleCheckout}
+                  >
+                    <Text style={styles.checkoutButtonText}>Checkout</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={styles.clearCartButton}
+                    onPress={() => {
+                      Alert.alert('Clear Cart', 'Remove all items from cart?', [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Clear', style: 'destructive', onPress: clearCart },
+                      ]);
+                    }}
+                  >
+                    <Text style={styles.clearButtonText}>Clear Cart</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Floating Cart Button - Only for phones */}
+      {!isTablet && (
+        <TouchableOpacity
+          style={styles.floatingCartButton}
+          onPress={() => setShowCart(!showCart)}
+        >
+          <ShoppingCart size={24} color={TheatreColors.background} />
+          {cartCount > 0 && (
+            <View style={styles.cartBadge}>
+              <Text style={styles.cartBadgeText}>{cartCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      )}
+      
+      {/* Payment Screen Modal */}
+      {showPayment && (
+        <PaymentScreen
+          cart={cart}
+          onClose={() => setShowPayment(false)}
+          onPayment={handlePayment}
+          creditCardFeePercent={settings.creditCardFeePercent}
+          department={selectedDepartment || undefined}
+        />
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: TheatreColors.background,
+  },
+  mainContent: {
+    flex: 1,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: TheatreColors.surface,
+    margin: TabletUtils.getResponsivePadding(16, 24),
+    paddingHorizontal: TabletUtils.getResponsivePadding(16, 20),
+    paddingVertical: TabletUtils.getResponsivePadding(12, 16),
+    borderRadius: 12,
+    gap: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: TheatreColors.text,
+  },
+
+  productList: {
+    paddingHorizontal: TabletUtils.getResponsivePadding(16, 24, 32),
+  },
+  row: {
+    justifyContent: 'space-between',
+  },
+  productWrapper: {
+    marginBottom: TabletUtils.getResponsivePadding(16, 20),
+    marginHorizontal: '1%',
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 48,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: TheatreColors.textSecondary,
+  },
+  tabletLayout: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  tabletRightSideContent: {
+    flex: 1,
+    order: 2,
+  },
+  tabletCartContainer: {
+    position: 'relative',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: TheatreColors.background,
+    borderRightWidth: 1,
+    borderRightColor: TheatreColors.surface,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    order: 1,
+  },
+  phoneCartContainer: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: TheatreColors.background,
+    borderLeftWidth: 1,
+    borderLeftColor: TheatreColors.surface,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: -2, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+  },
+  cartContainer: {
+    backgroundColor: TheatreColors.background,
+  },
+  cartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: TheatreColors.surface,
+    backgroundColor: '#4A90E2',
+  },
+  cartHeaderItem: {
+    flex: 2,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: TheatreColors.background,
+    textAlign: 'left',
+  },
+  cartHeaderQty: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: TheatreColors.background,
+    textAlign: 'center',
+  },
+  cartHeaderTotal: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: TheatreColors.background,
+    textAlign: 'center',
+  },
+
+  cartTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: TheatreColors.text,
+  },
+  cartItems: {
+    flex: 1,
+    padding: TabletUtils.getResponsivePadding(8, 12, 16),
+  },
+  emptyCartMessage: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 48,
+  },
+  emptyCartText: {
+    fontSize: 16,
+    color: TheatreColors.textSecondary,
+  },
+  cartRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: TheatreColors.surfaceLight,
+  },
+  cartItemName: {
+    flex: 2,
+    fontSize: 14,
+    color: TheatreColors.text,
+    paddingRight: 8,
+  },
+  cartQtyContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: TheatreColors.surface,
+    borderRadius: 6,
+    paddingHorizontal: 4,
+  },
+  qtyButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 4,
+    backgroundColor: TheatreColors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  qtyButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: TheatreColors.background,
+  },
+  cartQty: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: TheatreColors.text,
+    marginHorizontal: 12,
+    minWidth: 20,
+    textAlign: 'center',
+  },
+  cartTotal: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: TheatreColors.text,
+    textAlign: 'center',
+  },
+
+  cartFooter: {
+    padding: TabletUtils.getResponsivePadding(12, 16, 20),
+    borderTopWidth: 1,
+    borderTopColor: TheatreColors.surface,
+  },
+  cartSummary: {
+    marginBottom: 16,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: TheatreColors.textSecondary,
+  },
+  summaryValue: {
+    fontSize: 14,
+    color: TheatreColors.text,
+    fontWeight: '500',
+  },
+  totalRow: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: TheatreColors.surface,
+  },
+  totalLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: TheatreColors.text,
+  },
+  totalValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: TheatreColors.accent,
+  },
+  checkoutButton: {
+    backgroundColor: '#4A90E2',
+    borderRadius: 8,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  checkoutButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: TheatreColors.background,
+  },
+  clearCartButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  clearButtonText: {
+    fontSize: 14,
+    color: TheatreColors.error,
+    fontWeight: '600',
+  },
+  floatingCartButton: {
+    position: 'absolute',
+    bottom: TabletUtils.getResponsivePadding(24, 32),
+    right: TabletUtils.getResponsivePadding(24, 32),
+    width: TabletUtils.getResponsivePadding(64, 72),
+    height: TabletUtils.getResponsivePadding(64, 72),
+    borderRadius: TabletUtils.getResponsivePadding(32, 36),
+    backgroundColor: TheatreColors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: TheatreColors.error,
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  cartBadgeText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: TheatreColors.text,
+  },
+  paymentMethodContainer: {
+    marginBottom: 16,
+  },
+  paymentMethodLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: TheatreColors.text,
+    marginBottom: 12,
+  },
+  paymentMethodButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  paymentMethodButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: TheatreColors.surface,
+    backgroundColor: TheatreColors.background,
+    gap: 8,
+  },
+  paymentMethodButtonActive: {
+    backgroundColor: TheatreColors.accent,
+    borderColor: TheatreColors.accent,
+  },
+  paymentMethodButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: TheatreColors.text,
+  },
+  paymentMethodButtonTextActive: {
+    color: TheatreColors.background,
+  },
+  departmentSelection: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: TabletUtils.getResponsivePadding(16, 24, 32),
+    minHeight: '100%',
+  },
+  departmentTitle: {
+    fontSize: TabletUtils.getResponsiveFontSize(28, 36),
+    fontWeight: 'bold',
+    color: TheatreColors.text,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  departmentSubtitle: {
+    fontSize: TabletUtils.getResponsiveFontSize(16, 20),
+    color: TheatreColors.textSecondary,
+    marginBottom: TabletUtils.getResponsivePadding(48, 64),
+    textAlign: 'center',
+  },
+  departmentOptions: {
+    width: '100%',
+    alignSelf: 'center',
+    alignItems: 'stretch',
+  },
+  departmentCard: {
+    backgroundColor: TheatreColors.surface,
+    borderRadius: TabletUtils.getResponsivePadding(16, 20, 24),
+    padding: TabletUtils.getResponsivePadding(24, 32, 40),
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    minHeight: TabletUtils.getResponsivePadding(180, 220, 260),
+    justifyContent: 'center',
+  },
+  departmentIcon: {
+    width: TabletUtils.getResponsivePadding(80, 100),
+    height: TabletUtils.getResponsivePadding(80, 100),
+    borderRadius: TabletUtils.getResponsivePadding(40, 50),
+    backgroundColor: TheatreColors.surfaceLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: TabletUtils.getResponsivePadding(16, 20),
+  },
+  departmentName: {
+    fontSize: TabletUtils.getResponsiveFontSize(20, 24),
+    fontWeight: 'bold',
+    color: TheatreColors.text,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  departmentDescription: {
+    fontSize: TabletUtils.getResponsiveFontSize(14, 16),
+    color: TheatreColors.textSecondary,
+    textAlign: 'center',
+    lineHeight: TabletUtils.getResponsiveFontSize(20, 24),
+  },
+  departmentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: TheatreColors.surface,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  departmentInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  departmentHeaderText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: TheatreColors.text,
+  },
+  changeDepartmentButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: TheatreColors.accent,
+  },
+  changeDepartmentText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: TheatreColors.background,
+  },
+  bottomCategoryFilter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: TheatreColors.background,
+    borderTopWidth: 1,
+    borderTopColor: TheatreColors.surface,
+    paddingVertical: 8,
+  },
+  cashAmountButton: {
+    backgroundColor: TheatreColors.surface,
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: TheatreColors.accent,
+  },
+  cashAmountButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: TheatreColors.accent,
+  },
+  cashInputContainer: {
+    backgroundColor: TheatreColors.surface,
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+  },
+  cashInputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: TheatreColors.text,
+    marginBottom: 8,
+  },
+  cashInput: {
+    backgroundColor: TheatreColors.background,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: TheatreColors.text,
+    borderWidth: 2,
+    borderColor: TheatreColors.accent,
+    textAlign: 'center',
+  },
+  changeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: TheatreColors.surfaceLight,
+  },
+  changeLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: TheatreColors.text,
+  },
+  changeAmount: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+  },
+  payButtonDisabled: {
+    backgroundColor: TheatreColors.surface,
+    opacity: 0.6,
+  },
+  payButtonTextDisabled: {
+    color: TheatreColors.textSecondary,
+  },
+  quickAmountContainer: {
+    marginBottom: 16,
+  },
+  quickAmountLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: TheatreColors.text,
+    marginBottom: 12,
+  },
+  quickAmountButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  quickAmountButton: {
+    flex: 1,
+    minWidth: '18%',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: TheatreColors.surface,
+    backgroundColor: TheatreColors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickAmountButtonActive: {
+    backgroundColor: TheatreColors.accent,
+    borderColor: TheatreColors.accent,
+  },
+  quickAmountButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: TheatreColors.text,
+  },
+  quickAmountButtonTextActive: {
+    color: TheatreColors.background,
+  },
+  exactChangeButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+  },
+  exactChangeButtonActive: {
+    backgroundColor: '#45a049',
+    borderColor: '#45a049',
+  },
+  exactChangeButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: TheatreColors.background,
+  },
+  exactChangeButtonTextActive: {
+    color: TheatreColors.background,
+  },
+});
