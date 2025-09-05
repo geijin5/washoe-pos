@@ -313,12 +313,13 @@ export function PaymentScreen({
                       <Text style={styles.tabletCashInputLabelCompact}>Cash Received:</Text>
                       <TextInput
                         style={styles.tabletCashInputCompact}
-                        placeholder="0.00"
+                        placeholder="Enter amount"
                         placeholderTextColor={TheatreColors.textSecondary}
                         value={cashAmount}
                         onChangeText={setCashAmount}
-                        keyboardType="numeric"
+                        keyboardType="decimal-pad"
                         autoFocus
+                        returnKeyType="done"
                       />
                     </View>
                   )}
@@ -553,12 +554,13 @@ export function PaymentScreen({
                   <Text style={styles.mobileCashInputLabel}>Cash Received:</Text>
                   <TextInput
                     style={styles.mobileCashInput}
-                    placeholder="0.00"
+                    placeholder="Enter amount"
                     placeholderTextColor={TheatreColors.textSecondary}
                     value={cashAmount}
                     onChangeText={setCashAmount}
-                    keyboardType="numeric"
+                    keyboardType="decimal-pad"
                     autoFocus
+                    returnKeyType="done"
                   />
                 </View>
               )}
@@ -871,9 +873,16 @@ const styles = StyleSheet.create({
   },
   mobileCashInputContainer: {
     backgroundColor: TheatreColors.surface,
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 8,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: TheatreColors.surfaceLight,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   mobileCashInputLabel: {
     fontSize: 16,
@@ -884,14 +893,20 @@ const styles = StyleSheet.create({
   mobileCashInput: {
     backgroundColor: TheatreColors.background,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    fontSize: 20,
     fontWeight: 'bold',
     color: TheatreColors.text,
     borderWidth: 2,
     borderColor: TheatreColors.accent,
     textAlign: 'center',
+    minHeight: 56,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
   mobileChangeContainer: {
     flexDirection: 'row',
@@ -1431,6 +1446,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: TheatreColors.surfaceLight,
   },
   tabletCashInputLabel: {
     fontSize: 18,
@@ -1460,13 +1477,14 @@ const styles = StyleSheet.create({
     backgroundColor: TheatreColors.surface,
     borderRadius: 6,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
+    paddingVertical: 12,
+    fontSize: 18,
     fontWeight: 'bold',
     color: TheatreColors.text,
     borderWidth: 2,
     borderColor: TheatreColors.accent,
     textAlign: 'center',
+    minHeight: 44,
   },
   tabletFooter: {
     paddingTop: 16,
