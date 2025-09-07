@@ -63,9 +63,34 @@
       "typedRoutes": true
     }
     
+{
+"expo": {
+  "runtimeVersion": "1.0.0",
+  "updates": {
+    "url": "https://u.expo.dev/your-project-id"
+  },
+  "ios": {
+    "buildNumber": "1",
+    "config": {
+      "usesNonExemptEncryption": false
+    }
+  },
+  "android": {
+    "versionCode": 1,
+    "blockedPermissions": [
+      "android.permission.SYSTEM_ALERT_WINDOW"
+    ]
+  },
+  "extra": {
+    "eas": {
+      "projectId": "your-project-id-here"
+    }
+  }
+{
   "android": {
     "package": "com.geijin5.washoepos"
   }
 }
+
   }
 }
