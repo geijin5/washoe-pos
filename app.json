@@ -62,13 +62,7 @@
     "experiments": {
       "typedRoutes": true
     }
-
-  "extra": {
-    "eas": {
-      "projectId": "your-project-id-here"
-    }
-  }
-{
+    {
   "android": {
     "package": "com.geijin5.washoepos"
   }
