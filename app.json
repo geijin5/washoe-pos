@@ -62,11 +62,10 @@
     "experiments": {
       "typedRoutes": true
     }
+    
   "android": {
     "package": "com.geijin5.washoepos"
   }
-}
-}
 }
   }
 }
