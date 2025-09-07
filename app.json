@@ -62,13 +62,7 @@
     "experiments": {
       "typedRoutes": true
     }
-    
-  "ios": {
-    "buildNumber": "1",
-    "config": {
-      "usesNonExemptEncryption": false
-    }
-  },
+
   "android": {
     "versionCode": 1,
     "blockedPermissions": [
