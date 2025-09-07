@@ -67,12 +67,6 @@
       "typedRoutes": true
     }
 
-  "android": {
-    "versionCode": 1,
-    "blockedPermissions": [
-      "android.permission.SYSTEM_ALERT_WINDOW"
-    ]
-  },
   "extra": {
     "eas": {
       "projectId": "your-project-id-here"
