@@ -27,7 +27,6 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-        "versionCode": 1,
     "blockedPermissions": [
       "android.permission.SYSTEM_ALERT_WINDOW"
     ]
