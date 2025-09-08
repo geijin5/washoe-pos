@@ -17,3 +17,6 @@
     "autoIncrement": true,
     "env": {
       "NODE_ENV": "production"
+      },
+    }
+  }
