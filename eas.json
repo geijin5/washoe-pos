@@ -32,5 +32,3 @@
       "serviceAccountKeyPath": "./google-service-account.json",
       "track": "internal"
     },
-}
-}
