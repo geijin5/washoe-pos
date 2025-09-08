@@ -17,3 +17,20 @@
     "autoIncrement": true,
     "env": {
       "NODE_ENV": "production"
+    },
+    "android": {
+      "buildType": "aab"
+    },
+    "ios": {
+      "simulator": false
+    }
+  }
+},
+"submit": {
+  "production": {
+    "android": {
+      "serviceAccountKeyPath": "./google-service-account.json",
+      "track": "internal"
+    },
+}
+}
