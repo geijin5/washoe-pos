@@ -16,7 +16,7 @@ import { CategoryFilter } from '@/components/CategoryFilter';
 import { TheatreColors } from '@/constants/theatre-colors';
 import { TabletUtils } from '@/constants/tablet-utils';
 import { useTabletLayout } from '@/hooks/use-tablet-layout';
-import { Search, ShoppingCart, X, Ticket, Candy } from 'lucide-react-native';
+import { Search, ShoppingCart, X, Ticket, Candy, Smartphone, TabletSmartphone } from 'lucide-react-native';
 import { useAuth } from '@/hooks/auth-store';
 import { PaymentScreen } from '@/components/PaymentScreen';
 import * as Haptics from 'expo-haptics';
@@ -25,7 +25,7 @@ type Department = 'box-office' | 'candy-counter' | null;
 
 export default function POSScreen() {
   const { user } = useAuth();
-  const { isTablet, isLandscape, getProductGridColumns, getCartWidth } = useTabletLayout();
+  const { isTablet, isLandscape, isFoldable, foldableState, deviceType, getProductGridColumns, getCartWidth } = useTabletLayout();
   const {
     filteredProducts,
     cart,
@@ -175,9 +175,9 @@ export default function POSScreen() {
             styles.cartContainer,
             styles.tabletCartContainer,
             {
-              width: isLandscape ? '35%' : '40%',
-              minWidth: 400,
-              maxWidth: 500
+              width: getCartWidth(),
+              minWidth: deviceType === 'foldable-unfolded' ? 450 : 400,
+              maxWidth: TabletUtils.getMaxCartWidth()
             }
           ]}>
             <View style={styles.cartHeader}>
@@ -262,6 +262,23 @@ export default function POSScreen() {
               )}
             </View>
 
+            {/* Foldable Device Status Indicator */}
+            {isFoldable && (
+              <View style={styles.foldableStatusContainer}>
+                <View style={styles.foldableStatusInfo}>
+                  {deviceType === 'foldable-unfolded' ? (
+                    <TabletSmartphone size={20} color={TheatreColors.accent} />
+                  ) : (
+                    <Smartphone size={20} color={TheatreColors.accent} />
+                  )}
+                  <Text style={styles.foldableStatusText}>
+                    Z Fold 7 - {foldableState === 'unfolded' ? 'Unfolded Mode' : 'Folded Mode'}
+                  </Text>
+                </View>
+                <Text style={styles.foldableOptimizedText}>Optimized</Text>
+              </View>
+            )}
+
             {/* Department Header for Ushers */}
             {user?.role === 'usher' && selectedDepartment && (
               <View style={styles.departmentHeader}>
@@ -288,19 +305,19 @@ export default function POSScreen() {
             <FlatList
               data={departmentFilteredProducts}
               keyExtractor={item => item.id}
-              numColumns={isLandscape ? 4 : 3}
-              key={`${isLandscape ? 4 : 3}-${isLandscape}-tablet`}
-              columnWrapperStyle={styles.row}
+              numColumns={getProductGridColumns()}
+              key={`${getProductGridColumns()}-${isLandscape}-${deviceType}`}
+              columnWrapperStyle={getProductGridColumns() > 1 ? styles.row : undefined}
               contentContainerStyle={[
                 styles.productList,
-                { paddingBottom: TabletUtils.getResponsivePadding(160, 180, 200) }
+                { paddingBottom: TabletUtils.getResponsivePadding(160, 180, 200, 220) }
               ]}
               renderItem={({ item }) => (
                 <View style={[
                   styles.productWrapper, 
                   { 
-                    width: `${(100 / (isLandscape ? 4 : 3)) - 2}%`,
-                    maxWidth: TabletUtils.getResponsivePadding(200, 220, 240)
+                    width: `${(100 / getProductGridColumns()) - 2}%`,
+                    maxWidth: TabletUtils.getResponsivePadding(200, 220, 240, 260)
                   }
                 ]}>
                   <ProductCard
@@ -1053,5 +1070,37 @@ const styles = StyleSheet.create({
   },
   exactChangeButtonTextActive: {
     color: TheatreColors.background,
+  },
+  foldableStatusContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: TheatreColors.surfaceLight,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: TheatreColors.accent,
+  },
+  foldableStatusInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  foldableStatusText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: TheatreColors.text,
+  },
+  foldableOptimizedText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: TheatreColors.accent,
+    backgroundColor: TheatreColors.background,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
 });

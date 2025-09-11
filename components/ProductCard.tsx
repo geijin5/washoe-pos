@@ -105,19 +105,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   content: {
-    padding: TabletUtils.getResponsivePadding(8, 12),
+    padding: TabletUtils.getResponsivePadding(8, 12, 16, 14),
     backgroundColor: '#4A90E2',
     alignItems: 'center',
   },
   name: {
-    fontSize: TabletUtils.getResponsiveFontSize(12, 14),
+    fontSize: TabletUtils.getResponsiveFontSize(12, 14, 16, 15),
     fontWeight: '600',
     color: TheatreColors.background,
     textAlign: 'center',
     marginBottom: 4,
   },
   price: {
-    fontSize: TabletUtils.getResponsiveFontSize(14, 16),
+    fontSize: TabletUtils.getResponsiveFontSize(14, 16, 18, 17),
     fontWeight: 'bold',
     color: TheatreColors.background,
   },

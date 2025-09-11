@@ -6,12 +6,18 @@ export function useTabletLayout() {
   const [dimensions, setDimensions] = useState(() => Dimensions.get('window'));
   const [isTablet, setIsTablet] = useState(() => TabletUtils.isTablet());
   const [isLandscape, setIsLandscape] = useState(() => TabletUtils.isLandscape());
+  const [isFoldable, setIsFoldable] = useState(() => TabletUtils.isFoldable());
+  const [foldableState, setFoldableState] = useState(() => TabletUtils.getFoldableState());
+  const [deviceType, setDeviceType] = useState(() => TabletUtils.getDeviceType());
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setDimensions(window);
       setIsTablet(TabletUtils.isTablet());
       setIsLandscape(TabletUtils.isLandscape());
+      setIsFoldable(TabletUtils.isFoldable());
+      setFoldableState(TabletUtils.getFoldableState());
+      setDeviceType(TabletUtils.getDeviceType());
     });
 
     return () => subscription?.remove();
@@ -21,19 +27,23 @@ export function useTabletLayout() {
     dimensions,
     isTablet,
     isLandscape,
+    isFoldable,
+    foldableState,
+    deviceType,
     getProductGridColumns: () => {
-      if (!isTablet) return 2;
-      return isLandscape ? 4 : 3;
+      return TabletUtils.getProductGridColumns();
     },
     getCartWidth: () => {
-      if (!isTablet) return '100%';
-      return isLandscape ? '40%' : '50%';
+      return TabletUtils.getCartWidth();
     },
-    getResponsivePadding: (phonePadding: number, tabletPadding: number) => {
-      return isTablet ? tabletPadding : phonePadding;
+    getResponsivePadding: (phonePadding: number, tabletPadding: number, desktopPadding?: number, foldablePadding?: number) => {
+      return TabletUtils.getResponsivePadding(phonePadding, tabletPadding, desktopPadding, foldablePadding);
     },
-    getResponsiveFontSize: (phoneFontSize: number, tabletFontSize: number) => {
-      return isTablet ? tabletFontSize : phoneFontSize;
+    getResponsiveFontSize: (phoneFontSize: number, tabletFontSize: number, desktopFontSize?: number, foldableFontSize?: number) => {
+      return TabletUtils.getResponsiveFontSize(phoneFontSize, tabletFontSize, desktopFontSize, foldableFontSize);
+    },
+    getResponsiveColumns: (phoneColumns: number, tabletColumns: number, desktopColumns?: number, foldableColumns?: number) => {
+      return TabletUtils.getResponsiveColumns(phoneColumns, tabletColumns, desktopColumns, foldableColumns);
     },
   };
 }

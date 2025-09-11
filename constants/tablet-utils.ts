@@ -15,7 +15,7 @@ if (Dimensions.addEventListener) {
 }
 
 export const TabletUtils = {
-  // Device type detection - Enhanced for all device types
+  // Device type detection - Enhanced for all device types including foldables
   isTablet: () => {
     const currentDimensions = Dimensions.get('window');
     const currentWidth = currentDimensions.width;
@@ -30,6 +30,7 @@ export const TabletUtils = {
     // 2. OR minimum dimension is >= 600px (smaller tablets)
     // 3. AND aspect ratio is reasonable (not ultra-wide or ultra-tall)
     // 4. Special handling for web to detect desktop browsers
+    // 5. Special handling for foldable devices like Z Fold series
     
     if (Platform.OS === 'web') {
       // For web, consider larger screens as tablets/desktops
@@ -39,11 +40,68 @@ export const TabletUtils = {
       );
     }
     
-    // For mobile platforms
-    return (
-      (maxDimension >= 768 || minDimension >= 600) &&
-      (aspectRatio > 0.6 && aspectRatio < 1.8) // Typical tablet aspect ratios
+    // For mobile platforms - enhanced for foldables
+    // Z Fold 7 unfolded: ~1768x2208 (inner display)
+    // Z Fold 7 folded: ~904x2316 (cover display)
+    const isFoldableUnfolded = (
+      minDimension >= 1700 || // Z Fold inner display width
+      (minDimension >= 800 && maxDimension >= 2000) // Large foldable dimensions
     );
+    
+    return (
+      isFoldableUnfolded ||
+      (maxDimension >= 768 || minDimension >= 600) &&
+      (aspectRatio > 0.4 && aspectRatio < 2.2) // More lenient for foldables
+    );
+  },
+
+  // Detect if device is a foldable
+  isFoldable: () => {
+    const currentDimensions = Dimensions.get('window');
+    const currentWidth = currentDimensions.width;
+    const currentHeight = currentDimensions.height;
+    const minDimension = Math.min(currentWidth, currentHeight);
+    const maxDimension = Math.max(currentWidth, currentHeight);
+    const aspectRatio = currentWidth / currentHeight;
+    
+    // Z Fold series detection
+    // Unfolded: very wide aspect ratio with large dimensions
+    // Folded: narrow but tall
+    const isZFoldUnfolded = (
+      minDimension >= 1700 && maxDimension >= 2000 && // Large inner display
+      aspectRatio > 0.7 && aspectRatio < 0.9 // Square-ish when unfolded
+    );
+    
+    const isZFoldFolded = (
+      minDimension >= 800 && minDimension <= 1000 && // Cover display width
+      maxDimension >= 2200 && // Cover display height
+      aspectRatio < 0.45 // Very narrow aspect ratio
+    );
+    
+    return isZFoldUnfolded || isZFoldFolded;
+  },
+
+  // Detect foldable state
+  getFoldableState: () => {
+    if (!TabletUtils.isFoldable()) return 'not-foldable';
+    
+    const currentDimensions = Dimensions.get('window');
+    const currentWidth = currentDimensions.width;
+    const currentHeight = currentDimensions.height;
+    const minDimension = Math.min(currentWidth, currentHeight);
+    const aspectRatio = currentWidth / currentHeight;
+    
+    // Z Fold unfolded: wide inner display
+    if (minDimension >= 1700 && aspectRatio > 0.7) {
+      return 'unfolded';
+    }
+    
+    // Z Fold folded: narrow cover display
+    if (minDimension <= 1000 && aspectRatio < 0.45) {
+      return 'folded';
+    }
+    
+    return 'unknown';
   },
 
   isLandscape: () => {
@@ -51,7 +109,7 @@ export const TabletUtils = {
     return currentDimensions.width > currentDimensions.height;
   },
   
-  // Enhanced device detection
+  // Enhanced device detection including foldables
   getDeviceType: () => {
     const currentDimensions = Dimensions.get('window');
     const currentWidth = currentDimensions.width;
@@ -65,44 +123,56 @@ export const TabletUtils = {
       return 'mobile';
     }
     
+    // Check for foldable first
+    if (TabletUtils.isFoldable()) {
+      const foldState = TabletUtils.getFoldableState();
+      if (foldState === 'unfolded') return 'foldable-unfolded';
+      if (foldState === 'folded') return 'foldable-folded';
+      return 'foldable-unknown';
+    }
+    
     // For mobile platforms
     if (minDimension >= 768) return 'tablet';
     if (minDimension >= 600) return 'small-tablet';
     return 'mobile';
   },
   
-  // Check if device is considered large (tablet or desktop)
+  // Check if device is considered large (tablet, desktop, or unfolded foldable)
   isLargeDevice: () => {
     const deviceType = TabletUtils.getDeviceType();
-    return ['tablet', 'small-tablet', 'desktop'].includes(deviceType);
+    return ['tablet', 'small-tablet', 'desktop', 'foldable-unfolded'].includes(deviceType);
   },
   
-  // Responsive dimensions - Enhanced with device type support
-  getResponsiveWidth: (phoneWidth: number, tabletWidth: number, desktopWidth?: number) => {
+  // Responsive dimensions - Enhanced with foldable device support
+  getResponsiveWidth: (phoneWidth: number, tabletWidth: number, desktopWidth?: number, foldableWidth?: number) => {
     const deviceType = TabletUtils.getDeviceType();
     if (desktopWidth && deviceType === 'desktop') return desktopWidth;
+    if (foldableWidth && deviceType === 'foldable-unfolded') return foldableWidth;
     return TabletUtils.isTablet() ? tabletWidth : phoneWidth;
   },
   
-  getResponsiveColumns: (phoneColumns: number, tabletColumns: number, desktopColumns?: number) => {
+  getResponsiveColumns: (phoneColumns: number, tabletColumns: number, desktopColumns?: number, foldableColumns?: number) => {
     const deviceType = TabletUtils.getDeviceType();
     if (desktopColumns && deviceType === 'desktop') return desktopColumns;
+    if (foldableColumns && deviceType === 'foldable-unfolded') return foldableColumns;
     return TabletUtils.isTablet() ? tabletColumns : phoneColumns;
   },
   
-  getResponsivePadding: (phonePadding: number, tabletPadding: number, desktopPadding?: number) => {
+  getResponsivePadding: (phonePadding: number, tabletPadding: number, desktopPadding?: number, foldablePadding?: number) => {
     const deviceType = TabletUtils.getDeviceType();
     if (desktopPadding && deviceType === 'desktop') return desktopPadding;
+    if (foldablePadding && deviceType === 'foldable-unfolded') return foldablePadding;
     return TabletUtils.isTablet() ? tabletPadding : phonePadding;
   },
   
-  getResponsiveFontSize: (phoneFontSize: number, tabletFontSize: number, desktopFontSize?: number) => {
+  getResponsiveFontSize: (phoneFontSize: number, tabletFontSize: number, desktopFontSize?: number, foldableFontSize?: number) => {
     const deviceType = TabletUtils.getDeviceType();
     if (desktopFontSize && deviceType === 'desktop') return desktopFontSize;
+    if (foldableFontSize && deviceType === 'foldable-unfolded') return foldableFontSize;
     return TabletUtils.isTablet() ? tabletFontSize : phoneFontSize;
   },
   
-  // Layout configurations - Enhanced for all device types
+  // Layout configurations - Enhanced for all device types including foldables
   getProductGridColumns: () => {
     const deviceType = TabletUtils.getDeviceType();
     const isLandscape = TabletUtils.isLandscape();
@@ -110,6 +180,12 @@ export const TabletUtils = {
     switch (deviceType) {
       case 'desktop':
         return isLandscape ? 6 : 4;
+      case 'foldable-unfolded':
+        // Z Fold 7 unfolded has massive screen real estate
+        return isLandscape ? 6 : 4; // Same as desktop when unfolded
+      case 'foldable-folded':
+        // Z Fold 7 folded is like a narrow phone
+        return 2;
       case 'tablet':
         return isLandscape ? 4 : 3;
       case 'small-tablet':
@@ -126,6 +202,12 @@ export const TabletUtils = {
     switch (deviceType) {
       case 'desktop':
         return isLandscape ? '35%' : '45%';
+      case 'foldable-unfolded':
+        // Z Fold 7 unfolded has huge width, optimize cart size
+        return isLandscape ? '30%' : '35%'; // Smaller percentage due to large screen
+      case 'foldable-folded':
+        // Z Fold 7 folded is narrow, use full width modal
+        return '100%';
       case 'tablet':
         return isLandscape ? '40%' : '50%';
       case 'small-tablet':
@@ -141,6 +223,10 @@ export const TabletUtils = {
     switch (deviceType) {
       case 'desktop':
         return 600;
+      case 'foldable-unfolded':
+        return 650; // Larger max width for Z Fold 7 unfolded
+      case 'foldable-folded':
+        return 400; // Standard mobile width when folded
       case 'tablet':
         return 500;
       case 'small-tablet':
@@ -150,13 +236,17 @@ export const TabletUtils = {
     }
   },
   
-  // Touch target sizes - Enhanced for all device types
+  // Touch target sizes - Enhanced for all device types including foldables
   getMinTouchTarget: () => {
     const deviceType = TabletUtils.getDeviceType();
     
     switch (deviceType) {
       case 'desktop':
         return 40; // Smaller for mouse interaction
+      case 'foldable-unfolded':
+        return 52; // Larger for Z Fold 7's big screen
+      case 'foldable-folded':
+        return 44; // Standard mobile when folded
       case 'tablet':
       case 'small-tablet':
         return 48; // Larger for touch
@@ -165,7 +255,7 @@ export const TabletUtils = {
     }
   },
   
-  // Department card layout - Enhanced for all device types
+  // Department card layout - Enhanced for all device types including foldables
   getDepartmentCardLayout: () => {
     const deviceType = TabletUtils.getDeviceType();
     const isLandscape = TabletUtils.isLandscape();
@@ -176,6 +266,20 @@ export const TabletUtils = {
           direction: 'row' as const, 
           maxWidth: '70%',
           gap: 32
+        };
+      case 'foldable-unfolded':
+        // Z Fold 7 unfolded has massive screen space
+        return { 
+          direction: 'row' as const, 
+          maxWidth: '60%', // Smaller percentage due to large screen
+          gap: 40
+        };
+      case 'foldable-folded':
+        // Z Fold 7 folded is narrow
+        return { 
+          direction: 'column' as const, 
+          maxWidth: '100%',
+          gap: 16
         };
       case 'tablet':
         return { 
