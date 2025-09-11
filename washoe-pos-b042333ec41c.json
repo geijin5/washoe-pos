@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "washoe-pos",
+  "private_key_id": "b042333ec41c54b023258c971bd05f896948d4da",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCtFVPVRcUKI3VM\ngvjfoMBTRWiVa58dpTvpS+Yi2og3GPq4eCUzqJ1imGEKGFbABaVOQf4pou7gf9C/\ndSkobYOXOlF3mZ7KMR4FmkYu3lypxrjBoj4ango9ihvwKKqEDY2NUdvTydmbm5PN\ni4urssIBqevdIoj/Gjuwi6vFiDQlOMxn2vUn2NnRbVdfZsmTdVQKo2bjMqwFYSkM\n43bmA+pGVyfdaAMkkTYgDqQMF95V1yYb1ASXwYUnbNBrv5fPIGm29QPyl7rllU2v\nhxkp1qkCcP+k8lUlQDbFwxht8Ts9PiLTTLaycQfJcSHbFXBDe+ZG+UxDhky5PWmf\nicFUfXjbAgMBAAECggEACffs/J8IkqVpJ49xgvuwp/sa42Qv5VazZSPcbMx2ROoY\n4o/04I1JBzkseZbeRC/vDdtKJp6+MErcPHKkfLIV/ps6vu8nkJCUoJD6ks92ucZ6\ntJhCCGlqwJGYO1Q0Qee/69A3n3KEKGyk7hUn5asldlARiApppnudzXS132oRSsVq\n4iRrVB6VeOGM/+huAO+PWkMYcvOstjImPfK9U/8O0p6x+kHh5o7S1mXJJ8SmbD0v\navhc/cXmyeaLAC2k7zdlJOb8A9VVumlSgxJpvhly9/U8cHm78LioOspHEkciywR5\npu/H9WaQC+Opq7jRa0LBSBwKoS2pBr3I4+4kMTmISQKBgQDfaa4diU+RlxaPOxYg\nPuc2clLWx+ArYU1h50zcCgus4xoY6PWIG0AV/3mkD5o6FdMFzNvKkJctC9UOxI7s\nBXfvwYJFsDa57ua1V9PjCpS+BAUHTsdVi3T839FmNNMih3bHRY1KcqOBok1ipLkI\n/uKtWnRYok4x52ZE6FNcQKYXaQKBgQDGVFMQFGtmT1zcL7+GaQiV27NvckwvDtdI\nlNqlqT7SjbHgvICTwxq0Rde8F1yzR875zt2kd8KAi0aUD4bd/JI9X0c0wmfzle2k\nbB65bXqdI4HiUEFreiXGIIJfit1jVujIe/uFiPuly7uzlqMiQI0c7AXM2otYI4vz\nu4RiND7powKBgEgkzTf2fj5KZtuLvgJdrbY0RrHay3XWrvFdisFHcSu8DlJa7+aq\nvhAcdoBXFXuKTqGB3LvV4yuFtaBWMrzeqzM97r5oP9Pc5J1MpjybzxppG+KXOuFR\n7k42TF1P05pD2kRRHmYbDNewvIKNJL9V54cJPabdipis26aGy1xv9/J5AoGAXWte\n7NYReNGtNfIvzwouhxhDvx0hkZD2CzRCgYHlG5yuyuM/1Voze/LiGbEPc0tBzR2J\n/WyD67Su/BMMPgg4gjwc+FcSTAS1OZvMJR/Sf644Afg3uH6CyH6LqqFoguBvKfBs\nm4vYrVH4CjHMidfKIHN0j/fpZwznYVlUlEVz1O0CgYAWDiVxiBuM8lotq02ca6hW\nDKCakWquCBJSNaE/a/gnm40FP0OPmyiUKfTF+hf4wmfcm0qzLE1vWiQPKvAeTEDy\n9/ryiSiO5qHP6VwT2oxTumQt115zI7L3pf5s4fbDRAGOGRB3t2r20OqfMVaoz+xj\nL0t3Hucs6jLAiXP7AdUdHg==\n-----END PRIVATE KEY-----\n",
+  "client_email": "washoe-pos@washoe-pos.iam.gserviceaccount.com",
+  "client_id": "104643895437588146672",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/washoe-pos%40washoe-pos.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
