@@ -16,8 +16,9 @@ import { usePOS } from '@/hooks/pos-store';
 import { useAuth } from '@/hooks/auth-store';
 import { Product, Category } from '@/types/pos';
 import { TheatreColors } from '@/constants/theatre-colors';
-import { Plus, Edit2, Trash2, X, Save, Camera, Image as ImageIcon } from 'lucide-react-native';
+import { Plus, Edit2, Trash2, X, Save, Camera, Image as ImageIcon, Settings } from 'lucide-react-native';
 import { RoleGuard } from '@/components/RoleGuard';
+import { CategoryManagement } from '@/components/CategoryManagement';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -30,20 +31,20 @@ export default function ProductsScreen() {
 }
 
 function ProductsContent() {
-  const { products, addProduct, updateProduct, deleteProduct } = usePOS();
+  const { products, addProduct, updateProduct, deleteProduct, availableCategories } = usePOS();
   const { user } = useAuth();
   const [modalVisible, setModalVisible] = useState(false);
+  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     price: '',
-    category: 'tickets' as Category,
+    category: (availableCategories[0] || 'tickets') as Category,
     description: '',
     isPopular: false,
     customImage: '',
   });
 
-  const categories: Category[] = ['tickets', 'concessions', 'beverages', 'merchandise'];
   const isAdmin = user?.role === 'admin';
 
   const pickImage = async () => {
@@ -134,7 +135,7 @@ function ProductsContent() {
     setFormData({
       name: '',
       price: '',
-      category: 'tickets',
+      category: (availableCategories[0] || 'tickets') as Category,
       description: '',
       isPopular: false,
       customImage: '',
@@ -254,9 +255,17 @@ function ProductsContent() {
         }
       />
 
-      <TouchableOpacity style={styles.fab} onPress={openAddModal}>
-        <Plus size={28} color={TheatreColors.background} />
-      </TouchableOpacity>
+      <View style={styles.fabContainer}>
+        <TouchableOpacity 
+          style={[styles.fab, styles.categoryFab]} 
+          onPress={() => setCategoryModalVisible(true)}
+        >
+          <Settings size={24} color={TheatreColors.background} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.fab} onPress={openAddModal}>
+          <Plus size={28} color={TheatreColors.background} />
+        </TouchableOpacity>
+      </View>
 
       <Modal
         animationType="slide"
@@ -297,13 +306,13 @@ function ProductsContent() {
 
               <Text style={styles.label}>Category *</Text>
               <View style={styles.categoryButtons}>
-                {categories.map(cat => (
+                {availableCategories.map(cat => (
                   <TouchableOpacity
                     key={cat}
                     style={[
                       styles.categoryButton,
                       formData.category === cat && {
-                        backgroundColor: TheatreColors.categoryColors[cat],
+                        backgroundColor: TheatreColors.categoryColors[cat] || TheatreColors.accent,
                       },
                     ]}
                     onPress={() => setFormData({ ...formData, category: cat })}
@@ -314,7 +323,7 @@ function ProductsContent() {
                         formData.category === cat && styles.categoryButtonTextActive,
                       ]}
                     >
-                      {cat}
+                      {cat.charAt(0).toUpperCase() + cat.slice(1).replace(/-/g, ' ')}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -392,6 +401,11 @@ function ProductsContent() {
           </View>
         </View>
       </Modal>
+
+      <CategoryManagement 
+        visible={categoryModalVisible}
+        onClose={() => setCategoryModalVisible(false)}
+      />
     </View>
   );
 }
@@ -473,10 +487,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: TheatreColors.textSecondary,
   },
-  fab: {
+  fabContainer: {
     position: 'absolute',
     bottom: 24,
     right: 24,
+    flexDirection: 'column',
+    gap: 12,
+  },
+  fab: {
     width: 64,
     height: 64,
     borderRadius: 32,
@@ -488,6 +506,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
+  },
+  categoryFab: {
+    backgroundColor: TheatreColors.surface,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   modalOverlay: {
     flex: 1,
