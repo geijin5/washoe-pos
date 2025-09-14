@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 
 import { Product, CartItem, Order, Category, POSStats, POSSettings, NightlyReport, SettingsExport } from '@/types/pos';
 import { defaultProducts } from '@/mocks/default-products';
+import { syncService, SyncData } from '@/services/sync-service';
 
 const PRODUCTS_KEY = 'theatre_products';
 const ORDERS_KEY = 'theatre_orders';
