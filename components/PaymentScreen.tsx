@@ -7,7 +7,9 @@ import {
   TextInput,
   ScrollView,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, DollarSign, CreditCard } from 'lucide-react-native';
 import { TheatreColors } from '@/constants/theatre-colors';
 import { useTabletLayout } from '@/hooks/use-tablet-layout';
@@ -30,6 +32,7 @@ export function PaymentScreen({
   department
 }: PaymentScreenProps) {
   const { isTablet } = useTabletLayout();
+  const insets = useSafeAreaInsets();
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
   const [cashAmount, setCashAmount] = useState('');
   const [showCashInput, setShowCashInput] = useState(false);
@@ -101,8 +104,12 @@ export function PaymentScreen({
 
   if (isTabletFullscreen) {
     return (
-      <View style={styles.overlay}>
-        <View style={styles.tabletContainer}>
+      <View style={[styles.overlay, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <KeyboardAvoidingView 
+          style={styles.tabletContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
+        >
           {/* Header */}
           <View style={styles.tabletHeader}>
             <Text style={styles.tabletTitle}>Payment</Text>
@@ -310,18 +317,19 @@ export function PaymentScreen({
                   </TouchableOpacity>
                   
                   {showCashInput && (
-                    <View style={styles.tabletCashInputContainerCompact}>
+                    <View style={[styles.tabletCashInputContainerCompact, { marginBottom: showCashInput ? 20 : 8 }]}>
                       <Text style={styles.tabletCashInputLabelCompact}>Cash Received:</Text>
                       <View style={styles.tabletCashInputWrapper}>
                         <TextInput
                           style={styles.tabletCashInputCompact}
-                          placeholder="Select Cash Amount"
+                          placeholder="Enter amount"
                           placeholderTextColor={TheatreColors.textSecondary}
                           value={cashAmount}
                           onChangeText={setCashAmount}
                           keyboardType="decimal-pad"
                           autoFocus
                           returnKeyType="done"
+                          onSubmitEditing={() => setShowCashInput(false)}
                         />
                       </View>
                     </View>
@@ -354,15 +362,19 @@ export function PaymentScreen({
               </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </View>
     );
   }
 
   // Mobile/Portrait layout (improved for phone screens)
   return (
-    <View style={styles.overlay}>
-      <View style={styles.mobileContainer}>
+    <View style={[styles.overlay, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <KeyboardAvoidingView 
+        style={styles.mobileContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
         {/* Header */}
         <View style={styles.mobileHeader}>
           <Text style={styles.mobileTitle}>Payment</Text>
@@ -553,7 +565,7 @@ export function PaymentScreen({
               </TouchableOpacity>
               
               {showCashInput && (
-                <View style={styles.mobileCashInputContainer}>
+                <View style={[styles.mobileCashInputContainer, { marginBottom: showCashInput ? 20 : 12 }]}>
                   <Text style={styles.mobileCashInputLabel}>Cash Received:</Text>
                   <TextInput
                     style={styles.mobileCashInput}
@@ -564,6 +576,7 @@ export function PaymentScreen({
                     keyboardType="decimal-pad"
                     autoFocus
                     returnKeyType="done"
+                    onSubmitEditing={() => setShowCashInput(false)}
                   />
                 </View>
               )}
@@ -602,7 +615,7 @@ export function PaymentScreen({
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -616,6 +629,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: TheatreColors.background,
     zIndex: 1000,
+    flex: 1,
   },
   container: {
     backgroundColor: TheatreColors.background,
@@ -633,7 +647,6 @@ const styles = StyleSheet.create({
   mobileContainer: {
     backgroundColor: TheatreColors.background,
     width: '100%',
-    height: '100%',
     flexDirection: 'column',
     flex: 1,
   },
@@ -873,13 +886,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: TheatreColors.surfaceLight,
-    elevation: 2,
+    borderWidth: 2,
+    borderColor: TheatreColors.accent,
+    elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
   mobileCashInputLabel: {
     fontSize: 16,
@@ -962,7 +975,6 @@ const styles = StyleSheet.create({
   tabletContainer: {
     backgroundColor: TheatreColors.background,
     width: '100%',
-    height: '100%',
     flex: 1,
   },
   tabletHeader: {
@@ -983,6 +995,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 12,
     gap: 12,
+    minHeight: 0,
   },
   tabletLeftColumn: {
     flex: 0.7,
@@ -1003,7 +1016,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     flexDirection: 'column',
-    justifyContent: 'space-between',
+    minHeight: 0,
   },
   tabletSectionTitle: {
     fontSize: 16,
@@ -1264,6 +1277,7 @@ const styles = StyleSheet.create({
   tabletCashSection: {
     flex: 1,
     marginBottom: 16,
+    minHeight: 0,
   },
   tabletPaymentMethodsContainer: {
     flexDirection: 'row',
@@ -1451,9 +1465,14 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
     marginHorizontal: 4,
-    borderWidth: 1,
-    borderColor: TheatreColors.surfaceLight,
+    borderWidth: 2,
+    borderColor: TheatreColors.accent,
     minHeight: 80,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   tabletCashInputLabel: {
     fontSize: 18,
@@ -1503,6 +1522,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: TheatreColors.surfaceLight,
     marginTop: 'auto',
+    flexShrink: 0,
   },
   tabletPayButton: {
     backgroundColor: '#4A90E2',
