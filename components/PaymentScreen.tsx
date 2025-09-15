@@ -312,16 +312,18 @@ export function PaymentScreen({
                   {showCashInput && (
                     <View style={styles.tabletCashInputContainerCompact}>
                       <Text style={styles.tabletCashInputLabelCompact}>Cash Received:</Text>
-                      <TextInput
-                        style={styles.tabletCashInputCompact}
-                        placeholder="Enter amount"
-                        placeholderTextColor={TheatreColors.textSecondary}
-                        value={cashAmount}
-                        onChangeText={setCashAmount}
-                        keyboardType="decimal-pad"
-                        autoFocus
-                        returnKeyType="done"
-                      />
+                      <View style={styles.tabletCashInputWrapper}>
+                        <TextInput
+                          style={styles.tabletCashInputCompact}
+                          placeholder="Select Cash Amount"
+                          placeholderTextColor={TheatreColors.textSecondary}
+                          value={cashAmount}
+                          onChangeText={setCashAmount}
+                          keyboardType="decimal-pad"
+                          autoFocus
+                          returnKeyType="done"
+                        />
+                      </View>
                     </View>
                   )}
                 </View>
@@ -1452,6 +1454,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
     borderWidth: 1,
     borderColor: TheatreColors.surfaceLight,
+    minHeight: 80,
   },
   tabletCashInputLabel: {
     fontSize: 18,
@@ -1477,18 +1480,24 @@ const styles = StyleSheet.create({
     borderColor: TheatreColors.accent,
     textAlign: 'center',
   },
-  tabletCashInputCompact: {
+  tabletCashInputWrapper: {
     backgroundColor: TheatreColors.surface,
     borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: TheatreColors.text,
     borderWidth: 2,
     borderColor: TheatreColors.accent,
+    overflow: 'hidden',
+    minHeight: 48,
+  },
+  tabletCashInputCompact: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: TheatreColors.text,
     textAlign: 'center',
-    minHeight: 44,
+    minHeight: 48,
+    width: '100%',
   },
   tabletFooter: {
     paddingTop: 16,
