@@ -224,104 +224,109 @@ export function PaymentScreen({
 
             {/* Right Column - Payment Options */}
             <View style={styles.tabletRightColumn}>
-              {/* Payment Method Selection */}
-              <View style={styles.tabletPaymentMethodSection}>
-                <Text style={styles.tabletSectionTitle}>Payment Method</Text>
-                <View style={styles.tabletPaymentMethodsContainer}>
-                  <TouchableOpacity
-                    style={[
-                      styles.tabletPaymentMethodButton,
-                      paymentMethod === 'cash' && styles.tabletPaymentMethodActive
-                    ]}
-                    onPress={() => handlePaymentMethodChange('cash')}
-                  >
-                    <DollarSign 
-                      size={28} 
-                      color={paymentMethod === 'cash' ? TheatreColors.background : TheatreColors.text} 
-                    />
-                    <Text style={[
-                      styles.tabletPaymentMethodText,
-                      paymentMethod === 'cash' && styles.tabletPaymentMethodTextActive
-                    ]}>Cash</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={[
-                      styles.tabletPaymentMethodButton,
-                      paymentMethod === 'card' && styles.tabletPaymentMethodActive
-                    ]}
-                    onPress={() => handlePaymentMethodChange('card')}
-                  >
-                    <CreditCard 
-                      size={28} 
-                      color={paymentMethod === 'card' ? TheatreColors.background : TheatreColors.text} 
-                    />
-                    <Text style={[
-                      styles.tabletPaymentMethodText,
-                      paymentMethod === 'card' && styles.tabletPaymentMethodTextActive
-                    ]}>Card</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Cash Payment Options */}
-              {paymentMethod === 'cash' && (
-                <View style={styles.tabletCashSection}>
-                  <Text style={styles.tabletSectionTitle}>Cash Amount</Text>
-                  
-                  {/* Quick Amount Buttons - Optimized Grid for Samsung Tab A 9+ */}
-                  <View style={styles.tabletQuickAmountsCompact}>
-                    <Text style={styles.tabletQuickAmountLabel}>Quick Amount:</Text>
-                    <View style={styles.tabletQuickAmountButtonsGrid}>
-                      {[5, 10, 20, 50, 100].map(amount => (
-                        <TouchableOpacity
-                          key={amount}
-                          style={[
-                            styles.tabletQuickAmountButtonCompact,
-                            parseFloat(cashAmount) === amount && styles.tabletQuickAmountButtonActive
-                          ]}
-                          onPress={() => handleQuickAmount(amount)}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={[
-                            styles.tabletQuickAmountButtonTextCompact,
-                            parseFloat(cashAmount) === amount && styles.tabletQuickAmountButtonTextActive
-                          ]}>${amount}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
+              <ScrollView 
+                style={styles.tabletRightScrollView}
+                contentContainerStyle={styles.tabletRightScrollContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {/* Payment Method Selection */}
+                <View style={styles.tabletPaymentMethodSection}>
+                  <Text style={styles.tabletSectionTitle}>Payment Method</Text>
+                  <View style={styles.tabletPaymentMethodsContainer}>
+                    <TouchableOpacity
+                      style={[
+                        styles.tabletPaymentMethodButton,
+                        paymentMethod === 'cash' && styles.tabletPaymentMethodActive
+                      ]}
+                      onPress={() => handlePaymentMethodChange('cash')}
+                    >
+                      <DollarSign 
+                        size={24} 
+                        color={paymentMethod === 'cash' ? TheatreColors.background : TheatreColors.text} 
+                      />
+                      <Text style={[
+                        styles.tabletPaymentMethodText,
+                        paymentMethod === 'cash' && styles.tabletPaymentMethodTextActive
+                      ]}>Cash</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[
+                        styles.tabletPaymentMethodButton,
+                        paymentMethod === 'card' && styles.tabletPaymentMethodActive
+                      ]}
+                      onPress={() => handlePaymentMethodChange('card')}
+                    >
+                      <CreditCard 
+                        size={24} 
+                        color={paymentMethod === 'card' ? TheatreColors.background : TheatreColors.text} 
+                      />
+                      <Text style={[
+                        styles.tabletPaymentMethodText,
+                        paymentMethod === 'card' && styles.tabletPaymentMethodTextActive
+                      ]}>Card</Text>
+                    </TouchableOpacity>
                   </View>
-                  
-                  {/* Exact Change Button - Compact */}
-                  <TouchableOpacity 
-                    style={[
-                      styles.tabletExactChangeButtonCompact,
-                      parseFloat(cashAmount) === totals.total && styles.tabletExactChangeButtonActive
-                    ]}
-                    onPress={handleExactChange}
-                  >
-                    <Text style={[
-                      styles.tabletExactChangeButtonTextCompact,
-                      parseFloat(cashAmount) === totals.total && styles.tabletExactChangeButtonTextActive
-                    ]}>Exact Change (${totals.total.toFixed(2)})</Text>
-                  </TouchableOpacity>
-                  
-                  {/* Custom Amount Input - Compact */}
-                  <TouchableOpacity 
-                    style={styles.tabletCustomAmountButtonCompact}
-                    onPress={() => setShowCashInput(!showCashInput)}
-                  >
-                    <Text style={styles.tabletCustomAmountButtonTextCompact}>
-                      {showCashInput ? 'Hide Custom' : 'Custom Amount'}
-                    </Text>
-                  </TouchableOpacity>
-                  
-                  {showCashInput && (
-                    <View style={[styles.tabletCashInputContainerCompact, { marginBottom: showCashInput ? 20 : 8 }]}>
-                      <Text style={styles.tabletCashInputLabelCompact}>Cash Received:</Text>
-                      <View style={styles.tabletCashInputWrapper}>
+                </View>
+
+                {/* Cash Payment Options */}
+                {paymentMethod === 'cash' && (
+                  <View style={styles.tabletCashSection}>
+                    <Text style={styles.tabletSectionTitle}>Cash Amount</Text>
+                    
+                    {/* Quick Amount Buttons - Optimized for Samsung Tab A 9+ */}
+                    <View style={styles.tabletQuickAmountsOptimized}>
+                      <Text style={styles.tabletQuickAmountLabelOptimized}>Quick Amount:</Text>
+                      <View style={styles.tabletQuickAmountButtonsOptimized}>
+                        {[5, 10, 20, 50, 100].map(amount => (
+                          <TouchableOpacity
+                            key={amount}
+                            style={[
+                              styles.tabletQuickAmountButtonOptimized,
+                              parseFloat(cashAmount) === amount && styles.tabletQuickAmountButtonActive
+                            ]}
+                            onPress={() => handleQuickAmount(amount)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={[
+                              styles.tabletQuickAmountButtonTextOptimized,
+                              parseFloat(cashAmount) === amount && styles.tabletQuickAmountButtonTextActive
+                            ]}>${amount}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                    
+                    {/* Exact Change Button */}
+                    <TouchableOpacity 
+                      style={[
+                        styles.tabletExactChangeButtonOptimized,
+                        parseFloat(cashAmount) === totals.total && styles.tabletExactChangeButtonActive
+                      ]}
+                      onPress={handleExactChange}
+                    >
+                      <Text style={[
+                        styles.tabletExactChangeButtonTextOptimized,
+                        parseFloat(cashAmount) === totals.total && styles.tabletExactChangeButtonTextActive
+                      ]}>Exact Change (${totals.total.toFixed(2)})</Text>
+                    </TouchableOpacity>
+                    
+                    {/* Custom Amount Input */}
+                    <TouchableOpacity 
+                      style={styles.tabletCustomAmountButtonOptimized}
+                      onPress={() => setShowCashInput(!showCashInput)}
+                    >
+                      <Text style={styles.tabletCustomAmountButtonTextOptimized}>
+                        {showCashInput ? 'Hide Custom' : 'Custom Amount'}
+                      </Text>
+                    </TouchableOpacity>
+                    
+                    {showCashInput && (
+                      <View style={styles.tabletCashInputContainerOptimized}>
+                        <Text style={styles.tabletCashInputLabelOptimized}>Cash Received:</Text>
                         <TextInput
-                          style={styles.tabletCashInputCompact}
+                          style={styles.tabletCashInputOptimized}
                           placeholder="Enter amount"
                           placeholderTextColor={TheatreColors.textSecondary}
                           value={cashAmount}
@@ -332,10 +337,10 @@ export function PaymentScreen({
                           onSubmitEditing={() => setShowCashInput(false)}
                         />
                       </View>
-                    </View>
-                  )}
-                </View>
-              )}
+                    )}
+                  </View>
+                )}
+              </ScrollView>
 
               {/* Payment Button - Fixed at bottom */}
               <View style={styles.tabletFooter}>
@@ -1017,6 +1022,15 @@ const styles = StyleSheet.create({
     padding: 12,
     flexDirection: 'column',
     minHeight: 0,
+    maxHeight: '100%',
+  },
+  tabletRightScrollView: {
+    flex: 1,
+    minHeight: 0,
+  },
+  tabletRightScrollContent: {
+    flexGrow: 1,
+    paddingBottom: 16,
   },
   tabletSectionTitle: {
     fontSize: 16,
@@ -1272,12 +1286,112 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   tabletPaymentMethodSection: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   tabletCashSection: {
-    flex: 1,
     marginBottom: 16,
-    minHeight: 0,
+  },
+  // Optimized styles for Samsung Tab A 9+
+  tabletQuickAmountsOptimized: {
+    marginBottom: 12,
+  },
+  tabletQuickAmountLabelOptimized: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: TheatreColors.text,
+    marginBottom: 8,
+  },
+  tabletQuickAmountButtonsOptimized: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  tabletQuickAmountButtonOptimized: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: TheatreColors.surfaceLight,
+    backgroundColor: TheatreColors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 40,
+    minWidth: '18%',
+  },
+  tabletQuickAmountButtonTextOptimized: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: TheatreColors.text,
+    textAlign: 'center',
+  },
+  tabletExactChangeButtonOptimized: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+    minHeight: 40,
+  },
+  tabletExactChangeButtonTextOptimized: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: TheatreColors.background,
+  },
+  tabletCustomAmountButtonOptimized: {
+    backgroundColor: TheatreColors.background,
+    borderRadius: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: TheatreColors.accent,
+    minHeight: 40,
+  },
+  tabletCustomAmountButtonTextOptimized: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: TheatreColors.accent,
+  },
+  tabletCashInputContainerOptimized: {
+    backgroundColor: TheatreColors.background,
+    borderRadius: 6,
+    padding: 8,
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: TheatreColors.accent,
+    minHeight: 60,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  tabletCashInputLabelOptimized: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: TheatreColors.text,
+    marginBottom: 4,
+  },
+  tabletCashInputOptimized: {
+    backgroundColor: TheatreColors.surface,
+    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: TheatreColors.text,
+    borderWidth: 1,
+    borderColor: TheatreColors.accent,
+    textAlign: 'center',
+    minHeight: 40,
   },
   tabletPaymentMethodsContainer: {
     flexDirection: 'row',
@@ -1288,25 +1402,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
     borderWidth: 2,
     borderColor: TheatreColors.surfaceLight,
     backgroundColor: TheatreColors.background,
-    gap: 12,
+    gap: 8,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    minHeight: 48,
   },
   tabletPaymentMethodActive: {
     backgroundColor: TheatreColors.accent,
     borderColor: TheatreColors.accent,
   },
   tabletPaymentMethodText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: TheatreColors.text,
   },
