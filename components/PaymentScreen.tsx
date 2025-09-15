@@ -807,12 +807,11 @@ const styles = StyleSheet.create({
   },
   mobileQuickAmountButtons: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: 6,
   },
   mobileQuickAmountButton: {
-    width: '18%',
+    flex: 1,
     paddingVertical: 10,
     paddingHorizontal: 4,
     borderRadius: 8,
