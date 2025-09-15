@@ -612,9 +612,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: TheatreColors.background,
     zIndex: 1000,
   },
   container: {
@@ -632,16 +630,10 @@ const styles = StyleSheet.create({
   // Mobile-specific styles for better phone experience
   mobileContainer: {
     backgroundColor: TheatreColors.background,
-    borderRadius: 20,
-    width: '95%',
-    height: '95%',
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    overflow: 'hidden',
+    width: '100%',
+    height: '100%',
     flexDirection: 'column',
+    flex: 1,
   },
   mobileHeader: {
     flexDirection: 'row',
@@ -967,14 +959,9 @@ const styles = StyleSheet.create({
   // Tablet full-screen styles
   tabletContainer: {
     backgroundColor: TheatreColors.background,
-    width: '95%',
-    height: '95%',
-    borderRadius: 20,
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
+    width: '100%',
+    height: '100%',
+    flex: 1,
   },
   tabletHeader: {
     flexDirection: 'row',
