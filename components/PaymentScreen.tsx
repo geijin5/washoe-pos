@@ -807,20 +807,20 @@ const styles = StyleSheet.create({
   },
   mobileQuickAmountButtons: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    justifyContent: 'space-between',
+    gap: 6,
   },
   mobileQuickAmountButton: {
     flex: 1,
-    minWidth: '18%',
-    paddingVertical: 10,
-    paddingHorizontal: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     borderRadius: 8,
     borderWidth: 2,
     borderColor: TheatreColors.surface,
     backgroundColor: TheatreColors.background,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 44,
   },
   mobileQuickAmountButtonActive: {
     backgroundColor: TheatreColors.accent,
@@ -837,12 +837,13 @@ const styles = StyleSheet.create({
   mobileExactChangeButton: {
     backgroundColor: '#4CAF50',
     borderRadius: 8,
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
     borderWidth: 2,
     borderColor: '#4CAF50',
+    minHeight: 44,
   },
   mobileExactChangeButtonActive: {
     backgroundColor: '#45a049',
@@ -859,12 +860,13 @@ const styles = StyleSheet.create({
   mobileCustomAmountButton: {
     backgroundColor: TheatreColors.surface,
     borderRadius: 8,
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
     borderWidth: 1,
     borderColor: TheatreColors.accent,
+    minHeight: 44,
   },
   mobileCustomAmountButtonText: {
     fontSize: 14,
@@ -1325,8 +1327,8 @@ const styles = StyleSheet.create({
   },
   tabletQuickAmountButtonsGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    justifyContent: 'space-between',
+    gap: 6,
   },
   tabletQuickAmountButton: {
     width: '100%',
@@ -1341,7 +1343,6 @@ const styles = StyleSheet.create({
   },
   tabletQuickAmountButtonCompact: {
     flex: 1,
-    minWidth: '18%',
     paddingVertical: 12,
     paddingHorizontal: 8,
     borderRadius: 8,
@@ -1350,6 +1351,7 @@ const styles = StyleSheet.create({
     backgroundColor: TheatreColors.background,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 44,
   },
   tabletQuickAmountButtonActive: {
     backgroundColor: TheatreColors.accent,
@@ -1387,6 +1389,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 2,
     borderColor: '#4CAF50',
+    minHeight: 44,
   },
   tabletExactChangeButtonActive: {
     backgroundColor: '#45a049',
@@ -1418,12 +1421,13 @@ const styles = StyleSheet.create({
   tabletCustomAmountButtonCompact: {
     backgroundColor: TheatreColors.background,
     borderRadius: 8,
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
     borderWidth: 2,
     borderColor: TheatreColors.accent,
+    minHeight: 44,
   },
   tabletCustomAmountButtonText: {
     fontSize: 18,
