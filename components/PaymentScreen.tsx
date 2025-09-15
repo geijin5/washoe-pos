@@ -262,7 +262,7 @@ export function PaymentScreen({
                 <View style={styles.tabletCashSection}>
                   <Text style={styles.tabletSectionTitle}>Cash Amount</Text>
                   
-                  {/* Quick Amount Buttons - Compact Grid */}
+                  {/* Quick Amount Buttons - Optimized Grid for Samsung Tab A 9+ */}
                   <View style={styles.tabletQuickAmountsCompact}>
                     <Text style={styles.tabletQuickAmountLabel}>Quick Amount:</Text>
                     <View style={styles.tabletQuickAmountButtonsGrid}>
@@ -274,6 +274,7 @@ export function PaymentScreen({
                             parseFloat(cashAmount) === amount && styles.tabletQuickAmountButtonActive
                           ]}
                           onPress={() => handleQuickAmount(amount)}
+                          activeOpacity={0.7}
                         >
                           <Text style={[
                             styles.tabletQuickAmountButtonTextCompact,
@@ -1314,6 +1315,7 @@ const styles = StyleSheet.create({
   },
   tabletQuickAmountsCompact: {
     marginBottom: 12,
+    paddingHorizontal: 4,
   },
   tabletQuickAmountLabel: {
     fontSize: 18,
@@ -1328,8 +1330,9 @@ const styles = StyleSheet.create({
   tabletQuickAmountButtonsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 6,
+    gap: 8,
     flexWrap: 'wrap',
+    alignItems: 'center',
   },
   tabletQuickAmountButton: {
     width: '100%',
@@ -1344,17 +1347,18 @@ const styles = StyleSheet.create({
   },
   tabletQuickAmountButtonCompact: {
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 2,
-    borderRadius: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderRadius: 8,
     borderWidth: 1.5,
     borderColor: TheatreColors.surfaceLight,
     backgroundColor: TheatreColors.background,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 36,
-    minWidth: 50,
-    maxWidth: 70,
+    minHeight: 44,
+    minWidth: 60,
+    maxWidth: 80,
+    marginHorizontal: 2,
   },
   tabletQuickAmountButtonActive: {
     backgroundColor: TheatreColors.accent,
@@ -1366,9 +1370,10 @@ const styles = StyleSheet.create({
     color: TheatreColors.text,
   },
   tabletQuickAmountButtonTextCompact: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     color: TheatreColors.text,
+    textAlign: 'center',
   },
   tabletQuickAmountButtonTextActive: {
     color: TheatreColors.background,
@@ -1387,9 +1392,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#4CAF50',
     borderRadius: 8,
     paddingVertical: 12,
+    paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
+    marginHorizontal: 4,
     borderWidth: 2,
     borderColor: '#4CAF50',
     minHeight: 44,
@@ -1425,9 +1432,11 @@ const styles = StyleSheet.create({
     backgroundColor: TheatreColors.background,
     borderRadius: 8,
     paddingVertical: 12,
+    paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
+    marginHorizontal: 4,
     borderWidth: 2,
     borderColor: TheatreColors.accent,
     minHeight: 44,
@@ -1453,6 +1462,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
+    marginHorizontal: 4,
     borderWidth: 1,
     borderColor: TheatreColors.surfaceLight,
   },
