@@ -226,9 +226,13 @@ export function PaymentScreen({
             <View style={styles.tabletRightColumn}>
               <ScrollView 
                 style={styles.tabletRightScrollView}
-                contentContainerStyle={styles.tabletRightScrollContent}
+                contentContainerStyle={[
+                  styles.tabletRightScrollContent,
+                  showCashInput && { paddingBottom: 300 } // Add extra padding when keyboard is shown
+                ]}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
+                automaticallyAdjustKeyboardInsets={true}
               >
                 {/* Payment Method Selection */}
                 <View style={styles.tabletPaymentMethodSection}>
@@ -323,10 +327,38 @@ export function PaymentScreen({
                     </TouchableOpacity>
                     
                     {showCashInput && (
-                      <View style={styles.tabletCashInputContainerOptimized}>
-                        <Text style={styles.tabletCashInputLabelOptimized}>Cash Received:</Text>
+                      <View style={[
+                        styles.tabletCashInputContainerOptimized,
+                        { 
+                          backgroundColor: TheatreColors.accent,
+                          borderColor: '#4CAF50',
+                          borderWidth: 3,
+                          elevation: 8,
+                          shadowColor: '#000',
+                          shadowOffset: { width: 0, height: 4 },
+                          shadowOpacity: 0.3,
+                          shadowRadius: 8,
+                          marginBottom: 20,
+                          zIndex: 1000
+                        }
+                      ]}>
+                        <Text style={[
+                          styles.tabletCashInputLabelOptimized,
+                          { color: TheatreColors.background, fontWeight: 'bold' }
+                        ]}>Cash Received:</Text>
                         <TextInput
-                          style={styles.tabletCashInputOptimized}
+                          style={[
+                            styles.tabletCashInputOptimized,
+                            {
+                              backgroundColor: TheatreColors.background,
+                              borderColor: '#4CAF50',
+                              borderWidth: 2,
+                              fontSize: 18,
+                              fontWeight: 'bold',
+                              minHeight: 50,
+                              elevation: 2
+                            }
+                          ]}
                           placeholder="Enter amount"
                           placeholderTextColor={TheatreColors.textSecondary}
                           value={cashAmount}
@@ -1031,6 +1063,7 @@ const styles = StyleSheet.create({
   tabletRightScrollContent: {
     flexGrow: 1,
     paddingBottom: 16,
+    minHeight: '100%',
   },
   tabletSectionTitle: {
     fontSize: 16,
@@ -1362,17 +1395,19 @@ const styles = StyleSheet.create({
   },
   tabletCashInputContainerOptimized: {
     backgroundColor: TheatreColors.background,
-    borderRadius: 6,
-    padding: 8,
-    marginBottom: 8,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
     borderWidth: 2,
     borderColor: TheatreColors.accent,
-    minHeight: 60,
-    elevation: 2,
+    minHeight: 80,
+    elevation: 5,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    position: 'relative',
+    zIndex: 100,
   },
   tabletCashInputLabelOptimized: {
     fontSize: 12,
@@ -1382,16 +1417,21 @@ const styles = StyleSheet.create({
   },
   tabletCashInputOptimized: {
     backgroundColor: TheatreColors.surface,
-    borderRadius: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
     fontWeight: 'bold',
     color: TheatreColors.text,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: TheatreColors.accent,
     textAlign: 'center',
-    minHeight: 40,
+    minHeight: 48,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   tabletPaymentMethodsContainer: {
     flexDirection: 'row',
