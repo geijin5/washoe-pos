@@ -1328,7 +1328,7 @@ const styles = StyleSheet.create({
   tabletQuickAmountButtonsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: 6,
     flexWrap: 'wrap',
   },
   tabletQuickAmountButton: {
@@ -1343,17 +1343,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabletQuickAmountButtonCompact: {
-    width: '18%',
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    borderRadius: 8,
-    borderWidth: 2,
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 2,
+    borderRadius: 6,
+    borderWidth: 1.5,
     borderColor: TheatreColors.surfaceLight,
     backgroundColor: TheatreColors.background,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 40,
-    maxWidth: 80,
+    minHeight: 36,
+    minWidth: 50,
+    maxWidth: 70,
   },
   tabletQuickAmountButtonActive: {
     backgroundColor: TheatreColors.accent,
@@ -1365,7 +1366,7 @@ const styles = StyleSheet.create({
     color: TheatreColors.text,
   },
   tabletQuickAmountButtonTextCompact: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: TheatreColors.text,
   },
