@@ -409,97 +409,6 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     }
   }, [updateSettings, products, saveProducts]);
 
-  // Auto-clear nightly reports after 14 days
-  const autoCleanOldReports = useCallback(async () => {
-    try {
-      const now = new Date();
-      const today = now.toISOString().split('T')[0];
-      
-      // Check if we need to clear old data
-      const lastCleanDate = await AsyncStorage.getItem('last_auto_clean_date');
-      
-      if (lastCleanDate !== today) {
-        console.log('=== AUTO-CLEAN OLD REPORTS (14+ DAYS) ===');
-        console.log(`Current date: ${today}`);
-        console.log(`Last clean date: ${lastCleanDate || 'never'}`);
-        
-        // Calculate cutoff date (14 days ago from today)
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - 14);
-        const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
-        
-        console.log(`Auto-clearing reports older than ${cutoffDateStr} (keeping current + 14 days)`);
-        
-        // Keep only orders from the last 14 days + today (15 days total)
-        const recentOrders = orders.filter(order => {
-          const orderDate = new Date(order.timestamp);
-          const orderDateStr = orderDate.toISOString().split('T')[0];
-          const isRecent = orderDateStr >= cutoffDateStr;
-          if (!isRecent) {
-            console.log(`Clearing old order from ${orderDateStr}: ${order.total.toFixed(2)}`);
-          }
-          return isRecent;
-        });
-        
-        const clearedCount = orders.length - recentOrders.length;
-        
-        if (clearedCount > 0) {
-          // Save filtered orders
-          await AsyncStorage.setItem(ORDERS_KEY, JSON.stringify(recentOrders));
-          setOrders(recentOrders);
-          
-          console.log(`✓ Auto-cleared ${clearedCount} old orders (older than 14 days)`);
-          console.log(`✓ Kept ${recentOrders.length} orders from current night + last 14 days`);
-          
-          // Also clean up saved nightly reports older than 14 days
-          const savedReportsKey = 'saved_nightly_reports';
-          const existingSavedReports = await AsyncStorage.getItem(savedReportsKey);
-          if (existingSavedReports) {
-            const savedReports = JSON.parse(existingSavedReports);
-            const recentSavedReports = savedReports.filter((reportDate: string) => reportDate >= cutoffDateStr);
-            
-            // Remove old report data files
-            const removedReports = savedReports.filter((reportDate: string) => reportDate < cutoffDateStr);
-            for (const reportDate of removedReports) {
-              try {
-                await AsyncStorage.removeItem(`nightly_report_${reportDate}`);
-                console.log(`Removed old saved report: ${reportDate}`);
-              } catch (error) {
-                console.error(`Error removing old report ${reportDate}:`, error);
-              }
-            }
-            
-            // Update saved reports list
-            await AsyncStorage.setItem(savedReportsKey, JSON.stringify(recentSavedReports));
-            console.log(`✓ Cleaned up ${removedReports.length} old saved reports`);
-          }
-          
-          // Save auto-clean log for reporting
-          const cleanLog = {
-            date: today,
-            clearedCount,
-            keptCount: recentOrders.length,
-            cutoffDate: cutoffDateStr,
-            timestamp: new Date().toISOString()
-          };
-          await AsyncStorage.setItem('last_auto_clean_log', JSON.stringify(cleanLog));
-        } else {
-          console.log('✓ No old reports found to auto-clear (all orders within 14 days)');
-        }
-        
-        // Update last clean date
-        await AsyncStorage.setItem('last_auto_clean_date', today);
-        console.log('=== AUTO-CLEAN COMPLETE ===');
-      }
-    } catch (error) {
-      console.error('Error auto-clearing old reports:', error);
-    }
-  }, [orders]);
-
-
-
-
-
   // Helper function to validate real users (not test/demo/default accounts)
   const isValidRealUser = useCallback((userName: string): boolean => {
     if (!userName || typeof userName !== 'string') {
@@ -877,7 +786,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
         console.log(`Current date: ${today}`);
         console.log(`Last process date: ${lastProcessDate || 'never'}`);
         
-        // If we have a previous day, save its report
+        // Always save the previous day's report if we have orders from that day
         if (lastProcessDate) {
           const previousDate = new Date(lastProcessDate);
           console.log(`Saving nightly report for ${lastProcessDate}...`);
@@ -885,63 +794,133 @@ export const [POSProvider, usePOS] = createContextHook(() => {
           // Generate and save the previous day's report
           const previousDayReport = generateNightlyReport(previousDate);
           
-          // Save the report data for historical access
-          const reportKey = `nightly_report_${lastProcessDate}`;
-          const reportData = {
-            ...previousDayReport,
-            savedAt: new Date().toISOString(),
-            deviceInfo: 'Local Device'
-          };
-          
-          await AsyncStorage.setItem(reportKey, JSON.stringify(reportData));
-          console.log(`✓ Saved nightly report for ${lastProcessDate}`);
-          console.log(`  - Total Sales: ${previousDayReport.totalSales.toFixed(2)}`);
-          console.log(`  - Total Orders: ${previousDayReport.totalOrders}`);
-          console.log(`  - Users: ${previousDayReport.userBreakdown.length}`);
-          
-          // Keep a list of saved reports for easy access
-          const savedReportsKey = 'saved_nightly_reports';
-          const existingSavedReports = await AsyncStorage.getItem(savedReportsKey);
-          const savedReports = existingSavedReports ? JSON.parse(existingSavedReports) : [];
-          
-          // Add new report to list if not already there
-          if (!savedReports.includes(lastProcessDate)) {
-            savedReports.push(lastProcessDate);
-            savedReports.sort(); // Keep chronological order
-            await AsyncStorage.setItem(savedReportsKey, JSON.stringify(savedReports));
-            console.log(`✓ Added ${lastProcessDate} to saved reports list`);
+          // Only save if there were actual sales/orders
+          if (previousDayReport.totalOrders > 0 || previousDayReport.totalSales > 0) {
+            const reportKey = `nightly_report_${lastProcessDate}`;
+            const reportData = {
+              ...previousDayReport,
+              savedAt: new Date().toISOString(),
+              deviceInfo: 'Local Device'
+            };
+            
+            await AsyncStorage.setItem(reportKey, JSON.stringify(reportData));
+            console.log(`✓ Saved nightly report for ${lastProcessDate}`);
+            console.log(`  - Total Sales: ${previousDayReport.totalSales.toFixed(2)}`);
+            console.log(`  - Total Orders: ${previousDayReport.totalOrders}`);
+            console.log(`  - Users: ${previousDayReport.userBreakdown.length}`);
+            
+            // Keep a list of saved reports for easy access
+            const savedReportsKey = 'saved_nightly_reports';
+            const existingSavedReports = await AsyncStorage.getItem(savedReportsKey);
+            const savedReports = existingSavedReports ? JSON.parse(existingSavedReports) : [];
+            
+            // Add new report to list if not already there
+            if (!savedReports.includes(lastProcessDate)) {
+              savedReports.push(lastProcessDate);
+              savedReports.sort(); // Keep chronological order
+              await AsyncStorage.setItem(savedReportsKey, JSON.stringify(savedReports));
+              console.log(`✓ Added ${lastProcessDate} to saved reports list`);
+            }
+          } else {
+            console.log(`No sales data for ${lastProcessDate}, skipping report save`);
           }
         }
         
-        // Now start fresh for today - keep only today's orders
-        const todaysOrders = orders.filter(order => {
-          const orderDate = new Date(order.timestamp);
-          const orderDateStr = orderDate.toISOString().split('T')[0];
-          return orderDateStr === today;
-        });
-        
-        const previousDayOrderCount = orders.length - todaysOrders.length;
-        
-        if (previousDayOrderCount > 0) {
-          console.log(`Resetting for new day: keeping ${todaysOrders.length} today's orders, archiving ${previousDayOrderCount} previous orders`);
-        } else {
-          console.log(`Starting fresh day: ${todaysOrders.length} orders already from today`);
-        }
-        
-        // Save today's orders only
-        await AsyncStorage.setItem(ORDERS_KEY, JSON.stringify(todaysOrders));
-        setOrders(todaysOrders);
-        
-        // Update last process date
+        // Update last process date to today
         await AsyncStorage.setItem('last_nightly_process_date', today);
         
-        console.log('✓ Nightly report saved and system reset for new day');
+        console.log('✓ Nightly report processing complete for new day');
         console.log('=== NIGHTLY PROCESS COMPLETE ===');
       }
     } catch (error) {
       console.error('Error in nightly report save & reset:', error);
     }
-  }, [orders, generateNightlyReport]);
+  }, [generateNightlyReport]);
+
+  // Auto-clear nightly reports after 14 days and save daily reports
+  const autoCleanOldReports = useCallback(async () => {
+    try {
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      
+      // Check if we need to clear old data (run once per day)
+      const lastCleanDate = await AsyncStorage.getItem('last_auto_clean_date');
+      
+      if (lastCleanDate !== today) {
+        console.log('=== DAILY REPORT MANAGEMENT & AUTO-CLEAN ===');
+        console.log(`Current date: ${today}`);
+        console.log(`Last clean date: ${lastCleanDate || 'never'}`);
+        
+        // Calculate cutoff date (14 days ago from today)
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - 14);
+        const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
+        
+        console.log(`Auto-clearing reports older than ${cutoffDateStr} (keeping current + 14 days)`);
+        
+        // Keep only orders from the last 14 days + today (15 days total)
+        const recentOrders = orders.filter(order => {
+          const orderDate = new Date(order.timestamp);
+          const orderDateStr = orderDate.toISOString().split('T')[0];
+          const isRecent = orderDateStr >= cutoffDateStr;
+          if (!isRecent) {
+            console.log(`Clearing old order from ${orderDateStr}: ${order.total.toFixed(2)}`);
+          }
+          return isRecent;
+        });
+        
+        const clearedCount = orders.length - recentOrders.length;
+        
+        if (clearedCount > 0) {
+          // Save filtered orders
+          await AsyncStorage.setItem(ORDERS_KEY, JSON.stringify(recentOrders));
+          setOrders(recentOrders);
+          
+          console.log(`✓ Auto-cleared ${clearedCount} old orders (older than 14 days)`);
+          console.log(`✓ Kept ${recentOrders.length} orders from current night + last 14 days`);
+        }
+        
+        // Clean up saved nightly reports older than 14 days
+        const savedReportsKey = 'saved_nightly_reports';
+        const existingSavedReports = await AsyncStorage.getItem(savedReportsKey);
+        if (existingSavedReports) {
+          const savedReports = JSON.parse(existingSavedReports);
+          const recentSavedReports = savedReports.filter((reportDate: string) => reportDate >= cutoffDateStr);
+          
+          // Remove old report data files
+          const removedReports = savedReports.filter((reportDate: string) => reportDate < cutoffDateStr);
+          for (const reportDate of removedReports) {
+            try {
+              await AsyncStorage.removeItem(`nightly_report_${reportDate}`);
+              console.log(`Removed old saved report: ${reportDate}`);
+            } catch (error) {
+              console.error(`Error removing old report ${reportDate}:`, error);
+            }
+          }
+          
+          // Update saved reports list
+          await AsyncStorage.setItem(savedReportsKey, JSON.stringify(recentSavedReports));
+          console.log(`✓ Cleaned up ${removedReports.length} old saved reports`);
+        }
+        
+        // Save auto-clean log for reporting
+        const cleanLog = {
+          date: today,
+          clearedCount,
+          keptCount: recentOrders.length,
+          cutoffDate: cutoffDateStr,
+          timestamp: new Date().toISOString()
+        };
+        await AsyncStorage.setItem('last_auto_clean_log', JSON.stringify(cleanLog));
+        
+        // Update last clean date
+        await AsyncStorage.setItem('last_auto_clean_date', today);
+        console.log('=== DAILY MANAGEMENT COMPLETE ===');
+      }
+    } catch (error) {
+      console.error('Error in daily report management:', error);
+    }
+  }, [orders]);
 
   // Generate aggregated report from all network devices (for managers)
   const generateAggregatedReport = useCallback(async (date?: Date): Promise<NightlyReport> => {
@@ -1249,10 +1228,10 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       autoCleanOldReports();
     }, 60 * 60 * 1000); // Every hour
     
-    // Also check every 10 minutes for more responsive new day detection
+    // Also check every 15 minutes for more responsive new day detection
     const frequentInterval = setInterval(() => {
       saveNightlyReportAndReset();
-    }, 10 * 60 * 1000); // Every 10 minutes
+    }, 15 * 60 * 1000); // Every 15 minutes
     
     return () => {
       clearInterval(interval);
