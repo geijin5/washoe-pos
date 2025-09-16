@@ -210,12 +210,20 @@ export function PaymentScreen({
                 </View>
               </View>
 
-                {/* Change Display - Compact */}
-                {change > 0 && (
-                  <View style={styles.tabletChangeDisplayContainerCompact}>
-                    <View style={styles.tabletChangeDisplayRowCompact}>
-                      <Text style={styles.tabletChangeDisplayLabelCompact}>Change Due:</Text>
-                      <Text style={styles.tabletChangeDisplayAmountCompact}>${change.toFixed(2)}</Text>
+                {/* Cash Payment Details - Compact */}
+                {paymentMethod === 'cash' && cashAmount && parseFloat(cashAmount) > 0 && (
+                  <View style={styles.tabletCashPaymentContainerCompact}>
+                    <View style={styles.tabletCashPaymentRowCompact}>
+                      <Text style={styles.tabletCashPaymentLabelCompact}>Cash Given:</Text>
+                      <Text style={styles.tabletCashPaymentValueCompact}>${parseFloat(cashAmount).toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.tabletCashPaymentRowCompact}>
+                      <Text style={styles.tabletCashPaymentLabelCompact}>Total Due:</Text>
+                      <Text style={styles.tabletCashPaymentValueCompact}>-${totals.total.toFixed(2)}</Text>
+                    </View>
+                    <View style={[styles.tabletCashPaymentRowCompact, styles.tabletCashPaymentTotalRowCompact]}>
+                      <Text style={styles.tabletCashPaymentTotalLabelCompact}>Change Due:</Text>
+                      <Text style={styles.tabletCashPaymentTotalAmountCompact}>${change.toFixed(2)}</Text>
                     </View>
                   </View>
                 )}
@@ -618,11 +626,22 @@ export function PaymentScreen({
                 </View>
               )}
               
-              {/* Change Display */}
-              {change > 0 && (
-                <View style={styles.mobileChangeContainer}>
-                  <Text style={styles.mobileChangeLabel}>Change Due:</Text>
-                  <Text style={styles.mobileChangeAmount}>${change.toFixed(2)}</Text>
+              {/* Cash Payment Details */}
+              {paymentMethod === 'cash' && cashAmount && parseFloat(cashAmount) > 0 && (
+                <View style={styles.mobileCashPaymentContainer}>
+                  <Text style={styles.mobileCashPaymentTitle}>Cash Payment Details</Text>
+                  <View style={styles.mobileCashPaymentRow}>
+                    <Text style={styles.mobileCashPaymentLabel}>Cash Given:</Text>
+                    <Text style={styles.mobileCashPaymentValue}>${parseFloat(cashAmount).toFixed(2)}</Text>
+                  </View>
+                  <View style={styles.mobileCashPaymentRow}>
+                    <Text style={styles.mobileCashPaymentLabel}>Total Due:</Text>
+                    <Text style={styles.mobileCashPaymentValue}>-${totals.total.toFixed(2)}</Text>
+                  </View>
+                  <View style={[styles.mobileCashPaymentRow, styles.mobileCashPaymentTotalRow]}>
+                    <Text style={styles.mobileCashPaymentTotalLabel}>Change Due:</Text>
+                    <Text style={styles.mobileCashPaymentTotalAmount}>${change.toFixed(2)}</Text>
+                  </View>
                 </View>
               )}
             </View>
@@ -1999,5 +2018,94 @@ const styles = StyleSheet.create({
   },
   payButtonTextDisabled: {
     color: TheatreColors.textSecondary,
+  },
+  // Cash Payment Details Styles - Tablet
+  tabletCashPaymentContainerCompact: {
+    backgroundColor: '#E3F2FD',
+    borderRadius: 6,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#2196F3',
+    marginTop: 6,
+  },
+  tabletCashPaymentRowCompact: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 2,
+  },
+  tabletCashPaymentTotalRowCompact: {
+    marginTop: 4,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#2196F3',
+  },
+  tabletCashPaymentLabelCompact: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#1976D2',
+  },
+  tabletCashPaymentValueCompact: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1976D2',
+  },
+  tabletCashPaymentTotalLabelCompact: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0D47A1',
+  },
+  tabletCashPaymentTotalAmountCompact: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#0D47A1',
+  },
+  // Cash Payment Details Styles - Mobile
+  mobileCashPaymentContainer: {
+    backgroundColor: '#E3F2FD',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+    borderWidth: 2,
+    borderColor: '#2196F3',
+  },
+  mobileCashPaymentTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1976D2',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  mobileCashPaymentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  mobileCashPaymentTotalRow: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 2,
+    borderTopColor: '#2196F3',
+  },
+  mobileCashPaymentLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1976D2',
+  },
+  mobileCashPaymentValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1976D2',
+  },
+  mobileCashPaymentTotalLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#0D47A1',
+  },
+  mobileCashPaymentTotalAmount: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#0D47A1',
   },
 });
