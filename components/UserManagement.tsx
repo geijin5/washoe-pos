@@ -43,8 +43,8 @@ export function UserManagement({ visible, onClose }: UserManagementProps) {
       return;
     }
 
-    if (newUser.password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+    if (newUser.password.length < 3) {
+      Alert.alert('Error', 'Password must be at least 3 characters long');
       return;
     }
 
@@ -107,8 +107,8 @@ export function UserManagement({ visible, onClose }: UserManagementProps) {
       return;
     }
 
-    if (newPassword.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+    if (newPassword.length < 3) {
+      Alert.alert('Error', 'Password must be at least 3 characters long');
       return;
     }
 
@@ -260,7 +260,7 @@ export function UserManagement({ visible, onClose }: UserManagementProps) {
                   style={styles.input}
                   value={newUser.password}
                   onChangeText={(text) => setNewUser(prev => ({ ...prev, password: text }))}
-                  placeholder="Enter password (min 6 characters)"
+                  placeholder="Enter password (min 3 characters)"
                   placeholderTextColor={TheatreColors.textSecondary}
                   secureTextEntry
                 />

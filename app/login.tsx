@@ -19,21 +19,26 @@ import { TheatreColors } from '@/constants/theatre-colors';
 import { TabletUtils } from '@/constants/tablet-utils';
 
 export default function LoginScreen() {
-  const [username, setUsername] = useState('');
+  const [selectedUsername, setSelectedUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, users } = useAuth();
   const router = useRouter();
 
   const handleLogin = async () => {
-    if (!username.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please enter both username and password');
+    if (!selectedUsername.trim() || !password.trim()) {
+      Alert.alert('Error', 'Please select a user and enter password');
+      return;
+    }
+
+    if (password.length < 3) {
+      Alert.alert('Error', 'Password must be at least 3 characters long');
       return;
     }
 
     setIsLoading(true);
     try {
-      const success = await login({ username: username.trim(), password });
+      const success = await login({ username: selectedUsername.trim(), password });
       if (success) {
         router.replace('/(tabs)/pos');
       } else {
@@ -45,6 +50,11 @@ export default function LoginScreen() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleUserSelect = (username: string) => {
+    setSelectedUsername(username);
+    setPassword(''); // Clear password when switching users
   };
 
 
@@ -68,43 +78,77 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <User size={20} color={TheatreColors.textSecondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Username"
-                placeholderTextColor={TheatreColors.textSecondary}
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
-                autoCorrect={false}
-                testID="username-input"
-              />
+            {/* User Selection */}
+            <View style={styles.userSelectionContainer}>
+              <Text style={styles.sectionTitle}>Select User</Text>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.userScrollContainer}
+              >
+                {users.map((user) => (
+                  <TouchableOpacity
+                    key={user.id}
+                    style={[
+                      styles.userCard,
+                      selectedUsername === user.username && styles.userCardSelected
+                    ]}
+                    onPress={() => handleUserSelect(user.username)}
+                    testID={`user-${user.username}`}
+                  >
+                    <User 
+                      size={24} 
+                      color={selectedUsername === user.username ? TheatreColors.background : TheatreColors.accent} 
+                    />
+                    <Text style={[
+                      styles.userCardName,
+                      selectedUsername === user.username && styles.userCardNameSelected
+                    ]}>
+                      {user.name}
+                    </Text>
+                    <Text style={[
+                      styles.userCardUsername,
+                      selectedUsername === user.username && styles.userCardUsernameSelected
+                    ]}>
+                      @{user.username}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
 
-            <View style={styles.inputContainer}>
-              <Lock size={20} color={TheatreColors.textSecondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor={TheatreColors.textSecondary}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                testID="password-input"
-              />
-            </View>
+            {/* Password Input */}
+            {selectedUsername && (
+              <View style={styles.passwordContainer}>
+                <Text style={styles.sectionTitle}>Enter Password for {users.find(u => u.username === selectedUsername)?.name}</Text>
+                <View style={styles.inputContainer}>
+                  <Lock size={20} color={TheatreColors.textSecondary} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Password (minimum 3 characters)"
+                    placeholderTextColor={TheatreColors.textSecondary}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                    testID="password-input"
+                    autoFocus
+                  />
+                </View>
+              </View>
+            )}
 
-            <TouchableOpacity
-              style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
-              onPress={handleLogin}
-              disabled={isLoading}
-              testID="login-button"
-            >
-              <Text style={styles.loginButtonText}>
-                {isLoading ? 'Signing In...' : 'Sign In'}
-              </Text>
-            </TouchableOpacity>
+            {selectedUsername && (
+              <TouchableOpacity
+                style={[styles.loginButton, (isLoading || !password.trim()) && styles.loginButtonDisabled]}
+                onPress={handleLogin}
+                disabled={isLoading || !password.trim()}
+                testID="login-button"
+              >
+                <Text style={styles.loginButtonText}>
+                  {isLoading ? 'Signing In...' : 'Sign In'}
+                </Text>
+              </TouchableOpacity>
+            )}
 
 
           </View>
@@ -131,7 +175,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: TabletUtils.getResponsivePadding(24, 48),
-    maxWidth: TabletUtils.isTablet() ? 600 : '100%',
+    maxWidth: TabletUtils.isTablet() ? 800 : '100%',
     alignSelf: 'center',
     width: '100%',
   },
@@ -162,6 +206,67 @@ const styles = StyleSheet.create({
   },
   form: {
     marginBottom: TabletUtils.getResponsivePadding(48, 64),
+  },
+  userSelectionContainer: {
+    marginBottom: TabletUtils.getResponsivePadding(32, 40),
+  },
+  sectionTitle: {
+    fontSize: TabletUtils.getResponsiveFontSize(18, 22),
+    fontWeight: '600' as const,
+    color: TheatreColors.text,
+    marginBottom: TabletUtils.getResponsivePadding(16, 20),
+    textAlign: 'center',
+  },
+  userScrollContainer: {
+    paddingHorizontal: TabletUtils.getResponsivePadding(8, 12),
+    gap: TabletUtils.getResponsivePadding(12, 16),
+  },
+  userCard: {
+    backgroundColor: TheatreColors.surface,
+    borderRadius: 16,
+    padding: TabletUtils.getResponsivePadding(16, 20),
+    alignItems: 'center',
+    minWidth: TabletUtils.getResponsivePadding(120, 150),
+    borderWidth: 2,
+    borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  userCardSelected: {
+    backgroundColor: TheatreColors.accent,
+    borderColor: TheatreColors.accent,
+    shadowColor: TheatreColors.accent,
+    shadowOpacity: 0.3,
+    elevation: 6,
+  },
+  userCardName: {
+    fontSize: TabletUtils.getResponsiveFontSize(14, 16),
+    fontWeight: '600' as const,
+    color: TheatreColors.text,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  userCardNameSelected: {
+    color: TheatreColors.background,
+  },
+  userCardUsername: {
+    fontSize: TabletUtils.getResponsiveFontSize(12, 14),
+    color: TheatreColors.textSecondary,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  userCardUsernameSelected: {
+    color: TheatreColors.background,
+    opacity: 0.8,
+  },
+  passwordContainer: {
+    marginBottom: TabletUtils.getResponsivePadding(24, 32),
   },
   inputContainer: {
     flexDirection: 'row',
