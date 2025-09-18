@@ -388,18 +388,9 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       // Update settings
       await updateSettings(settingsData.settings);
       
-      // Update products (merge with existing, keeping newer ones)
-      const mergedProducts = [...products];
-      settingsData.products.forEach((importedProduct: any) => {
-        const existingIndex = mergedProducts.findIndex(p => p.id === importedProduct.id);
-        if (existingIndex >= 0) {
-          mergedProducts[existingIndex] = importedProduct;
-        } else {
-          mergedProducts.push(importedProduct);
-        }
-      });
-      
-      await saveProducts(mergedProducts);
+      // Replace all existing products with imported products (clear and import)
+      console.log(`Clearing ${products.length} existing products and importing ${settingsData.products.length} new products`);
+      await saveProducts(settingsData.products);
       
       console.log('POS settings imported successfully');
       return true;

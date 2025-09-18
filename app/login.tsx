@@ -112,6 +112,12 @@ export default function LoginScreen() {
                     ]}>
                       @{user.username}
                     </Text>
+                    <Text style={[
+                      styles.userCardRole,
+                      selectedUsername === user.username && styles.userCardRoleSelected
+                    ]}>
+                      {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -264,6 +270,17 @@ const styles = StyleSheet.create({
   userCardUsernameSelected: {
     color: TheatreColors.background,
     opacity: 0.8,
+  },
+  userCardRole: {
+    fontSize: TabletUtils.getResponsiveFontSize(11, 13),
+    color: TheatreColors.accent,
+    marginTop: 2,
+    textAlign: 'center',
+    fontWeight: '500' as const,
+  },
+  userCardRoleSelected: {
+    color: TheatreColors.background,
+    opacity: 0.9,
   },
   passwordContainer: {
     marginBottom: TabletUtils.getResponsivePadding(24, 32),
