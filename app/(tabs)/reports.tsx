@@ -193,9 +193,25 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
     console.log(`After Closing (All Tickets): ${(report.departmentBreakdown['after-closing']?.sales || 0).toFixed(2)} (${report.departmentBreakdown['after-closing']?.orders || 0} orders)`);
     console.log('============================================');
 
-    // Separate managers and other staff
-    const managers = report.userBreakdown.filter(user => user.userRole === 'manager' || user.userRole === 'admin');
-    const otherStaff = report.userBreakdown.filter(user => user.userRole !== 'manager' && user.userRole !== 'admin');
+    // Separate managers and other staff - Enhanced to ensure managers show up properly
+    const managers = report.userBreakdown.filter(user => {
+      const role = user.userRole?.toLowerCase();
+      return role === 'manager' || role === 'admin';
+    });
+    const otherStaff = report.userBreakdown.filter(user => {
+      const role = user.userRole?.toLowerCase();
+      return role !== 'manager' && role !== 'admin';
+    });
+    
+    // Debug logging for manager accounts
+    console.log('=== REPORT TEXT MANAGER DEBUG ===');
+    console.log(`Total user breakdown entries: ${report.userBreakdown.length}`);
+    report.userBreakdown.forEach(user => {
+      console.log(`User: ${user.userName}, Role: ${user.userRole || 'undefined'}, Sales: ${user.sales}`);
+    });
+    console.log(`Managers found: ${managers.length}`);
+    console.log(`Other staff found: ${otherStaff.length}`);
+    console.log('================================');
     
     reportText += `\n\nSALES MANAGERS PERFORMANCE (All Sales)`;
     if (managers.length > 0) {
@@ -642,9 +658,10 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
             <Text style={styles.sectionTitle}>Sales Managers Performance</Text>
             <Text style={styles.sectionDescription}>Managers and admins - includes all sales transactions</Text>
             {(() => {
-              const managers = currentReport.userBreakdown?.filter(user => 
-                user.userRole === 'manager' || user.userRole === 'admin'
-              ) || [];
+              const managers = currentReport.userBreakdown?.filter(user => {
+                const role = user.userRole?.toLowerCase();
+                return role === 'manager' || role === 'admin';
+              }) || [];
               
               return managers.length > 0 ? (
                 <View style={styles.staffContainer}>
@@ -690,9 +707,10 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
             <Text style={styles.sectionTitle}>Other Staff Performance</Text>
             <Text style={styles.sectionDescription}>Staff and ushers - includes all sales transactions</Text>
             {(() => {
-              const otherStaff = currentReport.userBreakdown?.filter(user => 
-                user.userRole !== 'manager' && user.userRole !== 'admin'
-              ) || [];
+              const otherStaff = currentReport.userBreakdown?.filter(user => {
+                const role = user.userRole?.toLowerCase();
+                return role !== 'manager' && role !== 'admin';
+              }) || [];
               
               return otherStaff.length > 0 ? (
                 <View style={styles.staffContainer}>
