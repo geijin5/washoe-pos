@@ -19,6 +19,7 @@ import { useTabletLayout } from '@/hooks/use-tablet-layout';
 import { Search, ShoppingCart, X, Ticket, Candy, Smartphone, TabletSmartphone } from 'lucide-react-native';
 import { useAuth } from '@/hooks/auth-store';
 import { PaymentScreen } from '@/components/PaymentScreen';
+import { OrderSummaryModal } from '@/components/OrderSummaryModal';
 import * as Haptics from 'expo-haptics';
 
 type Department = 'box-office' | 'candy-counter' | null;
@@ -45,6 +46,8 @@ export default function POSScreen() {
   const [showCart, setShowCart] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<Department>(null);
   const [showPayment, setShowPayment] = useState(false);
+  const [showOrderSummary, setShowOrderSummary] = useState(false);
+  const [completedOrder, setCompletedOrder] = useState<any>(null);
 
   // All hooks must be called before any conditional returns
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -86,29 +89,17 @@ export default function POSScreen() {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
       
-      let alertMessage = `Order #${order.id.slice(-6)} completed\nSubtotal: ${order.subtotal.toFixed(2)}`;
-      
-      if (order.creditCardFee && order.creditCardFee > 0) {
-        alertMessage += `\nCard Fee: ${order.creditCardFee.toFixed(2)}`;
-      }
-      
-      alertMessage += `\nTotal: ${order.total.toFixed(2)}`;
-      
-      if (method === 'cash' && cashAmount && parseFloat(cashAmount) > order.total) {
-        const change = parseFloat(cashAmount) - order.total;
-        alertMessage += `\nCash Received: ${parseFloat(cashAmount).toFixed(2)}\nChange: ${change.toFixed(2)}`;
-      }
-      
-      Alert.alert('Order Complete', alertMessage, [
-        { 
-          text: 'OK', 
-          onPress: () => {
-            setShowCart(false);
-            setShowPayment(false);
-          } 
-        }
-      ]);
+      // Store the completed order and show the order summary modal
+      setCompletedOrder(order);
+      setShowPayment(false);
+      setShowCart(false);
+      setShowOrderSummary(true);
     }
+  };
+
+  const handleOrderSummaryClose = () => {
+    setShowOrderSummary(false);
+    setCompletedOrder(null);
   };
 
   // Show department selection for ushers
@@ -520,6 +511,13 @@ export default function POSScreen() {
           department={selectedDepartment || undefined}
         />
       )}
+      
+      {/* Order Summary Modal */}
+      <OrderSummaryModal
+        visible={showOrderSummary}
+        order={completedOrder}
+        onClose={handleOrderSummaryClose}
+      />
     </View>
   );
 }
