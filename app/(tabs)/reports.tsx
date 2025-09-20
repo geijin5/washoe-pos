@@ -520,80 +520,130 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                 return (
                   <View style={styles.showPaymentSection}>
                     <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12 }]}>Payment by Show</Text>
-                    <View style={styles.paymentBreakdown}>
-                      {currentReport.showBreakdown['1st-show'].sales > 0 && (
-                        <View style={styles.paymentRow}>
-                          <Text style={styles.paymentLabel}>1st Show:</Text>
-                          <Text style={styles.paymentValue}>${formatCurrency(currentReport.showBreakdown['1st-show'].sales)}</Text>
-                        </View>
-                      )}
-                      {currentReport.showBreakdown['2nd-show'].sales > 0 && (
-                        <View style={styles.paymentRow}>
-                          <Text style={styles.paymentLabel}>2nd Show:</Text>
-                          <Text style={styles.paymentValue}>${formatCurrency(currentReport.showBreakdown['2nd-show'].sales)}</Text>
-                        </View>
-                      )}
-                      {currentReport.showBreakdown['nightly-show'].sales > 0 && (
-                        <View style={styles.paymentRow}>
-                          <Text style={styles.paymentLabel}>Nightly Show:</Text>
-                          <Text style={styles.paymentValue}>${formatCurrency(currentReport.showBreakdown['nightly-show'].sales)}</Text>
-                        </View>
-                      )}
-                      {currentReport.showBreakdown['matinee'].sales > 0 && (
-                        <View style={styles.paymentRow}>
-                          <Text style={styles.paymentLabel}>Matinee:</Text>
-                          <Text style={styles.paymentValue}>${formatCurrency(currentReport.showBreakdown['matinee'].sales)}</Text>
-                        </View>
-                      )}
-                    </View>
                     
-                    <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12, marginTop: 16 }]}>Card Fees by Show</Text>
-                    <View style={styles.paymentBreakdown}>
-                      {currentReport.showBreakdown['1st-show'].sales > 0 && (() => {
-                        const cardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
-                        const showCardSales = currentReport.showBreakdown['1st-show'].sales * cardRatio;
-                        const showCardFees = showCardSales * 0.05;
-                        return (
-                          <View style={styles.paymentRow}>
-                            <Text style={styles.paymentLabel}>1st Show Card Fees:</Text>
-                            <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(showCardFees)}</Text>
+                    {/* 1st Show */}
+                    {currentReport.showBreakdown['1st-show'].sales > 0 && (() => {
+                      const cardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
+                      const showCashSales = currentReport.showBreakdown['1st-show'].sales * (1 - cardRatio);
+                      const showCardSales = currentReport.showBreakdown['1st-show'].sales * cardRatio;
+                      const showCardFees = showCardSales * 0.05;
+                      return (
+                        <View style={styles.showPaymentCard}>
+                          <Text style={styles.showPaymentTitle}>1st Show</Text>
+                          <View style={styles.paymentBreakdown}>
+                            <View style={styles.paymentRow}>
+                              <Text style={styles.paymentLabel}>Cash Sales:</Text>
+                              <Text style={[styles.paymentValue, { color: TheatreColors.success }]}>${formatCurrency(showCashSales)}</Text>
+                            </View>
+                            <View style={styles.paymentRow}>
+                              <Text style={styles.paymentLabel}>Card Sales:</Text>
+                              <Text style={styles.paymentValue}>${formatCurrency(showCardSales)}</Text>
+                            </View>
+                            <View style={styles.paymentRow}>
+                              <Text style={styles.paymentLabel}>Card Fees:</Text>
+                              <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(showCardFees)}</Text>
+                            </View>
+                            <View style={[styles.paymentRow, { borderTopWidth: 1, borderTopColor: TheatreColors.surfaceLight, paddingTop: 8, marginTop: 8 }]}>
+                              <Text style={[styles.paymentLabel, { fontWeight: 'bold' }]}>Total Sales:</Text>
+                              <Text style={[styles.paymentValue, { fontWeight: 'bold', color: TheatreColors.accent }]}>${formatCurrency(currentReport.showBreakdown['1st-show'].sales)}</Text>
+                            </View>
                           </View>
-                        );
-                      })()}
-                      {currentReport.showBreakdown['2nd-show'].sales > 0 && (() => {
-                        const cardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
-                        const showCardSales = currentReport.showBreakdown['2nd-show'].sales * cardRatio;
-                        const showCardFees = showCardSales * 0.05;
-                        return (
-                          <View style={styles.paymentRow}>
-                            <Text style={styles.paymentLabel}>2nd Show Card Fees:</Text>
-                            <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(showCardFees)}</Text>
+                        </View>
+                      );
+                    })()}
+                    
+                    {/* 2nd Show */}
+                    {currentReport.showBreakdown['2nd-show'].sales > 0 && (() => {
+                      const cardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
+                      const showCashSales = currentReport.showBreakdown['2nd-show'].sales * (1 - cardRatio);
+                      const showCardSales = currentReport.showBreakdown['2nd-show'].sales * cardRatio;
+                      const showCardFees = showCardSales * 0.05;
+                      return (
+                        <View style={styles.showPaymentCard}>
+                          <Text style={styles.showPaymentTitle}>2nd Show</Text>
+                          <View style={styles.paymentBreakdown}>
+                            <View style={styles.paymentRow}>
+                              <Text style={styles.paymentLabel}>Cash Sales:</Text>
+                              <Text style={[styles.paymentValue, { color: TheatreColors.success }]}>${formatCurrency(showCashSales)}</Text>
+                            </View>
+                            <View style={styles.paymentRow}>
+                              <Text style={styles.paymentLabel}>Card Sales:</Text>
+                              <Text style={styles.paymentValue}>${formatCurrency(showCardSales)}</Text>
+                            </View>
+                            <View style={styles.paymentRow}>
+                              <Text style={styles.paymentLabel}>Card Fees:</Text>
+                              <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(showCardFees)}</Text>
+                            </View>
+                            <View style={[styles.paymentRow, { borderTopWidth: 1, borderTopColor: TheatreColors.surfaceLight, paddingTop: 8, marginTop: 8 }]}>
+                              <Text style={[styles.paymentLabel, { fontWeight: 'bold' }]}>Total Sales:</Text>
+                              <Text style={[styles.paymentValue, { fontWeight: 'bold', color: TheatreColors.accent }]}>${formatCurrency(currentReport.showBreakdown['2nd-show'].sales)}</Text>
+                            </View>
                           </View>
-                        );
-                      })()}
-                      {currentReport.showBreakdown['nightly-show'].sales > 0 && (() => {
-                        const cardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
-                        const showCardSales = currentReport.showBreakdown['nightly-show'].sales * cardRatio;
-                        const showCardFees = showCardSales * 0.05;
-                        return (
-                          <View style={styles.paymentRow}>
-                            <Text style={styles.paymentLabel}>Nightly Show Card Fees:</Text>
-                            <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(showCardFees)}</Text>
+                        </View>
+                      );
+                    })()}
+                    
+                    {/* Nightly Show */}
+                    {currentReport.showBreakdown['nightly-show'].sales > 0 && (() => {
+                      const cardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
+                      const showCashSales = currentReport.showBreakdown['nightly-show'].sales * (1 - cardRatio);
+                      const showCardSales = currentReport.showBreakdown['nightly-show'].sales * cardRatio;
+                      const showCardFees = showCardSales * 0.05;
+                      return (
+                        <View style={styles.showPaymentCard}>
+                          <Text style={styles.showPaymentTitle}>Nightly Show</Text>
+                          <View style={styles.paymentBreakdown}>
+                            <View style={styles.paymentRow}>
+                              <Text style={styles.paymentLabel}>Cash Sales:</Text>
+                              <Text style={[styles.paymentValue, { color: TheatreColors.success }]}>${formatCurrency(showCashSales)}</Text>
+                            </View>
+                            <View style={styles.paymentRow}>
+                              <Text style={styles.paymentLabel}>Card Sales:</Text>
+                              <Text style={styles.paymentValue}>${formatCurrency(showCardSales)}</Text>
+                            </View>
+                            <View style={styles.paymentRow}>
+                              <Text style={styles.paymentLabel}>Card Fees:</Text>
+                              <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(showCardFees)}</Text>
+                            </View>
+                            <View style={[styles.paymentRow, { borderTopWidth: 1, borderTopColor: TheatreColors.surfaceLight, paddingTop: 8, marginTop: 8 }]}>
+                              <Text style={[styles.paymentLabel, { fontWeight: 'bold' }]}>Total Sales:</Text>
+                              <Text style={[styles.paymentValue, { fontWeight: 'bold', color: TheatreColors.accent }]}>${formatCurrency(currentReport.showBreakdown['nightly-show'].sales)}</Text>
+                            </View>
                           </View>
-                        );
-                      })()}
-                      {currentReport.showBreakdown['matinee'].sales > 0 && (() => {
-                        const cardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
-                        const showCardSales = currentReport.showBreakdown['matinee'].sales * cardRatio;
-                        const showCardFees = showCardSales * 0.05;
-                        return (
-                          <View style={styles.paymentRow}>
-                            <Text style={styles.paymentLabel}>Matinee Card Fees:</Text>
-                            <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(showCardFees)}</Text>
+                        </View>
+                      );
+                    })()}
+                    
+                    {/* Matinee */}
+                    {currentReport.showBreakdown['matinee'].sales > 0 && (() => {
+                      const cardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
+                      const showCashSales = currentReport.showBreakdown['matinee'].sales * (1 - cardRatio);
+                      const showCardSales = currentReport.showBreakdown['matinee'].sales * cardRatio;
+                      const showCardFees = showCardSales * 0.05;
+                      return (
+                        <View style={styles.showPaymentCard}>
+                          <Text style={styles.showPaymentTitle}>Matinee</Text>
+                          <View style={styles.paymentBreakdown}>
+                            <View style={styles.paymentRow}>
+                              <Text style={styles.paymentLabel}>Cash Sales:</Text>
+                              <Text style={[styles.paymentValue, { color: TheatreColors.success }]}>${formatCurrency(showCashSales)}</Text>
+                            </View>
+                            <View style={styles.paymentRow}>
+                              <Text style={styles.paymentLabel}>Card Sales:</Text>
+                              <Text style={styles.paymentValue}>${formatCurrency(showCardSales)}</Text>
+                            </View>
+                            <View style={styles.paymentRow}>
+                              <Text style={styles.paymentLabel}>Card Fees:</Text>
+                              <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(showCardFees)}</Text>
+                            </View>
+                            <View style={[styles.paymentRow, { borderTopWidth: 1, borderTopColor: TheatreColors.surfaceLight, paddingTop: 8, marginTop: 8 }]}>
+                              <Text style={[styles.paymentLabel, { fontWeight: 'bold' }]}>Total Sales:</Text>
+                              <Text style={[styles.paymentValue, { fontWeight: 'bold', color: TheatreColors.accent }]}>${formatCurrency(currentReport.showBreakdown['matinee'].sales)}</Text>
+                            </View>
                           </View>
-                        );
-                      })()}
-                    </View>
+                        </View>
+                      );
+                    })()}
                   </View>
                 );
               }
@@ -1522,5 +1572,20 @@ const styles = StyleSheet.create({
   },
   showPaymentSection: {
     marginTop: 16,
+  },
+  showPaymentCard: {
+    backgroundColor: TheatreColors.background,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: TheatreColors.surfaceLight,
+  },
+  showPaymentTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: TheatreColors.text,
+    marginBottom: 12,
+    textAlign: 'center',
   },
 });
