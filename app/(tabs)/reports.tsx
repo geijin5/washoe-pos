@@ -45,6 +45,7 @@ export default function ReportsScreen() {
     if (reportMode === 'aggregated') {
       return null;
     }
+    console.log(`=== REPORTS SCREEN: Generating report for ${selectedDate.toISOString().split('T')[0]} ===`);
     return generateNightlyReport(selectedDate);
   }, [generateNightlyReport, selectedDate, reportMode]);
 

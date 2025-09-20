@@ -446,8 +446,11 @@ export const [POSProvider, usePOS] = createContextHook(() => {
   // Generate nightly report - Enhanced to capture ALL accounts with sales
   const generateNightlyReport = useCallback((date?: Date): NightlyReport => {
     const reportDate = date || new Date();
-    // Ensure we're using the current date for today's report, not yesterday's
-    const dateStr = reportDate.toISOString().split('T')[0];
+    // Create a proper date string for the report date (not current time)
+    const year = reportDate.getFullYear();
+    const month = String(reportDate.getMonth() + 1).padStart(2, '0');
+    const day = String(reportDate.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     
     console.log(`=== GENERATING LOCAL NIGHTLY REPORT ===`);
     console.log(`Date: ${dateStr}`);
@@ -456,10 +459,13 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     // Filter orders for the specific date - ensure proper date comparison
     const dayOrders = orders.filter(order => {
       const orderDate = new Date(order.timestamp);
-      const orderDateStr = orderDate.toISOString().split('T')[0];
+      const orderYear = orderDate.getFullYear();
+      const orderMonth = String(orderDate.getMonth() + 1).padStart(2, '0');
+      const orderDay = String(orderDate.getDate()).padStart(2, '0');
+      const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
       const matches = orderDateStr === dateStr;
       if (matches) {
-        console.log(`Including order from ${orderDateStr}: ${order.total.toFixed(2)} by ${order.userName}`);
+        console.log(`Including order from ${orderDateStr}: ${order.total.toFixed(2)} by ${order.userName} (Show: ${order.showType || 'none'})`);
       }
       return matches;
     });
@@ -827,7 +833,10 @@ export const [POSProvider, usePOS] = createContextHook(() => {
   const saveNightlyReportAndReset = useCallback(async () => {
     try {
       const now = new Date();
-      const today = now.toISOString().split('T')[0];
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const today = `${year}-${month}-${day}`;
       
       // Check if we need to process new day (save previous day's report and reset)
       const lastProcessDate = await AsyncStorage.getItem('last_nightly_process_date');
@@ -839,7 +848,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
         
         // Always save the previous day's report if we have orders from that day
         if (lastProcessDate) {
-          const previousDate = new Date(lastProcessDate);
+          const previousDate = new Date(lastProcessDate + 'T00:00:00.000Z');
           console.log(`Saving nightly report for ${lastProcessDate}...`);
           
           // Generate and save the previous day's report
@@ -892,7 +901,10 @@ export const [POSProvider, usePOS] = createContextHook(() => {
   const autoCleanOldReports = useCallback(async () => {
     try {
       const now = new Date();
-      const today = now.toISOString().split('T')[0];
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const today = `${year}-${month}-${day}`;
       
       // Check if we need to clear old data (run once per day)
       const lastCleanDate = await AsyncStorage.getItem('last_auto_clean_date');
@@ -905,17 +917,23 @@ export const [POSProvider, usePOS] = createContextHook(() => {
         // Calculate cutoff date (14 days ago from today)
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - 14);
-        const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
+        const cutoffYear = cutoffDate.getFullYear();
+        const cutoffMonth = String(cutoffDate.getMonth() + 1).padStart(2, '0');
+        const cutoffDay = String(cutoffDate.getDate()).padStart(2, '0');
+        const cutoffDateStr = `${cutoffYear}-${cutoffMonth}-${cutoffDay}`;
         
         console.log(`Auto-clearing reports older than ${cutoffDateStr} (keeping current + 14 days)`);
         
         // Keep only orders from the last 14 days + today (15 days total)
         const recentOrders = orders.filter(order => {
           const orderDate = new Date(order.timestamp);
-          const orderDateStr = orderDate.toISOString().split('T')[0];
+          const orderYear = orderDate.getFullYear();
+          const orderMonth = String(orderDate.getMonth() + 1).padStart(2, '0');
+          const orderDay = String(orderDate.getDate()).padStart(2, '0');
+          const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
           const isRecent = orderDateStr >= cutoffDateStr;
           if (!isRecent) {
-            console.log(`Clearing old order from ${orderDateStr}: ${order.total.toFixed(2)}`);
+            console.log(`Clearing old order from ${orderDateStr}: ${order.total.toFixed(2)} (Show: ${order.showType || 'none'})`);
           }
           return isRecent;
         });
@@ -1391,14 +1409,21 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     clearNightlyReport: useCallback(async (date?: Date): Promise<boolean> => {
       try {
         const reportDate = date || new Date();
-        const dateStr = reportDate.toISOString().split('T')[0];
+        const year = reportDate.getFullYear();
+        const month = String(reportDate.getMonth() + 1).padStart(2, '0');
+        const day = String(reportDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
         
         console.log(`Clearing nightly report data for ${dateStr}...`);
         
         // Filter out orders from the specified date
         const filteredOrders = orders.filter(order => {
           const orderDate = new Date(order.timestamp);
-          return orderDate.toISOString().split('T')[0] !== dateStr;
+          const orderYear = orderDate.getFullYear();
+          const orderMonth = String(orderDate.getMonth() + 1).padStart(2, '0');
+          const orderDay = String(orderDate.getDate()).padStart(2, '0');
+          const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
+          return orderDateStr !== dateStr;
         });
         
         // Save filtered orders
