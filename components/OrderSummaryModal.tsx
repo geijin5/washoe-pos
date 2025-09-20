@@ -12,6 +12,16 @@ import { TheatreColors } from '@/constants/theatre-colors';
 import { useTabletLayout } from '@/hooks/use-tablet-layout';
 import { Order } from '@/types/pos';
 
+const getShowDisplayName = (show: string): string => {
+  switch (show) {
+    case '1st-show': return '1st Show';
+    case '2nd-show': return '2nd Show';
+    case 'nightly-show': return 'Nightly Show';
+    case 'matinee': return 'Matinee';
+    default: return show;
+  }
+};
+
 interface OrderSummaryModalProps {
   visible: boolean;
   order: Order | null;
@@ -128,6 +138,15 @@ export function OrderSummaryModal({ visible, order, onClose }: OrderSummaryModal
                     <Text style={styles.detailValue}>
                       {order.department === 'box-office' ? 'Box Office' : 'Candy Counter'}
                       {order.isAfterClosing && ' (After Closing)'}
+                    </Text>
+                  </View>
+                )}
+                
+                {order.showType && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Show:</Text>
+                    <Text style={styles.detailValue}>
+                      {getShowDisplayName(order.showType)}
                     </Text>
                   </View>
                 )}

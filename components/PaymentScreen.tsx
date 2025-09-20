@@ -16,12 +16,23 @@ import { useTabletLayout } from '@/hooks/use-tablet-layout';
 import { CartItem } from '@/types/pos';
 import * as Haptics from 'expo-haptics';
 
+const getShowDisplayName = (show: string): string => {
+  switch (show) {
+    case '1st-show': return '1st Show';
+    case '2nd-show': return '2nd Show';
+    case 'nightly-show': return 'Nightly Show';
+    case 'matinee': return 'Matinee';
+    default: return show;
+  }
+};
+
 interface PaymentScreenProps {
   cart: CartItem[];
   onClose: () => void;
   onPayment: (method: 'cash' | 'card', cashAmount?: string) => void;
   creditCardFeePercent: number;
   department?: 'box-office' | 'candy-counter';
+  selectedShow?: string;
 }
 
 export function PaymentScreen({
@@ -29,7 +40,8 @@ export function PaymentScreen({
   onClose,
   onPayment,
   creditCardFeePercent,
-  department
+  department,
+  selectedShow
 }: PaymentScreenProps) {
   const { isTablet } = useTabletLayout();
   const insets = useSafeAreaInsets();
@@ -153,7 +165,9 @@ export function PaymentScreen({
                 {/* Box Office Section - Only show if department is box-office */}
                 {department === 'box-office' && totals.hasTicketItems && (
                   <View style={styles.tabletCalculationSectionCompact}>
-                    <Text style={styles.tabletCalculationTitleCompact}>Box Office</Text>
+                    <Text style={styles.tabletCalculationTitleCompact}>
+                      Box Office{selectedShow ? ` - ${getShowDisplayName(selectedShow)}` : ''}
+                    </Text>
                     <View style={styles.tabletCalculationRowCompact}>
                       <Text style={styles.tabletCalculationLabelCompact}>Tickets:</Text>
                       <Text style={styles.tabletCalculationValueCompact}>${totals.ticketSubtotal.toFixed(2)}</Text>
@@ -463,7 +477,9 @@ export function PaymentScreen({
               {/* Box Office - Only show if department is box-office */}
               {department === 'box-office' && totals.hasTicketItems && (
                 <View style={styles.mobileBreakdownRow}>
-                  <Text style={styles.mobileBreakdownLabel}>Box Office:</Text>
+                  <Text style={styles.mobileBreakdownLabel}>
+                    Box Office{selectedShow ? ` - ${getShowDisplayName(selectedShow)}` : ''}:
+                  </Text>
                   <Text style={styles.mobileBreakdownValue}>${totals.ticketSubtotal.toFixed(2)}</Text>
                 </View>
               )}

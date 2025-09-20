@@ -282,7 +282,56 @@ export default function POSScreen() {
             </View>
 
             <ScrollView style={styles.cartItems}>
-              {cart.length === 0 ? (
+              {showOrderSummary && completedOrder ? (
+                // Show order summary in cart area
+                <View style={styles.orderSummaryInCart}>
+                  <View style={styles.orderSummaryHeader}>
+                    <Text style={styles.orderSummaryTitle}>Order Complete!</Text>
+                    <Text style={styles.orderSummaryId}>#{completedOrder.id.slice(-6)}</Text>
+                  </View>
+                  
+                  <View style={styles.orderSummaryItems}>
+                    <Text style={styles.orderSummarySectionTitle}>Items Ordered:</Text>
+                    {completedOrder.items.map((item: any, index: number) => (
+                      <View key={`${item.product.id}-${index}`} style={styles.orderSummaryItem}>
+                        <Text style={styles.orderSummaryItemName}>{item.product.name}</Text>
+                        <Text style={styles.orderSummaryItemQty}>×{item.quantity}</Text>
+                        <Text style={styles.orderSummaryItemPrice}>
+                          ${(item.product.price * item.quantity).toFixed(2)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                  
+                  <View style={styles.orderSummaryTotals}>
+                    <View style={styles.orderSummaryTotalRow}>
+                      <Text style={styles.orderSummaryTotalLabel}>Total:</Text>
+                      <Text style={styles.orderSummaryTotalValue}>${completedOrder.total.toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.orderSummaryPaymentRow}>
+                      <Text style={styles.orderSummaryPaymentLabel}>Payment:</Text>
+                      <Text style={styles.orderSummaryPaymentValue}>
+                        {completedOrder.paymentMethod === 'cash' ? 'Cash' : 'Credit Card'}
+                      </Text>
+                    </View>
+                    {selectedShow && (
+                      <View style={styles.orderSummaryShowRow}>
+                        <Text style={styles.orderSummaryShowLabel}>Show:</Text>
+                        <Text style={styles.orderSummaryShowValue}>
+                          {getShowDisplayName(selectedShow)}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  
+                  <TouchableOpacity 
+                    style={styles.orderSummaryCloseButton}
+                    onPress={handleOrderSummaryClose}
+                  >
+                    <Text style={styles.orderSummaryCloseButtonText}>Start Next Order</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : cart.length === 0 ? (
                 <View style={styles.emptyCartMessage}>
                   <Text style={styles.emptyCartText}>No items in cart</Text>
                 </View>
@@ -311,7 +360,7 @@ export default function POSScreen() {
               )}
             </ScrollView>
 
-            {cart.length > 0 && (
+            {cart.length > 0 && !showOrderSummary && (
               <View style={styles.cartFooter}>
                 <TouchableOpacity 
                   style={styles.checkoutButton}
@@ -635,15 +684,18 @@ export default function POSScreen() {
           onPayment={handlePayment}
           creditCardFeePercent={settings.creditCardFeePercent}
           department={selectedDepartment || undefined}
+          selectedShow={selectedShow || undefined}
         />
       )}
       
-      {/* Order Summary Modal */}
-      <OrderSummaryModal
-        visible={showOrderSummary}
-        order={completedOrder}
-        onClose={handleOrderSummaryClose}
-      />
+      {/* Order Summary Modal - Only for mobile */}
+      {!isTablet && (
+        <OrderSummaryModal
+          visible={showOrderSummary}
+          order={completedOrder}
+          onClose={handleOrderSummaryClose}
+        />
+      )}
     </View>
   );
 }
@@ -1245,5 +1297,142 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: TheatreColors.accent,
     textAlign: 'center',
+  },
+  // Order Summary in Cart Styles
+  orderSummaryInCart: {
+    backgroundColor: '#E8F5E8',
+    borderRadius: 12,
+    padding: 16,
+    margin: 8,
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+  },
+  orderSummaryHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#4CAF50',
+  },
+  orderSummaryTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+    marginBottom: 4,
+  },
+  orderSummaryId: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4CAF50',
+  },
+  orderSummaryItems: {
+    marginBottom: 16,
+  },
+  orderSummarySectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+    marginBottom: 8,
+  },
+  orderSummaryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#C8E6C9',
+  },
+  orderSummaryItemName: {
+    flex: 2,
+    fontSize: 14,
+    color: '#1B5E20',
+    fontWeight: '500',
+  },
+  orderSummaryItemQty: {
+    flex: 1,
+    fontSize: 14,
+    color: '#2E7D32',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  orderSummaryItemPrice: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1B5E20',
+    textAlign: 'right',
+    fontWeight: 'bold',
+  },
+  orderSummaryTotals: {
+    marginBottom: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#4CAF50',
+  },
+  orderSummaryTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  orderSummaryTotalLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1B5E20',
+  },
+  orderSummaryTotalValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+  },
+  orderSummaryPaymentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  orderSummaryPaymentLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2E7D32',
+  },
+  orderSummaryPaymentValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1B5E20',
+    backgroundColor: '#C8E6C9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  orderSummaryShowRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  orderSummaryShowLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2E7D32',
+  },
+  orderSummaryShowValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1B5E20',
+    backgroundColor: '#C8E6C9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  orderSummaryCloseButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orderSummaryCloseButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: TheatreColors.background,
   },
 });
