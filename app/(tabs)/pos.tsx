@@ -23,6 +23,17 @@ import { OrderSummaryModal } from '@/components/OrderSummaryModal';
 import * as Haptics from 'expo-haptics';
 
 type Department = 'box-office' | 'candy-counter' | null;
+type ShowType = '1st-show' | '2nd-show' | 'nightly-show' | 'matinee' | null;
+
+const getShowDisplayName = (show: string): string => {
+  switch (show) {
+    case '1st-show': return '1st Show';
+    case '2nd-show': return '2nd Show';
+    case 'nightly-show': return 'Nightly Show';
+    case 'matinee': return 'Matinee';
+    default: return show;
+  }
+};
 
 export default function POSScreen() {
   const { user } = useAuth();
@@ -48,6 +59,7 @@ export default function POSScreen() {
   const [showPayment, setShowPayment] = useState(false);
   const [showOrderSummary, setShowOrderSummary] = useState(false);
   const [completedOrder, setCompletedOrder] = useState<any>(null);
+  const [selectedShow, setSelectedShow] = useState<string | null>(null);
 
   // All hooks must be called before any conditional returns
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -101,6 +113,95 @@ export default function POSScreen() {
     setShowOrderSummary(false);
     setCompletedOrder(null);
   };
+
+  // Show box office show selection
+  if (user?.role === 'usher' && selectedDepartment === 'box-office' && !selectedShow) {
+    const showLayout = TabletUtils.getDepartmentCardLayout();
+    
+    return (
+      <View style={styles.container}>
+        <ScrollView 
+          contentContainerStyle={styles.departmentSelection}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.departmentTitle}>Select Show</Text>
+          <Text style={styles.departmentSubtitle}>Choose which show you're selling tickets for</Text>
+          
+          <View style={[
+            styles.departmentOptions,
+            { 
+              flexDirection: 'column',
+              maxWidth: showLayout.maxWidth,
+              gap: showLayout.gap
+            }
+          ]}>
+            <TouchableOpacity
+              style={[
+                styles.departmentCard,
+                styles.showCard
+              ]}
+              onPress={() => setSelectedShow('1st-show')}
+            >
+              <View style={styles.departmentIcon}>
+                <Ticket size={TabletUtils.getResponsiveFontSize(48, 64, 72)} color={TheatreColors.accent} />
+              </View>
+              <Text style={styles.departmentName}>1st Show</Text>
+              <Text style={styles.departmentDescription}>Evening performance - First showing</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.departmentCard,
+                styles.showCard
+              ]}
+              onPress={() => setSelectedShow('2nd-show')}
+            >
+              <View style={styles.departmentIcon}>
+                <Ticket size={TabletUtils.getResponsiveFontSize(48, 64, 72)} color={TheatreColors.accent} />
+              </View>
+              <Text style={styles.departmentName}>2nd Show</Text>
+              <Text style={styles.departmentDescription}>Evening performance - Second showing</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.departmentCard,
+                styles.showCard
+              ]}
+              onPress={() => setSelectedShow('nightly-show')}
+            >
+              <View style={styles.departmentIcon}>
+                <Ticket size={TabletUtils.getResponsiveFontSize(48, 64, 72)} color={TheatreColors.accent} />
+              </View>
+              <Text style={styles.departmentName}>Nightly Show</Text>
+              <Text style={styles.departmentDescription}>Regular evening performance</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.departmentCard,
+                styles.showCard
+              ]}
+              onPress={() => setSelectedShow('matinee')}
+            >
+              <View style={styles.departmentIcon}>
+                <Ticket size={TabletUtils.getResponsiveFontSize(48, 64, 72)} color={TheatreColors.accent} />
+              </View>
+              <Text style={styles.departmentName}>Matinee</Text>
+              <Text style={styles.departmentDescription}>Afternoon performance</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => setSelectedDepartment(null)}
+          >
+            <Text style={styles.backButtonText}>← Back to Department Selection</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
 
   // Show department selection for ushers
   if (user?.role === 'usher' && !selectedDepartment) {
@@ -280,14 +381,25 @@ export default function POSScreen() {
                     <Candy size={24} color={TheatreColors.accent} />
                   )}
                   <Text style={styles.departmentHeaderText}>
-                    {selectedDepartment === 'box-office' ? 'Box Office' : 'Candy Counter'}
+                    {selectedDepartment === 'box-office' ? (
+                      selectedShow ? `Box Office - ${getShowDisplayName(selectedShow)}` : 'Box Office'
+                    ) : 'Candy Counter'}
                   </Text>
                 </View>
                 <TouchableOpacity
                   style={styles.changeDepartmentButton}
-                  onPress={() => setSelectedDepartment(null)}
+                  onPress={() => {
+                    if (selectedDepartment === 'box-office' && selectedShow) {
+                      setSelectedShow(null);
+                    } else {
+                      setSelectedDepartment(null);
+                      setSelectedShow(null);
+                    }
+                  }}
                 >
-                  <Text style={styles.changeDepartmentText}>Change</Text>
+                  <Text style={styles.changeDepartmentText}>
+                    {selectedDepartment === 'box-office' && selectedShow ? 'Change Show' : 'Change'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -373,14 +485,25 @@ export default function POSScreen() {
                     <Candy size={24} color={TheatreColors.accent} />
                   )}
                   <Text style={styles.departmentHeaderText}>
-                    {selectedDepartment === 'box-office' ? 'Box Office' : 'Candy Counter'}
+                    {selectedDepartment === 'box-office' ? (
+                      selectedShow ? `Box Office - ${getShowDisplayName(selectedShow)}` : 'Box Office'
+                    ) : 'Candy Counter'}
                   </Text>
                 </View>
                 <TouchableOpacity
                   style={styles.changeDepartmentButton}
-                  onPress={() => setSelectedDepartment(null)}
+                  onPress={() => {
+                    if (selectedDepartment === 'box-office' && selectedShow) {
+                      setSelectedShow(null);
+                    } else {
+                      setSelectedDepartment(null);
+                      setSelectedShow(null);
+                    }
+                  }}
                 >
-                  <Text style={styles.changeDepartmentText}>Change</Text>
+                  <Text style={styles.changeDepartmentText}>
+                    {selectedDepartment === 'box-office' && selectedShow ? 'Change Show' : 'Change'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -1100,5 +1223,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
+  },
+  showCard: {
+    width: '100%',
+    marginBottom: TabletUtils.getResponsivePadding(16, 20),
+  },
+  backButton: {
+    marginTop: TabletUtils.getResponsivePadding(32, 40),
+    paddingHorizontal: TabletUtils.getResponsivePadding(24, 32),
+    paddingVertical: TabletUtils.getResponsivePadding(12, 16),
+    backgroundColor: TheatreColors.surface,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: TheatreColors.accent,
+  },
+  backButtonText: {
+    fontSize: TabletUtils.getResponsiveFontSize(16, 18),
+    fontWeight: '600',
+    color: TheatreColors.accent,
+    textAlign: 'center',
   },
 });
