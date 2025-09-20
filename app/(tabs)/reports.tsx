@@ -188,18 +188,35 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
     
     // Add show breakdown if available
     if (report.showBreakdown) {
-      reportText += `\n\nSHOW BREAKDOWN`;
-      if (report.showBreakdown['1st-show'].sales > 0) {
-        reportText += `\n1st Show: ${formatCurrency(report.showBreakdown['1st-show'].sales)} (${report.showBreakdown['1st-show'].orders} orders)`;
-      }
-      if (report.showBreakdown['2nd-show'].sales > 0) {
-        reportText += `\n2nd Show: ${formatCurrency(report.showBreakdown['2nd-show'].sales)} (${report.showBreakdown['2nd-show'].orders} orders)`;
-      }
-      if (report.showBreakdown['nightly-show'].sales > 0) {
-        reportText += `\nNightly Show: ${formatCurrency(report.showBreakdown['nightly-show'].sales)} (${report.showBreakdown['nightly-show'].orders} orders)`;
-      }
-      if (report.showBreakdown['matinee'].sales > 0) {
-        reportText += `\nMatinee: ${formatCurrency(report.showBreakdown['matinee'].sales)} (${report.showBreakdown['matinee'].orders} orders)`;
+      const hasShowSales = Object.values(report.showBreakdown).some(show => show.sales > 0);
+      if (hasShowSales) {
+        reportText += `\n\nSHOW BREAKDOWN`;
+        if (report.showBreakdown['1st-show'].sales > 0) {
+          reportText += `\n1st Show: ${formatCurrency(report.showBreakdown['1st-show'].sales)} (${report.showBreakdown['1st-show'].orders} orders)`;
+        }
+        if (report.showBreakdown['2nd-show'].sales > 0) {
+          reportText += `\n2nd Show: ${formatCurrency(report.showBreakdown['2nd-show'].sales)} (${report.showBreakdown['2nd-show'].orders} orders)`;
+        }
+        if (report.showBreakdown['nightly-show'].sales > 0) {
+          reportText += `\nNightly Show: ${formatCurrency(report.showBreakdown['nightly-show'].sales)} (${report.showBreakdown['nightly-show'].orders} orders)`;
+        }
+        if (report.showBreakdown['matinee'].sales > 0) {
+          reportText += `\nMatinee: ${formatCurrency(report.showBreakdown['matinee'].sales)} (${report.showBreakdown['matinee'].orders} orders)`;
+        }
+        
+        reportText += `\n\nPAYMENT BY SHOW`;
+        if (report.showBreakdown['1st-show'].sales > 0) {
+          reportText += `\n1st Show: ${formatCurrency(report.showBreakdown['1st-show'].sales)}`;
+        }
+        if (report.showBreakdown['2nd-show'].sales > 0) {
+          reportText += `\n2nd Show: ${formatCurrency(report.showBreakdown['2nd-show'].sales)}`;
+        }
+        if (report.showBreakdown['nightly-show'].sales > 0) {
+          reportText += `\nNightly Show: ${formatCurrency(report.showBreakdown['nightly-show'].sales)}`;
+        }
+        if (report.showBreakdown['matinee'].sales > 0) {
+          reportText += `\nMatinee: ${formatCurrency(report.showBreakdown['matinee'].sales)}`;
+        }
       }
     }
     
@@ -468,10 +485,49 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                 <Text style={styles.paymentValue}>${formatCurrency(currentReport.cardSales)}</Text>
               </View>
               <View style={styles.paymentRow}>
-                <Text style={[styles.paymentLabel, { fontWeight: 'bold' }]}>Total Card Sales:</Text>
-                <Text style={[styles.paymentValue, { fontWeight: 'bold', color: TheatreColors.accent }]}>${formatCurrency(currentReport.cardSales)}</Text>
+                <Text style={[styles.paymentLabel, { fontWeight: 'bold' }]}>Total Sales:</Text>
+                <Text style={[styles.paymentValue, { fontWeight: 'bold', color: TheatreColors.accent }]}>${formatCurrency(currentReport.totalSales)}</Text>
               </View>
             </View>
+            
+            {/* Show Payment Breakdown if shows exist */}
+            {currentReport.showBreakdown && (() => {
+              const hasShowSales = Object.values(currentReport.showBreakdown).some(show => show.sales > 0);
+              if (hasShowSales) {
+                return (
+                  <View style={styles.showPaymentSection}>
+                    <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12 }]}>Payment by Show</Text>
+                    <View style={styles.paymentBreakdown}>
+                      {currentReport.showBreakdown['1st-show'].sales > 0 && (
+                        <View style={styles.paymentRow}>
+                          <Text style={styles.paymentLabel}>1st Show:</Text>
+                          <Text style={styles.paymentValue}>${formatCurrency(currentReport.showBreakdown['1st-show'].sales)}</Text>
+                        </View>
+                      )}
+                      {currentReport.showBreakdown['2nd-show'].sales > 0 && (
+                        <View style={styles.paymentRow}>
+                          <Text style={styles.paymentLabel}>2nd Show:</Text>
+                          <Text style={styles.paymentValue}>${formatCurrency(currentReport.showBreakdown['2nd-show'].sales)}</Text>
+                        </View>
+                      )}
+                      {currentReport.showBreakdown['nightly-show'].sales > 0 && (
+                        <View style={styles.paymentRow}>
+                          <Text style={styles.paymentLabel}>Nightly Show:</Text>
+                          <Text style={styles.paymentValue}>${formatCurrency(currentReport.showBreakdown['nightly-show'].sales)}</Text>
+                        </View>
+                      )}
+                      {currentReport.showBreakdown['matinee'].sales > 0 && (
+                        <View style={styles.paymentRow}>
+                          <Text style={styles.paymentLabel}>Matinee:</Text>
+                          <Text style={styles.paymentValue}>${formatCurrency(currentReport.showBreakdown['matinee'].sales)}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                );
+              }
+              return null;
+            })()}
           </View>
 
 
@@ -1392,5 +1448,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontFamily: 'monospace',
     opacity: 0.8,
+  },
+  showPaymentSection: {
+    marginTop: 16,
   },
 });

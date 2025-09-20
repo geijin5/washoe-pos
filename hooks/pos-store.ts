@@ -446,16 +446,22 @@ export const [POSProvider, usePOS] = createContextHook(() => {
   // Generate nightly report - Enhanced to capture ALL accounts with sales
   const generateNightlyReport = useCallback((date?: Date): NightlyReport => {
     const reportDate = date || new Date();
+    // Ensure we're using the current date for today's report, not yesterday's
     const dateStr = reportDate.toISOString().split('T')[0];
     
     console.log(`=== GENERATING LOCAL NIGHTLY REPORT ===`);
     console.log(`Date: ${dateStr}`);
     console.log('Ensuring ALL local accounts with sales are included...');
     
-    // Filter orders for the specific date
+    // Filter orders for the specific date - ensure proper date comparison
     const dayOrders = orders.filter(order => {
       const orderDate = new Date(order.timestamp);
-      return orderDate.toISOString().split('T')[0] === dateStr;
+      const orderDateStr = orderDate.toISOString().split('T')[0];
+      const matches = orderDateStr === dateStr;
+      if (matches) {
+        console.log(`Including order from ${orderDateStr}: ${order.total.toFixed(2)} by ${order.userName}`);
+      }
+      return matches;
     });
     
     console.log(`Found ${dayOrders.length} orders for ${dateStr}`);
