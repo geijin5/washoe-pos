@@ -218,6 +218,28 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
         if (report.showBreakdown['matinee'].sales > 0) {
           reportText += `\nMatinee: ${formatCurrency(report.showBreakdown['matinee'].sales)}`;
         }
+        
+        reportText += `\n\nCARD FEES BY SHOW`;
+        if (report.showBreakdown['1st-show'].sales > 0) {
+          const showCardSales = report.showBreakdown['1st-show'].sales * (report.cardSales / report.totalSales);
+          const showCardFees = showCardSales * 0.05;
+          reportText += `\n1st Show Card Fees: ${formatCurrency(showCardFees)}`;
+        }
+        if (report.showBreakdown['2nd-show'].sales > 0) {
+          const showCardSales = report.showBreakdown['2nd-show'].sales * (report.cardSales / report.totalSales);
+          const showCardFees = showCardSales * 0.05;
+          reportText += `\n2nd Show Card Fees: ${formatCurrency(showCardFees)}`;
+        }
+        if (report.showBreakdown['nightly-show'].sales > 0) {
+          const showCardSales = report.showBreakdown['nightly-show'].sales * (report.cardSales / report.totalSales);
+          const showCardFees = showCardSales * 0.05;
+          reportText += `\nNightly Show Card Fees: ${formatCurrency(showCardFees)}`;
+        }
+        if (report.showBreakdown['matinee'].sales > 0) {
+          const showCardSales = report.showBreakdown['matinee'].sales * (report.cardSales / report.totalSales);
+          const showCardFees = showCardSales * 0.05;
+          reportText += `\nMatinee Card Fees: ${formatCurrency(showCardFees)}`;
+        }
       }
     }
     
@@ -523,6 +545,54 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                           <Text style={styles.paymentValue}>${formatCurrency(currentReport.showBreakdown['matinee'].sales)}</Text>
                         </View>
                       )}
+                    </View>
+                    
+                    <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12, marginTop: 16 }]}>Card Fees by Show</Text>
+                    <View style={styles.paymentBreakdown}>
+                      {currentReport.showBreakdown['1st-show'].sales > 0 && (() => {
+                        const cardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
+                        const showCardSales = currentReport.showBreakdown['1st-show'].sales * cardRatio;
+                        const showCardFees = showCardSales * 0.05;
+                        return (
+                          <View style={styles.paymentRow}>
+                            <Text style={styles.paymentLabel}>1st Show Card Fees:</Text>
+                            <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(showCardFees)}</Text>
+                          </View>
+                        );
+                      })()}
+                      {currentReport.showBreakdown['2nd-show'].sales > 0 && (() => {
+                        const cardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
+                        const showCardSales = currentReport.showBreakdown['2nd-show'].sales * cardRatio;
+                        const showCardFees = showCardSales * 0.05;
+                        return (
+                          <View style={styles.paymentRow}>
+                            <Text style={styles.paymentLabel}>2nd Show Card Fees:</Text>
+                            <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(showCardFees)}</Text>
+                          </View>
+                        );
+                      })()}
+                      {currentReport.showBreakdown['nightly-show'].sales > 0 && (() => {
+                        const cardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
+                        const showCardSales = currentReport.showBreakdown['nightly-show'].sales * cardRatio;
+                        const showCardFees = showCardSales * 0.05;
+                        return (
+                          <View style={styles.paymentRow}>
+                            <Text style={styles.paymentLabel}>Nightly Show Card Fees:</Text>
+                            <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(showCardFees)}</Text>
+                          </View>
+                        );
+                      })()}
+                      {currentReport.showBreakdown['matinee'].sales > 0 && (() => {
+                        const cardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
+                        const showCardSales = currentReport.showBreakdown['matinee'].sales * cardRatio;
+                        const showCardFees = showCardSales * 0.05;
+                        return (
+                          <View style={styles.paymentRow}>
+                            <Text style={styles.paymentLabel}>Matinee Card Fees:</Text>
+                            <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(showCardFees)}</Text>
+                          </View>
+                        );
+                      })()}
                     </View>
                   </View>
                 );
