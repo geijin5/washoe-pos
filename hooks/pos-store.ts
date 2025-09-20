@@ -765,17 +765,29 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     };
     
     console.log(`=== CALCULATING SHOW BREAKDOWN ===`);
+    console.log(`Processing ${boxOfficeOrders.length} box office orders for show breakdown`);
     
-    // Process box office orders by show type
+    // Process box office orders by show type with enhanced precision
     boxOfficeOrders.forEach(order => {
       if (order.showType && showBreakdown[order.showType]) {
-        showBreakdown[order.showType].sales += order.total;
+        // Round to avoid floating point precision issues
+        const orderTotal = Math.round(order.total * 100) / 100;
+        showBreakdown[order.showType].sales = Math.round((showBreakdown[order.showType].sales + orderTotal) * 100) / 100;
         showBreakdown[order.showType].orders += 1;
-        console.log(`${order.showType}: +${order.total.toFixed(2)} (Order ${order.id})`);
+        console.log(`${order.showType}: +${orderTotal.toFixed(2)} (Order ${order.id}) - Running total: ${showBreakdown[order.showType].sales.toFixed(2)}`);
       } else {
         console.log(`Order ${order.id} missing showType or invalid showType: ${order.showType}`);
       }
     });
+    
+    // Verify show breakdown totals match box office totals
+    const showBreakdownTotal = Object.values(showBreakdown).reduce((sum, show) => sum + show.sales, 0);
+    const boxOfficeTotal = boxOfficeOrders.reduce((sum, order) => sum + order.total, 0);
+    
+    console.log(`=== SHOW BREAKDOWN VERIFICATION ===`);
+    console.log(`Show breakdown total: ${showBreakdownTotal.toFixed(2)}`);
+    console.log(`Box office orders total: ${boxOfficeTotal.toFixed(2)}`);
+    console.log(`Difference: ${Math.abs(showBreakdownTotal - boxOfficeTotal).toFixed(2)}`);
     
     console.log(`=== FINAL SHOW BREAKDOWN ===`);
     console.log(`1st Show: ${showBreakdown['1st-show'].sales.toFixed(2)} (${showBreakdown['1st-show'].orders} orders)`);

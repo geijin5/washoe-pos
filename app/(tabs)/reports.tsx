@@ -671,11 +671,20 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
           </View>
 
           {/* Show Performance - Only show if there are show sales */}
-          {currentReport.showBreakdown && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Show Performance</Text>
-              <Text style={styles.sectionDescription}>Box office ticket sales by show</Text>
-              <View style={styles.departmentGrid}>
+          {currentReport.showBreakdown && (() => {
+            // Debug logging for show breakdown display
+            console.log('=== SHOW BREAKDOWN DISPLAY DEBUG ===');
+            console.log('Show breakdown data:', currentReport.showBreakdown);
+            Object.entries(currentReport.showBreakdown).forEach(([show, data]) => {
+              console.log(`${show}: ${data.sales.toFixed(2)} (${data.orders} orders)`);
+            });
+            console.log('======================================');
+            
+            return (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Show Performance</Text>
+                <Text style={styles.sectionDescription}>Box office ticket sales by show</Text>
+                <View style={styles.departmentGrid}>
                 {currentReport.showBreakdown['1st-show'].sales > 0 && (
                   <View style={styles.departmentCard}>
                     <Text style={styles.departmentName}>1st Show</Text>
@@ -725,7 +734,8 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                 )}
               </View>
             </View>
-          )}
+            );
+          })()}
 
           {/* Sales Managers Performance */}
           <View style={styles.section}>
