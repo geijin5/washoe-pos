@@ -206,7 +206,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
   }, [cart, settings.creditCardFeePercent]);
 
   // Checkout
-  const checkout = useCallback((paymentMethod: 'cash' | 'card' = 'cash', userId?: string, userName?: string, department?: 'box-office' | 'candy-counter', isAfterClosing?: boolean, userRole?: string) => {
+  const checkout = useCallback((paymentMethod: 'cash' | 'card' = 'cash', userId?: string, userName?: string, department?: 'box-office' | 'candy-counter', isAfterClosing?: boolean, userRole?: string, showType?: '1st-show' | '2nd-show' | 'nightly-show' | 'matinee') => {
     if (cart.length === 0) return null;
 
     const totals = calculateTotalsWithFee(paymentMethod);
@@ -223,6 +223,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       department,
       isAfterClosing,
       userRole,
+      showType,
     };
 
     // Debug logging for all sales to track department assignment
@@ -743,6 +744,46 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 10);
 
+    // Show breakdown - separate each show's sales and orders
+    const showBreakdown = {
+      '1st-show': {
+        sales: 0,
+        orders: 0,
+      },
+      '2nd-show': {
+        sales: 0,
+        orders: 0,
+      },
+      'nightly-show': {
+        sales: 0,
+        orders: 0,
+      },
+      'matinee': {
+        sales: 0,
+        orders: 0,
+      },
+    };
+    
+    console.log(`=== CALCULATING SHOW BREAKDOWN ===`);
+    
+    // Process box office orders by show type
+    boxOfficeOrders.forEach(order => {
+      if (order.showType && showBreakdown[order.showType]) {
+        showBreakdown[order.showType].sales += order.total;
+        showBreakdown[order.showType].orders += 1;
+        console.log(`${order.showType}: +${order.total.toFixed(2)} (Order ${order.id})`);
+      } else {
+        console.log(`Order ${order.id} missing showType or invalid showType: ${order.showType}`);
+      }
+    });
+    
+    console.log(`=== FINAL SHOW BREAKDOWN ===`);
+    console.log(`1st Show: ${showBreakdown['1st-show'].sales.toFixed(2)} (${showBreakdown['1st-show'].orders} orders)`);
+    console.log(`2nd Show: ${showBreakdown['2nd-show'].sales.toFixed(2)} (${showBreakdown['2nd-show'].orders} orders)`);
+    console.log(`Nightly Show: ${showBreakdown['nightly-show'].sales.toFixed(2)} (${showBreakdown['nightly-show'].orders} orders)`);
+    console.log(`Matinee: ${showBreakdown['matinee'].sales.toFixed(2)} (${showBreakdown['matinee'].orders} orders)`);
+    console.log('=======================================');
+
     console.log(`=== LOCAL REPORT SUMMARY ===`);
     console.log(`Total Sales: ${totalSales.toFixed(2)}`);
     console.log(`Total Orders: ${dayOrders.length}`);
@@ -757,6 +798,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       cardSales,
       creditCardFees,
       departmentBreakdown,
+      showBreakdown,
       paymentBreakdown,
       userBreakdown,
       topProducts,

@@ -186,6 +186,23 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
       reportText += `\nAfter Closing (All Ticket Sales): ${formatCurrency(report.departmentBreakdown['after-closing'].sales)} (${report.departmentBreakdown['after-closing'].orders} orders)`;
     }
     
+    // Add show breakdown if available
+    if (report.showBreakdown) {
+      reportText += `\n\nSHOW BREAKDOWN`;
+      if (report.showBreakdown['1st-show'].sales > 0) {
+        reportText += `\n1st Show: ${formatCurrency(report.showBreakdown['1st-show'].sales)} (${report.showBreakdown['1st-show'].orders} orders)`;
+      }
+      if (report.showBreakdown['2nd-show'].sales > 0) {
+        reportText += `\n2nd Show: ${formatCurrency(report.showBreakdown['2nd-show'].sales)} (${report.showBreakdown['2nd-show'].orders} orders)`;
+      }
+      if (report.showBreakdown['nightly-show'].sales > 0) {
+        reportText += `\nNightly Show: ${formatCurrency(report.showBreakdown['nightly-show'].sales)} (${report.showBreakdown['nightly-show'].orders} orders)`;
+      }
+      if (report.showBreakdown['matinee'].sales > 0) {
+        reportText += `\nMatinee: ${formatCurrency(report.showBreakdown['matinee'].sales)} (${report.showBreakdown['matinee'].orders} orders)`;
+      }
+    }
+    
     // Add debug info for enhanced department breakdown in report text
     console.log(`=== REPORT TEXT DEPARTMENT BREAKDOWN ===`);
     console.log(`Box Office: ${(report.departmentBreakdown['box-office']?.sales || 0).toFixed(2)} (${report.departmentBreakdown['box-office']?.orders || 0} orders)`);
@@ -652,6 +669,63 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
               )}
             </View>
           </View>
+
+          {/* Show Performance - Only show if there are show sales */}
+          {currentReport.showBreakdown && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Show Performance</Text>
+              <Text style={styles.sectionDescription}>Box office ticket sales by show</Text>
+              <View style={styles.departmentGrid}>
+                {currentReport.showBreakdown['1st-show'].sales > 0 && (
+                  <View style={styles.departmentCard}>
+                    <Text style={styles.departmentName}>1st Show</Text>
+                    <Text style={styles.departmentSales}>
+                      ${formatCurrency(currentReport.showBreakdown['1st-show'].sales)}
+                    </Text>
+                    <Text style={styles.departmentOrders}>
+                      {currentReport.showBreakdown['1st-show'].orders} orders
+                    </Text>
+                  </View>
+                )}
+                
+                {currentReport.showBreakdown['2nd-show'].sales > 0 && (
+                  <View style={styles.departmentCard}>
+                    <Text style={styles.departmentName}>2nd Show</Text>
+                    <Text style={styles.departmentSales}>
+                      ${formatCurrency(currentReport.showBreakdown['2nd-show'].sales)}
+                    </Text>
+                    <Text style={styles.departmentOrders}>
+                      {currentReport.showBreakdown['2nd-show'].orders} orders
+                    </Text>
+                  </View>
+                )}
+                
+                {currentReport.showBreakdown['nightly-show'].sales > 0 && (
+                  <View style={styles.departmentCard}>
+                    <Text style={styles.departmentName}>Nightly Show</Text>
+                    <Text style={styles.departmentSales}>
+                      ${formatCurrency(currentReport.showBreakdown['nightly-show'].sales)}
+                    </Text>
+                    <Text style={styles.departmentOrders}>
+                      {currentReport.showBreakdown['nightly-show'].orders} orders
+                    </Text>
+                  </View>
+                )}
+                
+                {currentReport.showBreakdown['matinee'].sales > 0 && (
+                  <View style={styles.departmentCard}>
+                    <Text style={styles.departmentName}>Matinee</Text>
+                    <Text style={styles.departmentSales}>
+                      ${formatCurrency(currentReport.showBreakdown['matinee'].sales)}
+                    </Text>
+                    <Text style={styles.departmentOrders}>
+                      {currentReport.showBreakdown['matinee'].orders} orders
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
 
           {/* Sales Managers Performance */}
           <View style={styles.section}>

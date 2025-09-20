@@ -28,6 +28,7 @@ export interface Order {
   department?: 'box-office' | 'candy-counter';
   isAfterClosing?: boolean;
   userRole?: string;
+  showType?: '1st-show' | '2nd-show' | 'nightly-show' | 'matinee';
 }
 
 export type Category = 'tickets' | 'concessions' | 'merchandise' | 'beverages';
@@ -82,6 +83,24 @@ export interface NightlyReport {
       orders: number;
     };
     'after-closing': {
+      sales: number;
+      orders: number;
+    };
+  };
+  showBreakdown?: {
+    '1st-show': {
+      sales: number;
+      orders: number;
+    };
+    '2nd-show': {
+      sales: number;
+      orders: number;
+    };
+    'nightly-show': {
+      sales: number;
+      orders: number;
+    };
+    'matinee': {
       sales: number;
       orders: number;
     };

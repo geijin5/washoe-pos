@@ -95,7 +95,10 @@ export default function POSScreen() {
     const hasTickets = cart.some(item => item.product.category === 'tickets');
     const isAfterClosing = selectedDepartment === 'candy-counter' && hasTickets;
     
-    const order = checkout(method, user?.id, user?.name, selectedDepartment || undefined, isAfterClosing, user?.role);
+    // Pass show information for box office orders
+    const showType = selectedDepartment === 'box-office' && selectedShow ? selectedShow as '1st-show' | '2nd-show' | 'nightly-show' | 'matinee' : undefined;
+    
+    const order = checkout(method, user?.id, user?.name, selectedDepartment || undefined, isAfterClosing, user?.role, showType);
     if (order) {
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
