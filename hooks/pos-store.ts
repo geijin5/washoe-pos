@@ -446,22 +446,40 @@ export const [POSProvider, usePOS] = createContextHook(() => {
   // Generate nightly report - Enhanced to capture ALL accounts with sales
   const generateNightlyReport = useCallback((date?: Date): NightlyReport => {
     const reportDate = date || new Date();
-    // Create a proper date string for the report date (not current time)
-    const year = reportDate.getFullYear();
-    const month = String(reportDate.getMonth() + 1).padStart(2, '0');
-    const day = String(reportDate.getDate()).padStart(2, '0');
+    
+    // Use the same 2am cutoff logic as stats for consistency
+    let businessDate = new Date(reportDate);
+    
+    // If we're generating a report for "today" and it's before 2am, 
+    // we want the previous business day's data
+    if (!date && reportDate.getHours() < 2) {
+      businessDate.setDate(businessDate.getDate() - 1);
+    }
+    
+    // Create a proper date string for the business date
+    const year = businessDate.getFullYear();
+    const month = String(businessDate.getMonth() + 1).padStart(2, '0');
+    const day = String(businessDate.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
     
     console.log(`=== GENERATING LOCAL NIGHTLY REPORT ===`);
-    console.log(`Date: ${dateStr}`);
+    console.log(`Report Date: ${reportDate.toISOString()}`);
+    console.log(`Business Date: ${dateStr}`);
     console.log('Ensuring ALL local accounts with sales are included...');
     
-    // Filter orders for the specific date - ensure proper date comparison
+    // Filter orders for the specific business date - ensure proper date comparison
     const dayOrders = orders.filter(order => {
       const orderDate = new Date(order.timestamp);
-      const orderYear = orderDate.getFullYear();
-      const orderMonth = String(orderDate.getMonth() + 1).padStart(2, '0');
-      const orderDay = String(orderDate.getDate()).padStart(2, '0');
+      
+      // Apply same 2am cutoff logic to order dates
+      let orderBusinessDate = new Date(orderDate);
+      if (orderDate.getHours() < 2) {
+        orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
+      }
+      
+      const orderYear = orderBusinessDate.getFullYear();
+      const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
+      const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
       const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
       const matches = orderDateStr === dateStr;
       if (matches) {
@@ -1351,11 +1369,18 @@ export const [POSProvider, usePOS] = createContextHook(() => {
 
     const todaysOrders = orders.filter(order => {
       const orderDate = new Date(order.timestamp);
-      const orderYear = orderDate.getFullYear();
-      const orderMonth = String(orderDate.getMonth() + 1).padStart(2, '0');
-      const orderDay = String(orderDate.getDate()).padStart(2, '0');
-      const orderBusinessDate = `${orderYear}-${orderMonth}-${orderDay}`;
-      return orderBusinessDate === todayBusinessDate;
+      
+      // Apply same 2am cutoff logic to order dates
+      let orderBusinessDate = new Date(orderDate);
+      if (orderDate.getHours() < 2) {
+        orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
+      }
+      
+      const orderYear = orderBusinessDate.getFullYear();
+      const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
+      const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
+      const orderBusinessDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
+      return orderBusinessDateStr === todayBusinessDate;
     });
 
     const totalSales = todaysOrders.reduce((sum, order) => sum + order.total, 0);
@@ -1447,19 +1472,33 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     clearNightlyReport: useCallback(async (date?: Date): Promise<boolean> => {
       try {
         const reportDate = date || new Date();
-        const year = reportDate.getFullYear();
-        const month = String(reportDate.getMonth() + 1).padStart(2, '0');
-        const day = String(reportDate.getDate()).padStart(2, '0');
+        
+        // Use the same 2am cutoff logic for consistency
+        let businessDate = new Date(reportDate);
+        if (!date && reportDate.getHours() < 2) {
+          businessDate.setDate(businessDate.getDate() - 1);
+        }
+        
+        const year = businessDate.getFullYear();
+        const month = String(businessDate.getMonth() + 1).padStart(2, '0');
+        const day = String(businessDate.getDate()).padStart(2, '0');
         const dateStr = `${year}-${month}-${day}`;
         
-        console.log(`Clearing nightly report data for ${dateStr}...`);
+        console.log(`Clearing nightly report data for business date ${dateStr}...`);
         
-        // Filter out orders from the specified date
+        // Filter out orders from the specified business date using same 2am cutoff logic
         const filteredOrders = orders.filter(order => {
           const orderDate = new Date(order.timestamp);
-          const orderYear = orderDate.getFullYear();
-          const orderMonth = String(orderDate.getMonth() + 1).padStart(2, '0');
-          const orderDay = String(orderDate.getDate()).padStart(2, '0');
+          
+          // Apply same 2am cutoff logic to order dates
+          let orderBusinessDate = new Date(orderDate);
+          if (orderDate.getHours() < 2) {
+            orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
+          }
+          
+          const orderYear = orderBusinessDate.getFullYear();
+          const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
+          const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
           const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
           return orderDateStr !== dateStr;
         });
