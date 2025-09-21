@@ -16,7 +16,7 @@ import { usePOS } from '@/hooks/pos-store';
 import { useAuth } from '@/hooks/auth-store';
 import { Product, Category } from '@/types/pos';
 import { TheatreColors } from '@/constants/theatre-colors';
-import { Plus, Edit2, Trash2, X, Save, Camera, Image as ImageIcon, Settings } from 'lucide-react-native';
+import { Plus, Edit2, Trash2, X, Save, Camera, Image as ImageIcon, Settings, Grid3X3, List } from 'lucide-react-native';
 import { RoleGuard } from '@/components/RoleGuard';
 import { CategoryManagement } from '@/components/CategoryManagement';
 import * as Haptics from 'expo-haptics';
@@ -36,6 +36,7 @@ function ProductsContent() {
   const [modalVisible, setModalVisible] = useState(false);
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [formData, setFormData] = useState({
     name: '',
     price: '',
@@ -204,7 +205,7 @@ function ProductsContent() {
     );
   };
 
-  const renderProduct = ({ item }: { item: Product }) => {
+  const renderProductList = ({ item }: { item: Product }) => {
     const categoryColor = TheatreColors.categoryColors[item.category];
 
     return (
@@ -240,13 +241,77 @@ function ProductsContent() {
     );
   };
 
+  const renderProductGrid = ({ item }: { item: Product }) => {
+    const categoryColor = TheatreColors.categoryColors[item.category];
+    
+    return (
+      <View style={styles.gridItem}>
+        <View style={styles.gridCard}>
+          <View style={[styles.gridCategoryIndicator, { backgroundColor: categoryColor }]} />
+          {item.customImage && (
+            <View style={styles.gridImageContainer}>
+              <Image source={{ uri: item.customImage }} style={styles.gridImage} />
+            </View>
+          )}
+          <View style={styles.gridContent}>
+            <View style={styles.gridNameRow}>
+              <Text style={styles.gridProductName} numberOfLines={2}>{item.name}</Text>
+              {item.customImage && (
+                <View style={styles.gridCustomImageBadge}>
+                  <ImageIcon size={10} color={TheatreColors.accent} />
+                </View>
+              )}
+            </View>
+            <Text style={styles.gridProductCategory}>{item.category}</Text>
+            <Text style={styles.gridProductPrice}>${item.price.toFixed(2)}</Text>
+          </View>
+          <View style={styles.gridActions}>
+            <TouchableOpacity
+              style={styles.gridActionButton}
+              onPress={() => openEditModal(item)}
+            >
+              <Edit2 size={16} color={TheatreColors.accent} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.gridActionButton}
+              onPress={() => handleDelete(item)}
+            >
+              <Trash2 size={16} color={TheatreColors.error} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
+      <View style={styles.toolbar}>
+        <Text style={styles.toolbarTitle}>Products ({products.length})</Text>
+        <View style={styles.viewToggle}>
+          <TouchableOpacity
+            style={[styles.viewToggleButton, viewMode === 'list' && styles.viewToggleButtonActive]}
+            onPress={() => setViewMode('list')}
+          >
+            <List size={20} color={viewMode === 'list' ? TheatreColors.background : TheatreColors.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.viewToggleButton, viewMode === 'grid' && styles.viewToggleButtonActive]}
+            onPress={() => setViewMode('grid')}
+          >
+            <Grid3X3 size={20} color={viewMode === 'grid' ? TheatreColors.background : TheatreColors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+      
       <FlatList
         data={products}
         keyExtractor={item => item.id}
-        renderItem={renderProduct}
-        contentContainerStyle={styles.list}
+        renderItem={viewMode === 'grid' ? renderProductGrid : renderProductList}
+        numColumns={viewMode === 'grid' ? 2 : 1}
+        key={viewMode}
+        contentContainerStyle={viewMode === 'grid' ? styles.gridList : styles.list}
+        columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>No products yet</Text>
@@ -415,9 +480,115 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: TheatreColors.background,
   },
+  toolbar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: TheatreColors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: TheatreColors.surfaceLight,
+  },
+  toolbarTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: TheatreColors.text,
+  },
+  viewToggle: {
+    flexDirection: 'row',
+    backgroundColor: TheatreColors.background,
+    borderRadius: 8,
+    padding: 2,
+  },
+  viewToggleButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  viewToggleButtonActive: {
+    backgroundColor: TheatreColors.accent,
+  },
   list: {
     padding: 16,
     paddingBottom: 100,
+  },
+  gridList: {
+    padding: 8,
+    paddingBottom: 100,
+  },
+  gridRow: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+  },
+  gridItem: {
+    flex: 1,
+    maxWidth: '48%',
+    margin: 8,
+  },
+  gridCard: {
+    backgroundColor: TheatreColors.surface,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  gridCategoryIndicator: {
+    height: 4,
+    width: '100%',
+  },
+  gridImageContainer: {
+    height: 120,
+    backgroundColor: TheatreColors.surfaceLight,
+  },
+  gridImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  gridContent: {
+    padding: 12,
+  },
+  gridNameRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  gridProductName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: TheatreColors.text,
+    flex: 1,
+    lineHeight: 18,
+  },
+  gridCustomImageBadge: {
+    backgroundColor: TheatreColors.surfaceLight,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 4,
+  },
+  gridProductCategory: {
+    fontSize: 11,
+    color: TheatreColors.textSecondary,
+    textTransform: 'capitalize',
+    marginBottom: 6,
+  },
+  gridProductPrice: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: TheatreColors.accent,
+  },
+  gridActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: TheatreColors.surfaceLight,
+  },
+  gridActionButton: {
+    padding: 6,
   },
   productItem: {
     flexDirection: 'row',

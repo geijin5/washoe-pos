@@ -12,12 +12,12 @@ import {
 } from 'react-native';
 import { usePOS } from '@/hooks/pos-store';
 import { TheatreColors } from '@/constants/theatre-colors';
-import { Settings, CreditCard, Percent, Save, Users, Tag, Share as ShareIcon, Download, Info, RefreshCw } from 'lucide-react-native';
+import { Settings, CreditCard, Percent, Save, Users, Tag, Share as ShareIcon, Download, Info } from 'lucide-react-native';
 import { useAuth } from '@/hooks/auth-store';
 import { RoleGuard } from '@/components/RoleGuard';
 import { UserManagement } from '@/components/UserManagement';
 import { CategoryManagement } from '@/components/CategoryManagement';
-import { SyncManagement } from '@/components/SyncManagement';
+
 import { TabletUtils } from '@/constants/tablet-utils';
 import * as Clipboard from 'expo-clipboard';
 
@@ -28,7 +28,7 @@ export default function SettingsScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showUserManagement, setShowUserManagement] = useState(false);
   const [showCategoryManagement, setShowCategoryManagement] = useState(false);
-  const [showSyncManagement, setShowSyncManagement] = useState(false);
+
 
   const [deviceIP, setDeviceIP] = useState<string>('Loading...');
   const [deviceId, setDeviceId] = useState<string>('');
@@ -204,24 +204,7 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Sync Management Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <RefreshCw size={24} color={TheatreColors.accent} />
-              <Text style={styles.sectionTitle}>Product & Category Sync</Text>
-            </View>
-            <Text style={styles.sectionDescription}>
-              Sync products and categories across all POS devices automatically or manually
-            </Text>
-            
-            <TouchableOpacity
-              style={styles.managementButton}
-              onPress={() => setShowSyncManagement(true)}
-            >
-              <RefreshCw size={20} color={TheatreColors.background} />
-              <Text style={styles.managementButtonText}>Manage Sync</Text>
-            </TouchableOpacity>
-          </View>
+
 
           {/* Device Configuration Section */}
           <View style={styles.section}>
@@ -326,10 +309,7 @@ export default function SettingsScreen() {
         onClose={() => setShowCategoryManagement(false)}
       />
       
-      <SyncManagement
-        visible={showSyncManagement}
-        onClose={() => setShowSyncManagement(false)}
-      />
+
       
       <UserManagement
         visible={showUserManagement}
