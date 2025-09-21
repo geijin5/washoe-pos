@@ -472,11 +472,17 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     
     console.log(`Found ${dayOrders.length} orders for ${dateStr}`);
 
-    // Calculate totals with proper precision
+    // Calculate totals with proper precision - ensure exact match with orders
     const totalSales = Math.round(dayOrders.reduce((sum, order) => sum + order.total, 0) * 100) / 100;
     const cashSales = Math.round(dayOrders.filter(o => o.paymentMethod === 'cash').reduce((sum, order) => sum + order.total, 0) * 100) / 100;
     const cardSales = Math.round(dayOrders.filter(o => o.paymentMethod === 'card').reduce((sum, order) => sum + order.total, 0) * 100) / 100;
     const creditCardFees = Math.round(dayOrders.reduce((sum, order) => sum + (order.creditCardFee || 0), 0) * 100) / 100;
+    
+    // Verify cash + card = total (with rounding precision)
+    const calculatedTotal = Math.round((cashSales + cardSales) * 100) / 100;
+    if (Math.abs(calculatedTotal - totalSales) > 0.01) {
+      console.warn(`Payment method totals don't match: Cash(${cashSales.toFixed(2)}) + Card(${cardSales.toFixed(2)}) = ${calculatedTotal.toFixed(2)} vs Total(${totalSales.toFixed(2)})`);
+    }
 
     // Department breakdown - Enhanced to properly separate mixed orders (tickets + concessions)
     const boxOfficeOrders = dayOrders.filter(o => o.department === 'box-office');
@@ -516,8 +522,17 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log(`Box Office Sales: ${boxOfficeSales.toFixed(2)} from ${boxOfficeOrders.length} orders`);
     console.log(`Candy Counter Sales: ${candyCounterSales.toFixed(2)} from ${candyCounterOrders.length} orders`);
     console.log(`After Closing Sales: ${afterClosingSales.toFixed(2)} from ${afterClosingOrders.length} orders`);
-    console.log(`Total Department Sales: ${(boxOfficeSales + candyCounterSales + afterClosingSales).toFixed(2)}`);
+    const departmentTotal = Math.round((boxOfficeSales + candyCounterSales + afterClosingSales) * 100) / 100;
+    console.log(`Total Department Sales: ${departmentTotal.toFixed(2)}`);
     console.log(`Total Sales from Orders: ${totalSales.toFixed(2)}`);
+    
+    // Verify department totals match overall total
+    if (Math.abs(departmentTotal - totalSales) > 0.01) {
+      console.error(`MISMATCH: Department totals (${departmentTotal.toFixed(2)}) don't match order totals (${totalSales.toFixed(2)})`);
+      console.error(`Difference: ${Math.abs(departmentTotal - totalSales).toFixed(2)}`);
+    } else {
+      console.log(`✓ VERIFIED: Department totals match order totals exactly`);
+    }
     console.log('===============================================');
     
     console.log(`=== ENHANCED SALES CALCULATION ===`);
@@ -546,8 +561,16 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log(`Box Office: ${departmentBreakdown['box-office'].sales.toFixed(2)} (${departmentBreakdown['box-office'].orders} orders)`);
     console.log(`Candy Counter: ${departmentBreakdown['candy-counter'].sales.toFixed(2)} (${departmentBreakdown['candy-counter'].orders} orders)`);
     console.log(`After Closing: ${departmentBreakdown['after-closing'].sales.toFixed(2)} (${departmentBreakdown['after-closing'].orders} orders)`);
-    console.log(`Total Department Sales: ${(departmentBreakdown['box-office'].sales + departmentBreakdown['candy-counter'].sales + departmentBreakdown['after-closing'].sales).toFixed(2)}`);
+    const finalDepartmentTotal = Math.round((departmentBreakdown['box-office'].sales + departmentBreakdown['candy-counter'].sales + departmentBreakdown['after-closing'].sales) * 100) / 100;
+    console.log(`Total Department Sales: ${finalDepartmentTotal.toFixed(2)}`);
     console.log(`Total Sales from Orders: ${totalSales.toFixed(2)}`);
+    
+    // Final verification that everything adds up correctly
+    if (Math.abs(finalDepartmentTotal - totalSales) > 0.01) {
+      console.error(`FINAL MISMATCH: Department breakdown (${finalDepartmentTotal.toFixed(2)}) doesn't match total sales (${totalSales.toFixed(2)})`);
+    } else {
+      console.log(`✓ FINAL VERIFICATION: All calculations match perfectly`);
+    }
     console.log('===============================================');
 
     // Calculate payment breakdown by department - simplified and accurate
@@ -594,8 +617,23 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log(`Candy Counter Card: ${candyCounterCardSales.toFixed(2)}`);
     console.log(`After Closing Cash: ${afterClosingCashSales.toFixed(2)}`);
     console.log(`After Closing Card: ${afterClosingCardSales.toFixed(2)}`);
-    console.log(`Total Cash: ${(boxOfficeCashSales + candyCounterCashSales + afterClosingCashSales).toFixed(2)} (should match ${cashSales.toFixed(2)})`);
-    console.log(`Total Card: ${(boxOfficeCardSales + candyCounterCardSales + afterClosingCardSales).toFixed(2)} (should match ${cardSales.toFixed(2)})`);
+    
+    const totalCashByDept = Math.round((boxOfficeCashSales + candyCounterCashSales + afterClosingCashSales) * 100) / 100;
+    const totalCardByDept = Math.round((boxOfficeCardSales + candyCounterCardSales + afterClosingCardSales) * 100) / 100;
+    
+    console.log(`Total Cash: ${totalCashByDept.toFixed(2)} (should match ${cashSales.toFixed(2)})`);
+    console.log(`Total Card: ${totalCardByDept.toFixed(2)} (should match ${cardSales.toFixed(2)})`);
+    
+    // Verify payment method totals match
+    if (Math.abs(totalCashByDept - cashSales) > 0.01) {
+      console.error(`CASH MISMATCH: Department cash (${totalCashByDept.toFixed(2)}) doesn't match total cash (${cashSales.toFixed(2)})`);
+    }
+    if (Math.abs(totalCardByDept - cardSales) > 0.01) {
+      console.error(`CARD MISMATCH: Department card (${totalCardByDept.toFixed(2)}) doesn't match total card (${cardSales.toFixed(2)})`);
+    }
+    if (Math.abs(totalCashByDept - cashSales) <= 0.01 && Math.abs(totalCardByDept - cardSales) <= 0.01) {
+      console.log(`✓ PAYMENT VERIFICATION: All payment method totals match perfectly`);
+    }
     console.log('===============================================');
     
     const paymentBreakdown = {
