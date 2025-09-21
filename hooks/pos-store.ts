@@ -848,7 +848,8 @@ export const [POSProvider, usePOS] = createContextHook(() => {
         
         // Always save the previous day's report if we have orders from that day
         if (lastProcessDate) {
-          const previousDate = new Date(lastProcessDate + 'T00:00:00.000Z');
+          // Create proper date object for the previous day
+          const previousDate = new Date(lastProcessDate + 'T12:00:00.000Z'); // Use noon to avoid timezone issues
           console.log(`Saving nightly report for ${lastProcessDate}...`);
           
           // Generate and save the previous day's report
@@ -860,7 +861,8 @@ export const [POSProvider, usePOS] = createContextHook(() => {
             const reportData = {
               ...previousDayReport,
               savedAt: new Date().toISOString(),
-              deviceInfo: 'Local Device'
+              deviceInfo: 'Local Device',
+              isArchived: true
             };
             
             await AsyncStorage.setItem(reportKey, JSON.stringify(reportData));
@@ -886,14 +888,20 @@ export const [POSProvider, usePOS] = createContextHook(() => {
           }
         }
         
-        // Update last process date to today
+        // Update last process date to today - this marks the start of a new day
         await AsyncStorage.setItem('last_nightly_process_date', today);
         
+        // Clear any temporary data that should reset for the new day
+        console.log('✓ New day started - ready for fresh sales data');
         console.log('✓ Nightly report processing complete for new day');
         console.log('=== NIGHTLY PROCESS COMPLETE ===');
+      } else {
+        // Same day - no action needed
+        console.log(`Same day (${today}) - no nightly processing needed`);
       }
     } catch (error) {
       console.error('Error in nightly report save & reset:', error);
+      // Don't throw error to prevent app crashes
     }
   }, [generateNightlyReport]);
 
@@ -947,6 +955,8 @@ export const [POSProvider, usePOS] = createContextHook(() => {
           
           console.log(`✓ Auto-cleared ${clearedCount} old orders (older than 14 days)`);
           console.log(`✓ Kept ${recentOrders.length} orders from current night + last 14 days`);
+        } else {
+          console.log('No old orders to clear');
         }
         
         // Clean up saved nightly reports older than 14 days
@@ -978,16 +988,32 @@ export const [POSProvider, usePOS] = createContextHook(() => {
           clearedCount,
           keptCount: recentOrders.length,
           cutoffDate: cutoffDateStr,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          success: true
         };
         await AsyncStorage.setItem('last_auto_clean_log', JSON.stringify(cleanLog));
         
         // Update last clean date
         await AsyncStorage.setItem('last_auto_clean_date', today);
+        console.log('✓ Daily management complete - system ready for new day');
         console.log('=== DAILY MANAGEMENT COMPLETE ===');
+      } else {
+        console.log(`Same day (${today}) - no auto-clean needed`);
       }
     } catch (error) {
       console.error('Error in daily report management:', error);
+      // Save error log but don't crash the app
+      try {
+        const errorLog = {
+          date: new Date().toISOString().split('T')[0],
+          error: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date().toISOString(),
+          success: false
+        };
+        await AsyncStorage.setItem('last_auto_clean_log', JSON.stringify(errorLog));
+      } catch (logError) {
+        console.error('Failed to save error log:', logError);
+      }
     }
   }, [orders]);
 
@@ -1287,24 +1313,50 @@ export const [POSProvider, usePOS] = createContextHook(() => {
 
   // Check for new day, save reports, and auto-clean old reports on app start and periodically
   useEffect(() => {
-    // Run immediately on app start
-    saveNightlyReportAndReset();
-    autoCleanOldReports();
+    console.log('=== INITIALIZING DAILY MANAGEMENT SYSTEM ===');
+    
+    // Run immediately on app start with a small delay to ensure everything is loaded
+    const initTimeout = setTimeout(() => {
+      console.log('Running initial daily management checks...');
+      saveNightlyReportAndReset();
+      autoCleanOldReports();
+    }, 1000); // 1 second delay
     
     // Check every hour for new day and auto-clean
-    const interval = setInterval(() => {
+    const hourlyInterval = setInterval(() => {
+      console.log('Running hourly daily management checks...');
       saveNightlyReportAndReset();
       autoCleanOldReports();
     }, 60 * 60 * 1000); // Every hour
     
     // Also check every 15 minutes for more responsive new day detection
     const frequentInterval = setInterval(() => {
+      console.log('Running frequent new day check...');
       saveNightlyReportAndReset();
     }, 15 * 60 * 1000); // Every 15 minutes
     
+    // Check at midnight (or close to it) for immediate new day processing
+    const midnightCheck = setInterval(() => {
+      const now = new Date();
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+      
+      // Run between 12:00 AM and 12:05 AM
+      if (hours === 0 && minutes <= 5) {
+        console.log('Midnight detected - running immediate new day processing...');
+        saveNightlyReportAndReset();
+        autoCleanOldReports();
+      }
+    }, 60 * 1000); // Every minute
+    
+    console.log('Daily management system initialized with multiple check intervals');
+    
     return () => {
-      clearInterval(interval);
+      clearTimeout(initTimeout);
+      clearInterval(hourlyInterval);
       clearInterval(frequentInterval);
+      clearInterval(midnightCheck);
+      console.log('Daily management system cleanup complete');
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
