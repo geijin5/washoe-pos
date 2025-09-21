@@ -221,22 +221,26 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
         
         reportText += `\n\nCARD FEES BY SHOW`;
         if (report.showBreakdown['1st-show'].sales > 0) {
-          const showCardSales = report.showBreakdown['1st-show'].sales * (report.cardSales / report.totalSales);
+          const cardRatio = report.totalSales > 0 ? report.cardSales / report.totalSales : 0;
+          const showCardSales = report.showBreakdown['1st-show'].sales * cardRatio;
           const showCardFees = showCardSales * 0.05;
           reportText += `\n1st Show Card Fees: ${formatCurrency(showCardFees)}`;
         }
         if (report.showBreakdown['2nd-show'].sales > 0) {
-          const showCardSales = report.showBreakdown['2nd-show'].sales * (report.cardSales / report.totalSales);
+          const cardRatio = report.totalSales > 0 ? report.cardSales / report.totalSales : 0;
+          const showCardSales = report.showBreakdown['2nd-show'].sales * cardRatio;
           const showCardFees = showCardSales * 0.05;
           reportText += `\n2nd Show Card Fees: ${formatCurrency(showCardFees)}`;
         }
         if (report.showBreakdown['nightly-show'].sales > 0) {
-          const showCardSales = report.showBreakdown['nightly-show'].sales * (report.cardSales / report.totalSales);
+          const cardRatio = report.totalSales > 0 ? report.cardSales / report.totalSales : 0;
+          const showCardSales = report.showBreakdown['nightly-show'].sales * cardRatio;
           const showCardFees = showCardSales * 0.05;
           reportText += `\nNightly Show Card Fees: ${formatCurrency(showCardFees)}`;
         }
         if (report.showBreakdown['matinee'].sales > 0) {
-          const showCardSales = report.showBreakdown['matinee'].sales * (report.cardSales / report.totalSales);
+          const cardRatio = report.totalSales > 0 ? report.cardSales / report.totalSales : 0;
+          const showCardSales = report.showBreakdown['matinee'].sales * cardRatio;
           const showCardFees = showCardSales * 0.05;
           reportText += `\nMatinee Card Fees: ${formatCurrency(showCardFees)}`;
         }
