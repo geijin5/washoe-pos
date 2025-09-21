@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 
 import { Product, CartItem, Order, Category, POSStats, POSSettings, NightlyReport, SettingsExport } from '@/types/pos';
 import { defaultProducts } from '@/mocks/default-products';
-import { syncService, SyncData } from '@/services/sync-service';
+// Removed sync service import as it's not used
 
 const PRODUCTS_KEY = 'theatre_products';
 const ORDERS_KEY = 'theatre_orders';
@@ -507,157 +507,83 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log(`  - After Closing orders (tickets): ${afterClosingOrders.length}`);
     console.log('===============================================');
     
-    // Enhanced calculation to properly separate tickets and concessions in mixed orders
-    let afterClosingTicketSales = 0;
-    let candyCounterConcessionSales = 0;
+    // Calculate department sales properly - include ALL sales from each department
+    const boxOfficeSales = boxOfficeOrders.reduce((sum, order) => sum + order.total, 0);
+    const candyCounterSales = candyCounterOrders.reduce((sum, order) => sum + order.total, 0);
+    const afterClosingSales = afterClosingOrders.reduce((sum, order) => sum + order.total, 0);
     
-    // Process regular candy counter orders (pure concessions)
-    candyCounterOrders.forEach(order => {
-      const orderTotal = order.total;
-      candyCounterConcessionSales += orderTotal;
-      console.log(`Pure candy counter order ${order.id}: ${orderTotal.toFixed(2)} (user: ${order.userName})`);
-    });
-    
-    // Process after-closing orders (mixed tickets + concessions sold through candy counter)
-    afterClosingOrders.forEach(order => {
-      console.log(`Processing mixed after-closing order ${order.id} by ${order.userName}:`);
-      
-      let ticketSalesInOrder = 0;
-      let concessionSalesInOrder = 0;
-      
-      // Separate tickets from concessions within the same order
-      order.items.forEach(item => {
-        const itemTotal = item.product.price * item.quantity;
-        if (item.product.category === 'tickets') {
-          ticketSalesInOrder += itemTotal;
-          console.log(`  - Ticket: ${item.product.name} x${item.quantity} = ${itemTotal.toFixed(2)}`);
-        } else {
-          concessionSalesInOrder += itemTotal;
-          console.log(`  - Concession: ${item.product.name} x${item.quantity} = ${itemTotal.toFixed(2)}`);
-        }
-      });
-      
-      // Distribute card fees proportionally
-      const orderSubtotal = order.subtotal || (ticketSalesInOrder + concessionSalesInOrder);
-      const cardFee = order.creditCardFee || 0;
-      
-      if (orderSubtotal > 0) {
-        const ticketFeeShare = cardFee * (ticketSalesInOrder / orderSubtotal);
-        const concessionFeeShare = cardFee * (concessionSalesInOrder / orderSubtotal);
-        
-        // Add to respective totals (including proportional card fees)
-        afterClosingTicketSales += ticketSalesInOrder + ticketFeeShare;
-        candyCounterConcessionSales += concessionSalesInOrder + concessionFeeShare;
-        
-        console.log(`  - Ticket portion (with fees): ${(ticketSalesInOrder + ticketFeeShare).toFixed(2)}`);
-        console.log(`  - Concession portion (with fees): ${(concessionSalesInOrder + concessionFeeShare).toFixed(2)}`);
-      }
-    });
+    console.log(`=== SIMPLIFIED DEPARTMENT SALES CALCULATION ===`);
+    console.log(`Box Office Sales: ${boxOfficeSales.toFixed(2)} from ${boxOfficeOrders.length} orders`);
+    console.log(`Candy Counter Sales: ${candyCounterSales.toFixed(2)} from ${candyCounterOrders.length} orders`);
+    console.log(`After Closing Sales: ${afterClosingSales.toFixed(2)} from ${afterClosingOrders.length} orders`);
+    console.log(`Total Department Sales: ${(boxOfficeSales + candyCounterSales + afterClosingSales).toFixed(2)}`);
+    console.log(`Total Sales from Orders: ${totalSales.toFixed(2)}`);
+    console.log('===============================================');
     
     console.log(`=== ENHANCED SALES CALCULATION ===`);
     console.log(`Pure candy counter orders: ${candyCounterOrders.length}`);
     console.log(`Mixed after-closing orders: ${afterClosingOrders.length}`);
-    console.log(`Total candy counter sales (all concessions): ${candyCounterConcessionSales.toFixed(2)}`);
-    console.log(`Total after-closing sales (all tickets): ${afterClosingTicketSales.toFixed(2)}`);
+    console.log(`Total candy counter sales: ${candyCounterSales.toFixed(2)}`);
+    console.log(`Total after-closing sales: ${afterClosingSales.toFixed(2)}`);
     console.log('=======================================');
     
     const departmentBreakdown = {
       'box-office': {
-        sales: boxOfficeOrders.reduce((sum, order) => sum + order.total, 0),
+        sales: Math.round(boxOfficeSales * 100) / 100,
         orders: boxOfficeOrders.length,
       },
       'candy-counter': {
-        // Candy counter shows ALL concession sales (pure concessions + concessions from mixed orders)
-        sales: candyCounterConcessionSales,
-        orders: candyCounterOrders.length + (afterClosingOrders.filter(order => 
-          order.items.some(item => item.product.category !== 'tickets')
-        ).length), // Count mixed orders that have concessions
+        sales: Math.round(candyCounterSales * 100) / 100,
+        orders: candyCounterOrders.length,
       },
       'after-closing': {
-        // After-closing shows ALL ticket sales (from mixed orders sold through candy counter)
-        sales: afterClosingTicketSales,
-        orders: afterClosingOrders.filter(order => 
-          order.items.some(item => item.product.category === 'tickets')
-        ).length, // Count mixed orders that have tickets
+        sales: Math.round(afterClosingSales * 100) / 100,
+        orders: afterClosingOrders.length,
       },
     };
     
     console.log(`=== FINAL DEPARTMENT BREAKDOWN FOR ${dateStr} ===`);
     console.log(`Box Office: ${departmentBreakdown['box-office'].sales.toFixed(2)} (${departmentBreakdown['box-office'].orders} orders)`);
-    console.log(`Candy Counter (All Concessions): ${departmentBreakdown['candy-counter'].sales.toFixed(2)} (${departmentBreakdown['candy-counter'].orders} orders)`);
-    console.log(`After Closing (All Tickets): ${departmentBreakdown['after-closing'].sales.toFixed(2)} (${departmentBreakdown['after-closing'].orders} orders)`);
+    console.log(`Candy Counter: ${departmentBreakdown['candy-counter'].sales.toFixed(2)} (${departmentBreakdown['candy-counter'].orders} orders)`);
+    console.log(`After Closing: ${departmentBreakdown['after-closing'].sales.toFixed(2)} (${departmentBreakdown['after-closing'].orders} orders)`);
+    console.log(`Total Department Sales: ${(departmentBreakdown['box-office'].sales + departmentBreakdown['candy-counter'].sales + departmentBreakdown['after-closing'].sales).toFixed(2)}`);
+    console.log(`Total Sales from Orders: ${totalSales.toFixed(2)}`);
     console.log('===============================================');
 
-    console.log(`Department breakdown:`);
-    console.log(`  - Box Office: ${departmentBreakdown['box-office'].sales.toFixed(2)} (${departmentBreakdown['box-office'].orders} orders)`);
-    console.log(`  - Candy Counter (Concession Sales): ${departmentBreakdown['candy-counter'].sales.toFixed(2)} (${departmentBreakdown['candy-counter'].orders} orders)`);
-    console.log(`  - After Closing (Tickets Sold): ${departmentBreakdown['after-closing'].sales.toFixed(2)} (${departmentBreakdown['after-closing'].orders} orders)`);
-    console.log(`Total department sales: ${(departmentBreakdown['box-office'].sales + departmentBreakdown['candy-counter'].sales + departmentBreakdown['after-closing'].sales).toFixed(2)}`);
-    console.log(`Total sales from orders: ${totalSales.toFixed(2)}`);
-
-    // Calculate actual payment breakdown by department from orders with proper precision
+    // Calculate payment breakdown by department - simplified and accurate
     let boxOfficeCashSales = 0;
     let boxOfficeCardSales = 0;
     let candyCounterCashSales = 0;
     let candyCounterCardSales = 0;
+    let afterClosingCashSales = 0;
+    let afterClosingCardSales = 0;
     
-    console.log(`=== CALCULATING ACTUAL PAYMENT BREAKDOWN BY DEPARTMENT ===`);
+    console.log(`=== CALCULATING PAYMENT BREAKDOWN BY DEPARTMENT ===`);
     
-    // Box Office orders - direct calculation
+    // Box Office orders
     boxOfficeOrders.forEach(order => {
       if (order.paymentMethod === 'cash') {
         boxOfficeCashSales += order.total;
-        console.log(`Box Office Cash: ${order.total.toFixed(2)} from order ${order.id}`);
       } else if (order.paymentMethod === 'card') {
         boxOfficeCardSales += order.total;
-        console.log(`Box Office Card: ${order.total.toFixed(2)} from order ${order.id}`);
       }
     });
     
-    // Candy Counter orders (non-after-closing) - direct calculation
+    // Candy Counter orders
     candyCounterOrders.forEach(order => {
       if (order.paymentMethod === 'cash') {
         candyCounterCashSales += order.total;
-        console.log(`Candy Counter Cash: ${order.total.toFixed(2)} from order ${order.id}`);
       } else if (order.paymentMethod === 'card') {
         candyCounterCardSales += order.total;
-        console.log(`Candy Counter Card: ${order.total.toFixed(2)} from order ${order.id}`);
       }
     });
     
-    // After-closing orders - split by item category and payment method
+    // After Closing orders
     afterClosingOrders.forEach(order => {
-      console.log(`Processing after-closing order ${order.id} (${order.paymentMethod}):`);
-      
-      let ticketSalesInOrder = 0;
-      let concessionSalesInOrder = 0;
-      
-      // Calculate subtotals by category
-      order.items.forEach(item => {
-        const itemSubtotal = item.product.price * item.quantity;
-        if (item.product.category === 'tickets') {
-          ticketSalesInOrder += itemSubtotal;
-        } else {
-          concessionSalesInOrder += itemSubtotal;
-        }
-      });
-      
-      // Distribute total (including fees) proportionally
-      const orderSubtotal = ticketSalesInOrder + concessionSalesInOrder;
-      if (orderSubtotal > 0) {
-        const ticketPortion = (ticketSalesInOrder / orderSubtotal) * order.total;
-        const concessionPortion = (concessionSalesInOrder / orderSubtotal) * order.total;
-        
-        // Add to appropriate payment method totals
-        if (order.paymentMethod === 'cash') {
-          // Tickets go to after-closing, concessions go to candy counter
-          candyCounterCashSales += concessionPortion;
-          console.log(`  - Concession cash portion: ${concessionPortion.toFixed(2)} added to candy counter`);
-        } else if (order.paymentMethod === 'card') {
-          // Tickets go to after-closing, concessions go to candy counter
-          candyCounterCardSales += concessionPortion;
-          console.log(`  - Concession card portion: ${concessionPortion.toFixed(2)} added to candy counter`);
-        }
+      if (order.paymentMethod === 'cash') {
+        afterClosingCashSales += order.total;
+      } else if (order.paymentMethod === 'card') {
+        afterClosingCardSales += order.total;
       }
     });
     
@@ -666,15 +592,17 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log(`Box Office Card: ${boxOfficeCardSales.toFixed(2)}`);
     console.log(`Candy Counter Cash: ${candyCounterCashSales.toFixed(2)}`);
     console.log(`Candy Counter Card: ${candyCounterCardSales.toFixed(2)}`);
-    console.log(`Total Cash: ${(boxOfficeCashSales + candyCounterCashSales).toFixed(2)} (should match ${cashSales.toFixed(2)})`);
-    console.log(`Total Card: ${(boxOfficeCardSales + candyCounterCardSales).toFixed(2)} (should match ${cardSales.toFixed(2)})`);
+    console.log(`After Closing Cash: ${afterClosingCashSales.toFixed(2)}`);
+    console.log(`After Closing Card: ${afterClosingCardSales.toFixed(2)}`);
+    console.log(`Total Cash: ${(boxOfficeCashSales + candyCounterCashSales + afterClosingCashSales).toFixed(2)} (should match ${cashSales.toFixed(2)})`);
+    console.log(`Total Card: ${(boxOfficeCardSales + candyCounterCardSales + afterClosingCardSales).toFixed(2)} (should match ${cardSales.toFixed(2)})`);
     console.log('===============================================');
     
     const paymentBreakdown = {
       boxOfficeCash: Math.round(boxOfficeCashSales * 100) / 100,
       boxOfficeCard: Math.round(boxOfficeCardSales * 100) / 100,
-      candyCounterCash: Math.round(candyCounterCashSales * 100) / 100,
-      candyCounterCard: Math.round(candyCounterCardSales * 100) / 100,
+      candyCounterCash: Math.round((candyCounterCashSales + afterClosingCashSales) * 100) / 100,
+      candyCounterCard: Math.round((candyCounterCardSales + afterClosingCardSales) * 100) / 100,
     };
 
     // ENHANCED User breakdown - Ensure ALL accounts with sales are captured
