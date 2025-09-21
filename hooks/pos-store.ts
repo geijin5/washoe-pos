@@ -833,9 +833,16 @@ export const [POSProvider, usePOS] = createContextHook(() => {
   const saveNightlyReportAndReset = useCallback(async () => {
     try {
       const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
+      
+      // Adjust for 2am cutoff - if it's before 2am, consider it part of previous business day
+      const businessDate = new Date(now);
+      if (now.getHours() < 2) {
+        businessDate.setDate(businessDate.getDate() - 1);
+      }
+      
+      const year = businessDate.getFullYear();
+      const month = String(businessDate.getMonth() + 1).padStart(2, '0');
+      const day = String(businessDate.getDate()).padStart(2, '0');
       const today = `${year}-${month}-${day}`;
       
       // Check if we need to process new day (save previous day's report and reset)
@@ -1335,15 +1342,15 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       saveNightlyReportAndReset();
     }, 15 * 60 * 1000); // Every 15 minutes
     
-    // Check at midnight (or close to it) for immediate new day processing
-    const midnightCheck = setInterval(() => {
+    // Check at 2am (or close to it) for immediate new day processing
+    const twoAmCheck = setInterval(() => {
       const now = new Date();
       const hours = now.getHours();
       const minutes = now.getMinutes();
       
-      // Run between 12:00 AM and 12:05 AM
-      if (hours === 0 && minutes <= 5) {
-        console.log('Midnight detected - running immediate new day processing...');
+      // Run between 2:00 AM and 2:05 AM
+      if (hours === 2 && minutes <= 5) {
+        console.log('2am detected - running immediate new day processing...');
         saveNightlyReportAndReset();
         autoCleanOldReports();
       }
@@ -1355,21 +1362,34 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       clearTimeout(initTimeout);
       clearInterval(hourlyInterval);
       clearInterval(frequentInterval);
-      clearInterval(midnightCheck);
+      clearInterval(twoAmCheck);
       console.log('Daily management system cleanup complete');
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Stats
+  // Stats - using 2am cutoff for business day
   const stats = useMemo((): POSStats => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    
+    // Adjust for 2am cutoff - if it's before 2am, consider it part of previous business day
+    const businessDate = new Date(now);
+    if (now.getHours() < 2) {
+      businessDate.setDate(businessDate.getDate() - 1);
+    }
+    
+    const year = businessDate.getFullYear();
+    const month = String(businessDate.getMonth() + 1).padStart(2, '0');
+    const day = String(businessDate.getDate()).padStart(2, '0');
+    const todayBusinessDate = `${year}-${month}-${day}`;
 
     const todaysOrders = orders.filter(order => {
       const orderDate = new Date(order.timestamp);
-      orderDate.setHours(0, 0, 0, 0);
-      return orderDate.getTime() === today.getTime();
+      const orderYear = orderDate.getFullYear();
+      const orderMonth = String(orderDate.getMonth() + 1).padStart(2, '0');
+      const orderDay = String(orderDate.getDate()).padStart(2, '0');
+      const orderBusinessDate = `${orderYear}-${orderMonth}-${orderDay}`;
+      return orderBusinessDate === todayBusinessDate;
     });
 
     const totalSales = todaysOrders.reduce((sum, order) => sum + order.total, 0);
