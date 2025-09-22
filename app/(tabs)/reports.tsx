@@ -229,33 +229,57 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
           reportText += `\nMatinee: ${formatCurrency(report.showBreakdown['matinee'].sales)}`;
         }
         
+        reportText += `\n\nCASH SALES BY SHOW`;
+        if (report.showBreakdown['1st-show'].sales > 0) {
+          const showCashSales = report.showBreakdown['1st-show'].cashSales || 0;
+          reportText += `\n1st Show Cash: ${formatCurrency(showCashSales)}`;
+        }
+        if (report.showBreakdown['2nd-show'].sales > 0) {
+          const showCashSales = report.showBreakdown['2nd-show'].cashSales || 0;
+          reportText += `\n2nd Show Cash: ${formatCurrency(showCashSales)}`;
+        }
+        if (report.showBreakdown['nightly-show'].sales > 0) {
+          const showCashSales = report.showBreakdown['nightly-show'].cashSales || 0;
+          reportText += `\nNightly Show Cash: ${formatCurrency(showCashSales)}`;
+        }
+        if (report.showBreakdown['matinee'].sales > 0) {
+          const showCashSales = report.showBreakdown['matinee'].cashSales || 0;
+          reportText += `\nMatinee Cash: ${formatCurrency(showCashSales)}`;
+        }
+        
+        reportText += `\n\nCARD SALES BY SHOW`;
+        if (report.showBreakdown['1st-show'].sales > 0) {
+          const showCardSales = report.showBreakdown['1st-show'].cardSales || 0;
+          reportText += `\n1st Show Card: ${formatCurrency(showCardSales)}`;
+        }
+        if (report.showBreakdown['2nd-show'].sales > 0) {
+          const showCardSales = report.showBreakdown['2nd-show'].cardSales || 0;
+          reportText += `\n2nd Show Card: ${formatCurrency(showCardSales)}`;
+        }
+        if (report.showBreakdown['nightly-show'].sales > 0) {
+          const showCardSales = report.showBreakdown['nightly-show'].cardSales || 0;
+          reportText += `\nNightly Show Card: ${formatCurrency(showCardSales)}`;
+        }
+        if (report.showBreakdown['matinee'].sales > 0) {
+          const showCardSales = report.showBreakdown['matinee'].cardSales || 0;
+          reportText += `\nMatinee Card: ${formatCurrency(showCardSales)}`;
+        }
+        
         reportText += `\n\nCARD FEES BY SHOW`;
         if (report.showBreakdown['1st-show'].sales > 0) {
-          const cardRatio = report.totalSales > 0 ? report.cardSales / report.totalSales : 0;
-          const showCardSales = report.showBreakdown['1st-show'].sales * cardRatio;
-          const feeRate = report.cardSales > 0 ? report.creditCardFees / report.cardSales : 0;
-          const showCardFees = showCardSales * feeRate;
+          const showCardFees = report.showBreakdown['1st-show'].creditCardFees || 0;
           reportText += `\n1st Show Card Fees: ${formatCurrency(showCardFees)}`;
         }
         if (report.showBreakdown['2nd-show'].sales > 0) {
-          const cardRatio = report.totalSales > 0 ? report.cardSales / report.totalSales : 0;
-          const showCardSales = report.showBreakdown['2nd-show'].sales * cardRatio;
-          const feeRate = report.cardSales > 0 ? report.creditCardFees / report.cardSales : 0;
-          const showCardFees = showCardSales * feeRate;
+          const showCardFees = report.showBreakdown['2nd-show'].creditCardFees || 0;
           reportText += `\n2nd Show Card Fees: ${formatCurrency(showCardFees)}`;
         }
         if (report.showBreakdown['nightly-show'].sales > 0) {
-          const cardRatio = report.totalSales > 0 ? report.cardSales / report.totalSales : 0;
-          const showCardSales = report.showBreakdown['nightly-show'].sales * cardRatio;
-          const feeRate = report.cardSales > 0 ? report.creditCardFees / report.cardSales : 0;
-          const showCardFees = showCardSales * feeRate;
+          const showCardFees = report.showBreakdown['nightly-show'].creditCardFees || 0;
           reportText += `\nNightly Show Card Fees: ${formatCurrency(showCardFees)}`;
         }
         if (report.showBreakdown['matinee'].sales > 0) {
-          const cardRatio = report.totalSales > 0 ? report.cardSales / report.totalSales : 0;
-          const showCardSales = report.showBreakdown['matinee'].sales * cardRatio;
-          const feeRate = report.cardSales > 0 ? report.creditCardFees / report.cardSales : 0;
-          const showCardFees = showCardSales * feeRate;
+          const showCardFees = report.showBreakdown['matinee'].creditCardFees || 0;
           reportText += `\nMatinee Card Fees: ${formatCurrency(showCardFees)}`;
         }
       }
@@ -541,11 +565,10 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                     
                     {/* 1st Show */}
                     {currentReport.showBreakdown['1st-show'].sales > 0 && (() => {
-                      const cardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
-                      const showCashSales = currentReport.showBreakdown['1st-show'].sales * (1 - cardRatio);
-                      const showCardSales = currentReport.showBreakdown['1st-show'].sales * cardRatio;
-                      const feeRate = currentReport.cardSales > 0 ? currentReport.creditCardFees / currentReport.cardSales : 0;
-                      const showCardFees = showCardSales * feeRate;
+                      // Use actual cash/card sales from the show breakdown instead of proportional calculation
+                      const showCashSales = currentReport.showBreakdown['1st-show'].cashSales || 0;
+                      const showCardSales = currentReport.showBreakdown['1st-show'].cardSales || 0;
+                      const showCardFees = currentReport.showBreakdown['1st-show'].creditCardFees || 0;
                       return (
                         <View style={styles.showPaymentCard}>
                           <Text style={styles.showPaymentTitle}>1st Show</Text>
@@ -573,11 +596,10 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                     
                     {/* 2nd Show */}
                     {currentReport.showBreakdown['2nd-show'].sales > 0 && (() => {
-                      const cardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
-                      const showCashSales = currentReport.showBreakdown['2nd-show'].sales * (1 - cardRatio);
-                      const showCardSales = currentReport.showBreakdown['2nd-show'].sales * cardRatio;
-                      const feeRate = currentReport.cardSales > 0 ? currentReport.creditCardFees / currentReport.cardSales : 0;
-                      const showCardFees = showCardSales * feeRate;
+                      // Use actual cash/card sales from the show breakdown instead of proportional calculation
+                      const showCashSales = currentReport.showBreakdown['2nd-show'].cashSales || 0;
+                      const showCardSales = currentReport.showBreakdown['2nd-show'].cardSales || 0;
+                      const showCardFees = currentReport.showBreakdown['2nd-show'].creditCardFees || 0;
                       return (
                         <View style={styles.showPaymentCard}>
                           <Text style={styles.showPaymentTitle}>2nd Show</Text>
@@ -605,11 +627,10 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                     
                     {/* Nightly Show */}
                     {currentReport.showBreakdown['nightly-show'].sales > 0 && (() => {
-                      const cardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
-                      const showCashSales = currentReport.showBreakdown['nightly-show'].sales * (1 - cardRatio);
-                      const showCardSales = currentReport.showBreakdown['nightly-show'].sales * cardRatio;
-                      const feeRate = currentReport.cardSales > 0 ? currentReport.creditCardFees / currentReport.cardSales : 0;
-                      const showCardFees = showCardSales * feeRate;
+                      // Use actual cash/card sales from the show breakdown instead of proportional calculation
+                      const showCashSales = currentReport.showBreakdown['nightly-show'].cashSales || 0;
+                      const showCardSales = currentReport.showBreakdown['nightly-show'].cardSales || 0;
+                      const showCardFees = currentReport.showBreakdown['nightly-show'].creditCardFees || 0;
                       return (
                         <View style={styles.showPaymentCard}>
                           <Text style={styles.showPaymentTitle}>Nightly Show</Text>
@@ -637,11 +658,10 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                     
                     {/* Matinee */}
                     {currentReport.showBreakdown['matinee'].sales > 0 && (() => {
-                      const cardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
-                      const showCashSales = currentReport.showBreakdown['matinee'].sales * (1 - cardRatio);
-                      const showCardSales = currentReport.showBreakdown['matinee'].sales * cardRatio;
-                      const feeRate = currentReport.cardSales > 0 ? currentReport.creditCardFees / currentReport.cardSales : 0;
-                      const showCardFees = showCardSales * feeRate;
+                      // Use actual cash/card sales from the show breakdown instead of proportional calculation
+                      const showCashSales = currentReport.showBreakdown['matinee'].cashSales || 0;
+                      const showCardSales = currentReport.showBreakdown['matinee'].cardSales || 0;
+                      const showCardFees = currentReport.showBreakdown['matinee'].creditCardFees || 0;
                       return (
                         <View style={styles.showPaymentCard}>
                           <Text style={styles.showPaymentTitle}>Matinee</Text>

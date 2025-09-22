@@ -740,37 +740,60 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 10);
 
-    // Show breakdown - separate each show's sales and orders
+    // Show breakdown - separate each show's sales, orders, and payment methods
     const showBreakdown = {
       '1st-show': {
         sales: 0,
         orders: 0,
+        cashSales: 0,
+        cardSales: 0,
+        creditCardFees: 0,
       },
       '2nd-show': {
         sales: 0,
         orders: 0,
+        cashSales: 0,
+        cardSales: 0,
+        creditCardFees: 0,
       },
       'nightly-show': {
         sales: 0,
         orders: 0,
+        cashSales: 0,
+        cardSales: 0,
+        creditCardFees: 0,
       },
       'matinee': {
         sales: 0,
         orders: 0,
+        cashSales: 0,
+        cardSales: 0,
+        creditCardFees: 0,
       },
     };
     
     console.log(`=== CALCULATING SHOW BREAKDOWN ===`);
     console.log(`Processing ${boxOfficeOrders.length} box office orders for show breakdown`);
     
-    // Process box office orders by show type with enhanced precision
+    // Process box office orders by show type with enhanced precision and payment method tracking
     boxOfficeOrders.forEach(order => {
       if (order.showType && showBreakdown[order.showType]) {
         // Round to avoid floating point precision issues
         const orderTotal = Math.round(order.total * 100) / 100;
+        const orderCreditCardFee = Math.round((order.creditCardFee || 0) * 100) / 100;
+        
         showBreakdown[order.showType].sales = Math.round((showBreakdown[order.showType].sales + orderTotal) * 100) / 100;
         showBreakdown[order.showType].orders += 1;
-        console.log(`${order.showType}: +${orderTotal.toFixed(2)} (Order ${order.id}) - Running total: ${showBreakdown[order.showType].sales.toFixed(2)}`);
+        showBreakdown[order.showType].creditCardFees = Math.round((showBreakdown[order.showType].creditCardFees + orderCreditCardFee) * 100) / 100;
+        
+        // Track actual payment methods for each show
+        if (order.paymentMethod === 'cash') {
+          showBreakdown[order.showType].cashSales = Math.round((showBreakdown[order.showType].cashSales + orderTotal) * 100) / 100;
+        } else if (order.paymentMethod === 'card') {
+          showBreakdown[order.showType].cardSales = Math.round((showBreakdown[order.showType].cardSales + orderTotal) * 100) / 100;
+        }
+        
+        console.log(`${order.showType}: +${orderTotal.toFixed(2)} (${order.paymentMethod}) (Order ${order.id}) - Running total: ${showBreakdown[order.showType].sales.toFixed(2)}, Cash: ${showBreakdown[order.showType].cashSales.toFixed(2)}, Card: ${showBreakdown[order.showType].cardSales.toFixed(2)}`);
       } else {
         console.log(`Order ${order.id} missing showType or invalid showType: ${order.showType}`);
       }
@@ -785,11 +808,21 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log(`Box office orders total: ${boxOfficeTotal.toFixed(2)}`);
     console.log(`Difference: ${Math.abs(showBreakdownTotal - boxOfficeTotal).toFixed(2)}`);
     
-    console.log(`=== FINAL SHOW BREAKDOWN ===`);
-    console.log(`1st Show: ${showBreakdown['1st-show'].sales.toFixed(2)} (${showBreakdown['1st-show'].orders} orders)`);
-    console.log(`2nd Show: ${showBreakdown['2nd-show'].sales.toFixed(2)} (${showBreakdown['2nd-show'].orders} orders)`);
-    console.log(`Nightly Show: ${showBreakdown['nightly-show'].sales.toFixed(2)} (${showBreakdown['nightly-show'].orders} orders)`);
-    console.log(`Matinee: ${showBreakdown['matinee'].sales.toFixed(2)} (${showBreakdown['matinee'].orders} orders)`);
+    console.log(`=== FINAL SHOW BREAKDOWN WITH PAYMENT METHODS ===`);
+    console.log(`1st Show: ${showBreakdown['1st-show'].sales.toFixed(2)} (${showBreakdown['1st-show'].orders} orders) - Cash: ${showBreakdown['1st-show'].cashSales.toFixed(2)}, Card: ${showBreakdown['1st-show'].cardSales.toFixed(2)}, Fees: ${showBreakdown['1st-show'].creditCardFees.toFixed(2)}`);
+    console.log(`2nd Show: ${showBreakdown['2nd-show'].sales.toFixed(2)} (${showBreakdown['2nd-show'].orders} orders) - Cash: ${showBreakdown['2nd-show'].cashSales.toFixed(2)}, Card: ${showBreakdown['2nd-show'].cardSales.toFixed(2)}, Fees: ${showBreakdown['2nd-show'].creditCardFees.toFixed(2)}`);
+    console.log(`Nightly Show: ${showBreakdown['nightly-show'].sales.toFixed(2)} (${showBreakdown['nightly-show'].orders} orders) - Cash: ${showBreakdown['nightly-show'].cashSales.toFixed(2)}, Card: ${showBreakdown['nightly-show'].cardSales.toFixed(2)}, Fees: ${showBreakdown['nightly-show'].creditCardFees.toFixed(2)}`);
+    console.log(`Matinee: ${showBreakdown['matinee'].sales.toFixed(2)} (${showBreakdown['matinee'].orders} orders) - Cash: ${showBreakdown['matinee'].cashSales.toFixed(2)}, Card: ${showBreakdown['matinee'].cardSales.toFixed(2)}, Fees: ${showBreakdown['matinee'].creditCardFees.toFixed(2)}`);
+    
+    // Verify show payment method totals match overall totals
+    const totalShowCash = Object.values(showBreakdown).reduce((sum, show) => sum + show.cashSales, 0);
+    const totalShowCard = Object.values(showBreakdown).reduce((sum, show) => sum + show.cardSales, 0);
+    const totalShowFees = Object.values(showBreakdown).reduce((sum, show) => sum + show.creditCardFees, 0);
+    
+    console.log(`Show totals verification:`);
+    console.log(`  Total show cash: ${totalShowCash.toFixed(2)} (should match box office cash: ${boxOfficeCashSales.toFixed(2)})`);
+    console.log(`  Total show card: ${totalShowCard.toFixed(2)} (should match box office card: ${boxOfficeCardSales.toFixed(2)})`);
+    console.log(`  Total show fees: ${totalShowFees.toFixed(2)} (should match box office fees portion)`);
     console.log('=======================================');
 
     console.log(`=== LOCAL REPORT SUMMARY ===`);

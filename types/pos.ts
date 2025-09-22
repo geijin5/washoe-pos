@@ -91,18 +91,30 @@ export interface NightlyReport {
     '1st-show': {
       sales: number;
       orders: number;
+      cashSales: number;
+      cardSales: number;
+      creditCardFees: number;
     };
     '2nd-show': {
       sales: number;
       orders: number;
+      cashSales: number;
+      cardSales: number;
+      creditCardFees: number;
     };
     'nightly-show': {
       sales: number;
       orders: number;
+      cashSales: number;
+      cardSales: number;
+      creditCardFees: number;
     };
     'matinee': {
       sales: number;
       orders: number;
+      cashSales: number;
+      cardSales: number;
+      creditCardFees: number;
     };
   };
   paymentBreakdown?: {
