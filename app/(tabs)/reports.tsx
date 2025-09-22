@@ -106,13 +106,17 @@ export default function ReportsScreen() {
     let boxOfficeCardSales = 0;
     let candyCounterCashSales = 0;
     let candyCounterCardSales = 0;
+    let afterClosingCashSales = 0;
+    let afterClosingCardSales = 0;
     
     // Get actual payment breakdown from the report's payment calculations
     if (report.paymentBreakdown) {
       boxOfficeCashSales = report.paymentBreakdown.boxOfficeCash || 0;
       boxOfficeCardSales = report.paymentBreakdown.boxOfficeCard || 0;
-      candyCounterCashSales = (report.paymentBreakdown.candyCounterCash || 0) + (report.paymentBreakdown.afterClosingCash || 0);
-      candyCounterCardSales = (report.paymentBreakdown.candyCounterCard || 0) + (report.paymentBreakdown.afterClosingCard || 0);
+      candyCounterCashSales = report.paymentBreakdown.candyCounterCash || 0;
+      candyCounterCardSales = report.paymentBreakdown.candyCounterCard || 0;
+      afterClosingCashSales = report.paymentBreakdown.afterClosingCash || 0;
+      afterClosingCardSales = report.paymentBreakdown.afterClosingCard || 0;
     } else {
       // Fallback to proportional calculation if detailed breakdown not available
       if (report.totalSales > 0) {
@@ -123,6 +127,8 @@ export default function ReportsScreen() {
         boxOfficeCardSales = boxOfficeTotal * overallCardRatio;
         candyCounterCashSales = candyCounterTotal * overallCashRatio;
         candyCounterCardSales = candyCounterTotal * overallCardRatio;
+        afterClosingCashSales = afterClosingTotal * overallCashRatio;
+        afterClosingCardSales = afterClosingTotal * overallCardRatio;
       }
     }
     
@@ -135,24 +141,11 @@ export default function ReportsScreen() {
     let afterClosingCardFees = 0;
     
     // Get actual card fees from the report's order data
-    if (report.paymentBreakdown && report.cardSales > 0 && totalFees > 0) {
+    if (report.cardSales > 0 && totalFees > 0) {
       // Calculate fees based on actual card sales by department
-      const feeRate = totalFees / report.cardSales;
-      boxOfficeCardFees = (report.paymentBreakdown.boxOfficeCard || 0) * feeRate;
-      candyCounterCardFees = (report.paymentBreakdown.candyCounterCard || 0) * feeRate;
-      
-      // After closing fees are already included in candy counter card fees
-      // since after closing orders go through candy counter department
-      afterClosingCardFees = 0; // Don't double count
-    } else if (report.cardSales > 0 && totalFees > 0) {
-      // Fallback calculation using proportional method
       const feeRate = totalFees / report.cardSales;
       boxOfficeCardFees = boxOfficeCardSales * feeRate;
       candyCounterCardFees = candyCounterCardSales * feeRate;
-      
-      // After closing card fees (these are part of candy counter operations)
-      const overallCardRatio = report.totalSales > 0 ? report.cardSales / report.totalSales : 0;
-      const afterClosingCardSales = afterClosingTotal * overallCardRatio;
       afterClosingCardFees = afterClosingCardSales * feeRate;
     }
     
@@ -178,18 +171,18 @@ Card Sales: ${formatCurrency(report.cardSales)}
 
 BOX OFFICE CASH SECTION
 Box Office Cash: ${formatCurrency(boxOfficeCashSales)}
-Candy Counter Cash: ${formatCurrency(candyCounterCashSales)}
-
-
-BOX OFFICE CASH SECTION
-Box Office Cash: ${formatCurrency(boxOfficeCashSales)}
 Box Office Card: ${formatCurrency(boxOfficeCardSales)}
 Box Office Card Fees: ${formatCurrency(boxOfficeCardFees)}
 
 CANDY COUNTER CASH SECTION
 Candy Counter Cash: ${formatCurrency(candyCounterCashSales)}
 Candy Counter Card: ${formatCurrency(candyCounterCardSales)}
-Candy Counter Card Fees: ${formatCurrency(totalCandyCounterFees)}
+Candy Counter Card Fees: ${formatCurrency(candyCounterCardFees)}
+
+AFTER CLOSING CASH SECTION
+After Closing Cash: ${formatCurrency(afterClosingCashSales)}
+After Closing Card: ${formatCurrency(afterClosingCardSales)}
+After Closing Card Fees: ${formatCurrency(afterClosingCardFees)}
 
 FEES SECTION
 Box Office Fees: ${formatCurrency(boxOfficeCardFees)}
@@ -749,13 +742,12 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
           {/* Candy Counter Payment Breakdown */}
           {currentReport.departmentBreakdown['candy-counter'] && currentReport.departmentBreakdown['candy-counter'].sales > 0 && (() => {
             const candyCounterTotal = currentReport.departmentBreakdown['candy-counter'].sales;
-            const afterClosingTotal = currentReport.departmentBreakdown['after-closing']?.sales || 0;
             
             // Use actual payment breakdown if available, otherwise calculate proportionally
             let candyCounterCashSales, candyCounterCardSales;
             if (currentReport.paymentBreakdown) {
-              candyCounterCashSales = (currentReport.paymentBreakdown.candyCounterCash || 0) + (currentReport.paymentBreakdown.afterClosingCash || 0);
-              candyCounterCardSales = (currentReport.paymentBreakdown.candyCounterCard || 0) + (currentReport.paymentBreakdown.afterClosingCard || 0);
+              candyCounterCashSales = currentReport.paymentBreakdown.candyCounterCash || 0;
+              candyCounterCardSales = currentReport.paymentBreakdown.candyCounterCard || 0;
             } else {
               const overallCashRatio = currentReport.totalSales > 0 ? currentReport.cashSales / currentReport.totalSales : 0;
               const overallCardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
@@ -763,9 +755,9 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
               candyCounterCardSales = candyCounterTotal * overallCardRatio;
             }
             
-            // Calculate candy counter card fees (already includes after closing since we combined them above)
+            // Calculate candy counter card fees
             const feeRate = currentReport.cardSales > 0 ? currentReport.creditCardFees / currentReport.cardSales : 0;
-            const totalCandyCounterFees = candyCounterCardSales * feeRate;
+            const candyCounterCardFees = candyCounterCardSales * feeRate;
             
             return (
               <View style={styles.section}>
@@ -780,8 +772,49 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                     <Text style={styles.paymentValue}>${formatCurrency(candyCounterCardSales)}</Text>
                   </View>
                   <View style={styles.paymentRow}>
-                    <Text style={[styles.paymentLabel, { fontWeight: 'bold' }]}>Candy Counter Card Fees:</Text>
-                    <Text style={[styles.paymentValue, { fontWeight: 'bold', color: TheatreColors.error }]}>${formatCurrency(totalCandyCounterFees)}</Text>
+                    <Text style={styles.paymentLabel}>Candy Counter Card Fees:</Text>
+                    <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(candyCounterCardFees)}</Text>
+                  </View>
+                </View>
+              </View>
+            );
+          })()}
+
+          {/* After Closing Payment Breakdown */}
+          {currentReport.departmentBreakdown['after-closing'] && currentReport.departmentBreakdown['after-closing'].sales > 0 && (() => {
+            const afterClosingTotal = currentReport.departmentBreakdown['after-closing'].sales;
+            
+            // Use actual payment breakdown if available, otherwise calculate proportionally
+            let afterClosingCashSales, afterClosingCardSales;
+            if (currentReport.paymentBreakdown) {
+              afterClosingCashSales = currentReport.paymentBreakdown.afterClosingCash || 0;
+              afterClosingCardSales = currentReport.paymentBreakdown.afterClosingCard || 0;
+            } else {
+              const overallCashRatio = currentReport.totalSales > 0 ? currentReport.cashSales / currentReport.totalSales : 0;
+              const overallCardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
+              afterClosingCashSales = afterClosingTotal * overallCashRatio;
+              afterClosingCardSales = afterClosingTotal * overallCardRatio;
+            }
+            
+            // Calculate after closing card fees
+            const feeRate = currentReport.cardSales > 0 ? currentReport.creditCardFees / currentReport.cardSales : 0;
+            const afterClosingCardFees = afterClosingCardSales * feeRate;
+            
+            return (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>After Closing Payment Breakdown</Text>
+                <View style={styles.paymentBreakdown}>
+                  <View style={styles.paymentRow}>
+                    <Text style={styles.paymentLabel}>After Closing Cash:</Text>
+                    <Text style={[styles.paymentValue, { color: TheatreColors.success }]}>${formatCurrency(afterClosingCashSales)}</Text>
+                  </View>
+                  <View style={styles.paymentRow}>
+                    <Text style={styles.paymentLabel}>After Closing Card:</Text>
+                    <Text style={styles.paymentValue}>${formatCurrency(afterClosingCardSales)}</Text>
+                  </View>
+                  <View style={styles.paymentRow}>
+                    <Text style={styles.paymentLabel}>After Closing Card Fees:</Text>
+                    <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(afterClosingCardFees)}</Text>
                   </View>
                 </View>
               </View>
@@ -838,7 +871,13 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                     {candyCounterTotal > 0 && (
                       <View style={styles.paymentRow}>
                         <Text style={styles.paymentLabel}>Candy Counter Fees:</Text>
-                        <Text style={styles.paymentValue}>${formatCurrency(candyCounterCardFees + afterClosingCardFees)}</Text>
+                        <Text style={styles.paymentValue}>${formatCurrency(candyCounterCardFees)}</Text>
+                      </View>
+                    )}
+                    {afterClosingTotal > 0 && (
+                      <View style={styles.paymentRow}>
+                        <Text style={styles.paymentLabel}>After Closing Fees:</Text>
+                        <Text style={styles.paymentValue}>${formatCurrency(afterClosingCardFees)}</Text>
                       </View>
                     )}
                     <View style={styles.paymentRow}>

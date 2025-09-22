@@ -657,8 +657,10 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     const paymentBreakdown = {
       boxOfficeCash: Math.round(boxOfficeCashSales * 100) / 100,
       boxOfficeCard: Math.round(boxOfficeCardSales * 100) / 100,
-      candyCounterCash: Math.round((candyCounterCashSales + afterClosingCashSales) * 100) / 100,
-      candyCounterCard: Math.round((candyCounterCardSales + afterClosingCardSales) * 100) / 100,
+      candyCounterCash: Math.round(candyCounterCashSales * 100) / 100,
+      candyCounterCard: Math.round(candyCounterCardSales * 100) / 100,
+      afterClosingCash: Math.round(afterClosingCashSales * 100) / 100,
+      afterClosingCard: Math.round(afterClosingCardSales * 100) / 100,
     };
 
     // ENHANCED User breakdown - Ensure ALL accounts with sales are captured
