@@ -531,10 +531,10 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log(`  - After Closing orders (tickets): ${afterClosingOrders.length}`);
     console.log('===============================================');
     
-    // Calculate department sales properly - include ALL sales from each department
-    const boxOfficeSales = boxOfficeOrders.reduce((sum, order) => sum + order.total, 0);
-    const candyCounterSales = candyCounterOrders.reduce((sum, order) => sum + order.total, 0);
-    const afterClosingSales = afterClosingOrders.reduce((sum, order) => sum + order.total, 0);
+    // Calculate department sales properly - include ALL sales from each department with proper rounding
+    const boxOfficeSales = Math.round(boxOfficeOrders.reduce((sum, order) => sum + order.total, 0) * 100) / 100;
+    const candyCounterSales = Math.round(candyCounterOrders.reduce((sum, order) => sum + order.total, 0) * 100) / 100;
+    const afterClosingSales = Math.round(afterClosingOrders.reduce((sum, order) => sum + order.total, 0) * 100) / 100;
     
     console.log(`=== SIMPLIFIED DEPARTMENT SALES CALCULATION ===`);
     console.log(`Box Office Sales: ${boxOfficeSales.toFixed(2)} from ${boxOfficeOrders.length} orders`);
@@ -544,12 +544,14 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log(`Total Department Sales: ${departmentTotal.toFixed(2)}`);
     console.log(`Total Sales from Orders: ${totalSales.toFixed(2)}`);
     
-    // Verify department totals match overall total
-    if (Math.abs(departmentTotal - totalSales) > 0.01) {
+    // Verify department totals match overall total with proper tolerance
+    const departmentDifference = Math.abs(departmentTotal - totalSales);
+    if (departmentDifference > 0.02) { // Allow for small rounding differences
       console.error(`MISMATCH: Department totals (${departmentTotal.toFixed(2)}) don't match order totals (${totalSales.toFixed(2)})`);
-      console.error(`Difference: ${Math.abs(departmentTotal - totalSales).toFixed(2)}`);
+      console.error(`Difference: ${departmentDifference.toFixed(4)}`);
     } else {
-      console.log(`✓ VERIFIED: Department totals match order totals exactly`);
+      console.log(`✓ VERIFIED: Department totals match order totals within acceptable tolerance`);
+      console.log(`  Difference: ${departmentDifference.toFixed(4)}`);
     }
     console.log('===============================================');
     
@@ -583,15 +585,18 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log(`Total Department Sales: ${finalDepartmentTotal.toFixed(2)}`);
     console.log(`Total Sales from Orders: ${totalSales.toFixed(2)}`);
     
-    // Final verification that everything adds up correctly
-    if (Math.abs(finalDepartmentTotal - totalSales) > 0.01) {
+    // Final verification that everything adds up correctly with proper tolerance
+    const finalDifference = Math.abs(finalDepartmentTotal - totalSales);
+    if (finalDifference > 0.02) { // Allow for small rounding differences
       console.error(`FINAL MISMATCH: Department breakdown (${finalDepartmentTotal.toFixed(2)}) doesn't match total sales (${totalSales.toFixed(2)})`);
+      console.error(`Final difference: ${finalDifference.toFixed(4)}`);
     } else {
-      console.log(`✓ FINAL VERIFICATION: All calculations match perfectly`);
+      console.log(`✓ FINAL VERIFICATION: All calculations match within acceptable tolerance`);
+      console.log(`  Final difference: ${finalDifference.toFixed(4)}`);
     }
     console.log('===============================================');
 
-    // Calculate payment breakdown by department - simplified and accurate
+    // Calculate payment breakdown by department - simplified and accurate with proper rounding
     let boxOfficeCashSales = 0;
     let boxOfficeCardSales = 0;
     let candyCounterCashSales = 0;
@@ -601,32 +606,43 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     
     console.log(`=== CALCULATING PAYMENT BREAKDOWN BY DEPARTMENT ===`);
     
-    // Box Office orders
+    // Box Office orders with proper rounding
     boxOfficeOrders.forEach(order => {
+      const orderTotal = Math.round(order.total * 100) / 100;
       if (order.paymentMethod === 'cash') {
-        boxOfficeCashSales += order.total;
+        boxOfficeCashSales += orderTotal;
       } else if (order.paymentMethod === 'card') {
-        boxOfficeCardSales += order.total;
+        boxOfficeCardSales += orderTotal;
       }
     });
     
-    // Candy Counter orders
+    // Candy Counter orders with proper rounding
     candyCounterOrders.forEach(order => {
+      const orderTotal = Math.round(order.total * 100) / 100;
       if (order.paymentMethod === 'cash') {
-        candyCounterCashSales += order.total;
+        candyCounterCashSales += orderTotal;
       } else if (order.paymentMethod === 'card') {
-        candyCounterCardSales += order.total;
+        candyCounterCardSales += orderTotal;
       }
     });
     
-    // After Closing orders
+    // After Closing orders with proper rounding
     afterClosingOrders.forEach(order => {
+      const orderTotal = Math.round(order.total * 100) / 100;
       if (order.paymentMethod === 'cash') {
-        afterClosingCashSales += order.total;
+        afterClosingCashSales += orderTotal;
       } else if (order.paymentMethod === 'card') {
-        afterClosingCardSales += order.total;
+        afterClosingCardSales += orderTotal;
       }
     });
+    
+    // Apply final rounding to prevent floating point precision issues
+    boxOfficeCashSales = Math.round(boxOfficeCashSales * 100) / 100;
+    boxOfficeCardSales = Math.round(boxOfficeCardSales * 100) / 100;
+    candyCounterCashSales = Math.round(candyCounterCashSales * 100) / 100;
+    candyCounterCardSales = Math.round(candyCounterCardSales * 100) / 100;
+    afterClosingCashSales = Math.round(afterClosingCashSales * 100) / 100;
+    afterClosingCardSales = Math.round(afterClosingCardSales * 100) / 100;
     
     console.log(`=== FINAL PAYMENT BREAKDOWN BY DEPARTMENT ===`);
     console.log(`Box Office Cash: ${boxOfficeCashSales.toFixed(2)}`);
@@ -642,15 +658,19 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log(`Total Cash: ${totalCashByDept.toFixed(2)} (should match ${cashSales.toFixed(2)})`);
     console.log(`Total Card: ${totalCardByDept.toFixed(2)} (should match ${cardSales.toFixed(2)})`);
     
-    // Verify payment method totals match
-    if (Math.abs(totalCashByDept - cashSales) > 0.01) {
-      console.error(`CASH MISMATCH: Department cash (${totalCashByDept.toFixed(2)}) doesn't match total cash (${cashSales.toFixed(2)})`);
+    // Verify payment method totals match with proper tolerance for rounding
+    const cashDifference = Math.abs(totalCashByDept - cashSales);
+    const cardDifference = Math.abs(totalCardByDept - cardSales);
+    
+    if (cashDifference > 0.02) { // Allow for small rounding differences
+      console.error(`CASH MISMATCH: Department cash (${totalCashByDept.toFixed(2)}) doesn't match total cash (${cashSales.toFixed(2)}) - Difference: ${cashDifference.toFixed(2)}`);
     }
-    if (Math.abs(totalCardByDept - cardSales) > 0.01) {
-      console.error(`CARD MISMATCH: Department card (${totalCardByDept.toFixed(2)}) doesn't match total card (${cardSales.toFixed(2)})`);
+    if (cardDifference > 0.02) { // Allow for small rounding differences
+      console.error(`CARD MISMATCH: Department card (${totalCardByDept.toFixed(2)}) doesn't match total card (${cardSales.toFixed(2)}) - Difference: ${cardDifference.toFixed(2)}`);
     }
-    if (Math.abs(totalCashByDept - cashSales) <= 0.01 && Math.abs(totalCardByDept - cardSales) <= 0.01) {
-      console.log(`✓ PAYMENT VERIFICATION: All payment method totals match perfectly`);
+    if (cashDifference <= 0.02 && cardDifference <= 0.02) {
+      console.log(`✓ PAYMENT VERIFICATION: All payment method totals match within acceptable tolerance`);
+      console.log(`  Cash difference: ${cashDifference.toFixed(4)}, Card difference: ${cardDifference.toFixed(4)}`);
     }
     console.log('===============================================');
     
@@ -801,14 +821,21 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       }
     });
     
-    // Verify show breakdown totals match box office totals
-    const showBreakdownTotal = Object.values(showBreakdown).reduce((sum, show) => sum + show.sales, 0);
-    const boxOfficeTotal = boxOfficeOrders.reduce((sum, order) => sum + order.total, 0);
+    // Verify show breakdown totals match box office totals with proper rounding
+    const showBreakdownTotal = Math.round(Object.values(showBreakdown).reduce((sum, show) => sum + show.sales, 0) * 100) / 100;
+    const boxOfficeTotal = Math.round(boxOfficeOrders.reduce((sum, order) => sum + order.total, 0) * 100) / 100;
     
     console.log(`=== SHOW BREAKDOWN VERIFICATION ===`);
     console.log(`Show breakdown total: ${showBreakdownTotal.toFixed(2)}`);
     console.log(`Box office orders total: ${boxOfficeTotal.toFixed(2)}`);
-    console.log(`Difference: ${Math.abs(showBreakdownTotal - boxOfficeTotal).toFixed(2)}`);
+    const showDifference = Math.abs(showBreakdownTotal - boxOfficeTotal);
+    console.log(`Difference: ${showDifference.toFixed(4)}`);
+    
+    if (showDifference > 0.02) {
+      console.error(`SHOW BREAKDOWN MISMATCH: Show totals don't match box office totals`);
+    } else {
+      console.log(`✓ SHOW VERIFICATION: Show breakdown matches box office totals within tolerance`);
+    }
     
     console.log(`=== FINAL SHOW BREAKDOWN WITH PAYMENT METHODS ===`);
     console.log(`1st Show: ${showBreakdown['1st-show'].sales.toFixed(2)} (${showBreakdown['1st-show'].orders} orders) - Cash: ${showBreakdown['1st-show'].cashSales.toFixed(2)}, Card: ${showBreakdown['1st-show'].cardSales.toFixed(2)}, Fees: ${showBreakdown['1st-show'].creditCardFees.toFixed(2)}`);
@@ -816,21 +843,66 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log(`Nightly Show: ${showBreakdown['nightly-show'].sales.toFixed(2)} (${showBreakdown['nightly-show'].orders} orders) - Cash: ${showBreakdown['nightly-show'].cashSales.toFixed(2)}, Card: ${showBreakdown['nightly-show'].cardSales.toFixed(2)}, Fees: ${showBreakdown['nightly-show'].creditCardFees.toFixed(2)}`);
     console.log(`Matinee: ${showBreakdown['matinee'].sales.toFixed(2)} (${showBreakdown['matinee'].orders} orders) - Cash: ${showBreakdown['matinee'].cashSales.toFixed(2)}, Card: ${showBreakdown['matinee'].cardSales.toFixed(2)}, Fees: ${showBreakdown['matinee'].creditCardFees.toFixed(2)}`);
     
-    // Verify show payment method totals match overall totals
-    const totalShowCash = Object.values(showBreakdown).reduce((sum, show) => sum + show.cashSales, 0);
-    const totalShowCard = Object.values(showBreakdown).reduce((sum, show) => sum + show.cardSales, 0);
-    const totalShowFees = Object.values(showBreakdown).reduce((sum, show) => sum + show.creditCardFees, 0);
+    // Verify show payment method totals match overall totals with proper rounding
+    const totalShowCash = Math.round(Object.values(showBreakdown).reduce((sum, show) => sum + show.cashSales, 0) * 100) / 100;
+    const totalShowCard = Math.round(Object.values(showBreakdown).reduce((sum, show) => sum + show.cardSales, 0) * 100) / 100;
+    const totalShowFees = Math.round(Object.values(showBreakdown).reduce((sum, show) => sum + show.creditCardFees, 0) * 100) / 100;
     
     console.log(`Show totals verification:`);
     console.log(`  Total show cash: ${totalShowCash.toFixed(2)} (should match box office cash: ${boxOfficeCashSales.toFixed(2)})`);
     console.log(`  Total show card: ${totalShowCard.toFixed(2)} (should match box office card: ${boxOfficeCardSales.toFixed(2)})`);
     console.log(`  Total show fees: ${totalShowFees.toFixed(2)} (should match box office fees portion)`);
+    
+    // Verify show cash and card totals match box office totals
+    const showCashDifference = Math.abs(totalShowCash - boxOfficeCashSales);
+    const showCardDifference = Math.abs(totalShowCard - boxOfficeCardSales);
+    
+    if (showCashDifference > 0.02) {
+      console.error(`SHOW CASH MISMATCH: Show cash (${totalShowCash.toFixed(2)}) doesn't match box office cash (${boxOfficeCashSales.toFixed(2)})`);
+    }
+    if (showCardDifference > 0.02) {
+      console.error(`SHOW CARD MISMATCH: Show card (${totalShowCard.toFixed(2)}) doesn't match box office card (${boxOfficeCardSales.toFixed(2)})`);
+    }
+    if (showCashDifference <= 0.02 && showCardDifference <= 0.02) {
+      console.log(`✓ SHOW PAYMENT VERIFICATION: Show payment totals match box office within tolerance`);
+    }
     console.log('=======================================');
 
+    // Final comprehensive verification of all calculations
+    console.log(`=== COMPREHENSIVE CALCULATION VERIFICATION ===`);
+    
+    // Verify all totals match
+    const verificationResults = {
+      totalSalesMatch: Math.abs((cashSales + cardSales) - totalSales) <= 0.02,
+      departmentTotalsMatch: Math.abs((boxOfficeSales + candyCounterSales + afterClosingSales) - totalSales) <= 0.02,
+      paymentBreakdownMatch: Math.abs((boxOfficeCashSales + candyCounterCashSales + afterClosingCashSales) - cashSales) <= 0.02 &&
+                             Math.abs((boxOfficeCardSales + candyCounterCardSales + afterClosingCardSales) - cardSales) <= 0.02,
+      showBreakdownMatch: boxOfficeOrders.length === 0 || Math.abs(Object.values(showBreakdown).reduce((sum, show) => sum + show.sales, 0) - boxOfficeSales) <= 0.02
+    };
+    
+    console.log(`Verification Results:`);
+    console.log(`  ✓ Total Sales (Cash + Card = Total): ${verificationResults.totalSalesMatch ? 'PASS' : 'FAIL'}`);
+    console.log(`    Cash: ${cashSales.toFixed(2)} + Card: ${cardSales.toFixed(2)} = ${(cashSales + cardSales).toFixed(2)} vs Total: ${totalSales.toFixed(2)}`);
+    console.log(`  ✓ Department Totals: ${verificationResults.departmentTotalsMatch ? 'PASS' : 'FAIL'}`);
+    console.log(`    Box Office: ${boxOfficeSales.toFixed(2)} + Candy Counter: ${candyCounterSales.toFixed(2)} + After Closing: ${afterClosingSales.toFixed(2)} = ${(boxOfficeSales + candyCounterSales + afterClosingSales).toFixed(2)} vs Total: ${totalSales.toFixed(2)}`);
+    console.log(`  ✓ Payment Breakdown: ${verificationResults.paymentBreakdownMatch ? 'PASS' : 'FAIL'}`);
+    console.log(`    Dept Cash: ${(boxOfficeCashSales + candyCounterCashSales + afterClosingCashSales).toFixed(2)} vs Total Cash: ${cashSales.toFixed(2)}`);
+    console.log(`    Dept Card: ${(boxOfficeCardSales + candyCounterCardSales + afterClosingCardSales).toFixed(2)} vs Total Card: ${cardSales.toFixed(2)}`);
+    console.log(`  ✓ Show Breakdown: ${verificationResults.showBreakdownMatch ? 'PASS' : 'FAIL'}`);
+    
+    const allVerificationsPassed = Object.values(verificationResults).every(result => result);
+    console.log(`\n🎯 OVERALL VERIFICATION: ${allVerificationsPassed ? '✅ ALL CALCULATIONS ACCURATE' : '❌ CALCULATION ERRORS DETECTED'}`);
+    
+    if (!allVerificationsPassed) {
+      console.error(`\n⚠️  CALCULATION ISSUES DETECTED - Please review the above verification results`);
+      console.error(`This may indicate rounding errors or calculation logic issues that need to be addressed.`);
+    }
+    
     console.log(`=== LOCAL REPORT SUMMARY ===`);
     console.log(`Total Sales: ${totalSales.toFixed(2)}`);
     console.log(`Total Orders: ${dayOrders.length}`);
     console.log(`User Accounts: ${userBreakdown.length}`);
+    console.log(`Calculation Accuracy: ${allVerificationsPassed ? 'Verified ✅' : 'Issues Detected ❌'}`);
     console.log(`=== END LOCAL SUMMARY ===`);
 
     return {
