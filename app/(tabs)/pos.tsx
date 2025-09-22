@@ -16,7 +16,7 @@ import { CategoryFilter } from '@/components/CategoryFilter';
 import { TheatreColors } from '@/constants/theatre-colors';
 import { TabletUtils } from '@/constants/tablet-utils';
 import { useTabletLayout } from '@/hooks/use-tablet-layout';
-import { Search, ShoppingCart, X, Ticket, Candy, Smartphone, TabletSmartphone } from 'lucide-react-native';
+import { Search, ShoppingCart, X, Ticket, Candy, Smartphone, TabletSmartphone, Grid3X3, List } from 'lucide-react-native';
 import { useAuth } from '@/hooks/auth-store';
 import { PaymentScreen } from '@/components/PaymentScreen';
 import { OrderSummaryModal } from '@/components/OrderSummaryModal';
@@ -60,6 +60,7 @@ export default function POSScreen() {
   const [showOrderSummary, setShowOrderSummary] = useState(false);
   const [completedOrder, setCompletedOrder] = useState<any>(null);
   const [selectedShow, setSelectedShow] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // All hooks must be called before any conditional returns
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -389,21 +390,38 @@ export default function POSScreen() {
             styles.mainContent,
             styles.tabletRightSideContent
           ]}>
-            {/* Search Bar */}
-            <View style={styles.searchContainer}>
-              <Search size={20} color={TheatreColors.textSecondary} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Product Name"
-                placeholderTextColor={TheatreColors.textSecondary}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <X size={20} color={TheatreColors.textSecondary} />
+            {/* Search Bar and View Toggle */}
+            <View style={styles.searchAndToggleContainer}>
+              <View style={styles.searchContainer}>
+                <Search size={20} color={TheatreColors.textSecondary} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Product Name"
+                  placeholderTextColor={TheatreColors.textSecondary}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <X size={20} color={TheatreColors.textSecondary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+              
+              <View style={styles.viewToggle}>
+                <TouchableOpacity
+                  style={[styles.viewToggleButton, viewMode === 'list' && styles.viewToggleButtonActive]}
+                  onPress={() => setViewMode('list')}
+                >
+                  <List size={20} color={viewMode === 'list' ? TheatreColors.background : TheatreColors.textSecondary} />
                 </TouchableOpacity>
-              )}
+                <TouchableOpacity
+                  style={[styles.viewToggleButton, viewMode === 'grid' && styles.viewToggleButtonActive]}
+                  onPress={() => setViewMode('grid')}
+                >
+                  <Grid3X3 size={20} color={viewMode === 'grid' ? TheatreColors.background : TheatreColors.textSecondary} />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Foldable Device Status Indicator */}
@@ -456,30 +474,46 @@ export default function POSScreen() {
               </View>
             )}
 
-            {/* Products Grid */}
+            {/* Products Grid/List */}
             <FlatList
               data={departmentFilteredProducts}
               keyExtractor={item => item.id}
-              numColumns={getProductGridColumns()}
-              key={`${getProductGridColumns()}-${isLandscape}-${deviceType}`}
-              columnWrapperStyle={getProductGridColumns() > 1 ? styles.row : undefined}
+              numColumns={viewMode === 'grid' ? getProductGridColumns() : 1}
+              key={`${viewMode}-${getProductGridColumns()}-${isLandscape}-${deviceType}`}
+              columnWrapperStyle={viewMode === 'grid' && getProductGridColumns() > 1 ? styles.row : undefined}
               contentContainerStyle={[
-                styles.productList,
+                viewMode === 'grid' ? styles.productList : styles.productListView,
                 { paddingBottom: TabletUtils.getResponsivePadding(160, 180, 200, 220) }
               ]}
               renderItem={({ item }) => (
-                <View style={[
-                  styles.productWrapper, 
-                  { 
-                    width: `${(100 / getProductGridColumns()) - 2}%`,
-                    maxWidth: TabletUtils.getResponsivePadding(200, 220, 240, 260)
-                  }
-                ]}>
-                  <ProductCard
-                    product={item}
+                viewMode === 'grid' ? (
+                  <View style={[
+                    styles.productWrapper, 
+                    { 
+                      width: `${(100 / getProductGridColumns()) - 2}%`,
+                      maxWidth: TabletUtils.getResponsivePadding(200, 220, 240, 260)
+                    }
+                  ]}>
+                    <ProductCard
+                      product={item}
+                      onPress={() => handleAddToCart(item)}
+                    />
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.productListItem}
                     onPress={() => handleAddToCart(item)}
-                  />
-                </View>
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.productListContent}>
+                      <View style={styles.productListInfo}>
+                        <Text style={styles.productListName}>{item.name}</Text>
+                        <Text style={styles.productListCategory}>{item.category}</Text>
+                      </View>
+                      <Text style={styles.productListPrice}>${item.price.toFixed(2)}</Text>
+                    </View>
+                  </TouchableOpacity>
+                )
               )}
               ListEmptyComponent={
                 <View style={styles.emptyState}>
@@ -503,21 +537,38 @@ export default function POSScreen() {
         <View style={styles.container}>
           {/* Main POS View */}
           <View style={styles.mainContent}>
-            {/* Search Bar */}
-            <View style={styles.searchContainer}>
-              <Search size={20} color={TheatreColors.textSecondary} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search products..."
-                placeholderTextColor={TheatreColors.textSecondary}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <X size={20} color={TheatreColors.textSecondary} />
+            {/* Search Bar and View Toggle */}
+            <View style={styles.searchAndToggleContainer}>
+              <View style={styles.searchContainer}>
+                <Search size={20} color={TheatreColors.textSecondary} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search products..."
+                  placeholderTextColor={TheatreColors.textSecondary}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <X size={20} color={TheatreColors.textSecondary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+              
+              <View style={styles.viewToggle}>
+                <TouchableOpacity
+                  style={[styles.viewToggleButton, viewMode === 'list' && styles.viewToggleButtonActive]}
+                  onPress={() => setViewMode('list')}
+                >
+                  <List size={20} color={viewMode === 'list' ? TheatreColors.background : TheatreColors.textSecondary} />
                 </TouchableOpacity>
-              )}
+                <TouchableOpacity
+                  style={[styles.viewToggleButton, viewMode === 'grid' && styles.viewToggleButtonActive]}
+                  onPress={() => setViewMode('grid')}
+                >
+                  <Grid3X3 size={20} color={viewMode === 'grid' ? TheatreColors.background : TheatreColors.textSecondary} />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Category Filter */}
@@ -560,30 +611,46 @@ export default function POSScreen() {
               </View>
             )}
 
-            {/* Products Grid */}
+            {/* Products Grid/List */}
             <FlatList
               data={departmentFilteredProducts}
               keyExtractor={item => item.id}
-              numColumns={TabletUtils.getProductGridColumns()}
-              key={`${TabletUtils.getProductGridColumns()}-${isLandscape}-${TabletUtils.getDeviceType()}`}
-              columnWrapperStyle={TabletUtils.getProductGridColumns() > 1 ? styles.row : undefined}
+              numColumns={viewMode === 'grid' ? TabletUtils.getProductGridColumns() : 1}
+              key={`${viewMode}-${TabletUtils.getProductGridColumns()}-${isLandscape}-${TabletUtils.getDeviceType()}`}
+              columnWrapperStyle={viewMode === 'grid' && TabletUtils.getProductGridColumns() > 1 ? styles.row : undefined}
               contentContainerStyle={[
-                styles.productList,
+                viewMode === 'grid' ? styles.productList : styles.productListView,
                 { paddingBottom: TabletUtils.getResponsivePadding(100, 120, 140) }
               ]}
               renderItem={({ item }) => (
-                <View style={[
-                  styles.productWrapper, 
-                  { 
-                    width: `${(100 / TabletUtils.getProductGridColumns()) - 2}%`,
-                    maxWidth: TabletUtils.getResponsivePadding(200, 250, 300)
-                  }
-                ]}>
-                  <ProductCard
-                    product={item}
+                viewMode === 'grid' ? (
+                  <View style={[
+                    styles.productWrapper, 
+                    { 
+                      width: `${(100 / TabletUtils.getProductGridColumns()) - 2}%`,
+                      maxWidth: TabletUtils.getResponsivePadding(200, 250, 300)
+                    }
+                  ]}>
+                    <ProductCard
+                      product={item}
+                      onPress={() => handleAddToCart(item)}
+                    />
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.productListItem}
                     onPress={() => handleAddToCart(item)}
-                  />
-                </View>
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.productListContent}>
+                      <View style={styles.productListInfo}>
+                        <Text style={styles.productListName}>{item.name}</Text>
+                        <Text style={styles.productListCategory}>{item.category}</Text>
+                      </View>
+                      <Text style={styles.productListPrice}>${item.price.toFixed(2)}</Text>
+                    </View>
+                  </TouchableOpacity>
+                )
               )}
               ListEmptyComponent={
                 <View style={styles.emptyState}>
@@ -708,15 +775,35 @@ const styles = StyleSheet.create({
   mainContent: {
     flex: 1,
   },
+  searchAndToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    margin: TabletUtils.getResponsivePadding(16, 24),
+    gap: 12,
+  },
   searchContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: TheatreColors.surface,
-    margin: TabletUtils.getResponsivePadding(16, 24),
     paddingHorizontal: TabletUtils.getResponsivePadding(16, 20),
     paddingVertical: TabletUtils.getResponsivePadding(12, 16),
     borderRadius: 12,
     gap: 12,
+  },
+  viewToggle: {
+    flexDirection: 'row',
+    backgroundColor: TheatreColors.surface,
+    borderRadius: 8,
+    padding: 2,
+  },
+  viewToggleButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  viewToggleButtonActive: {
+    backgroundColor: TheatreColors.accent,
   },
   searchInput: {
     flex: 1,
@@ -726,6 +813,43 @@ const styles = StyleSheet.create({
 
   productList: {
     paddingHorizontal: TabletUtils.getResponsivePadding(16, 24, 32),
+  },
+  productListView: {
+    paddingHorizontal: TabletUtils.getResponsivePadding(16, 24, 32),
+  },
+  productListItem: {
+    backgroundColor: TheatreColors.surface,
+    borderRadius: 12,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  productListContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  productListInfo: {
+    flex: 1,
+  },
+  productListName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: TheatreColors.text,
+    marginBottom: 4,
+  },
+  productListCategory: {
+    fontSize: 12,
+    color: TheatreColors.textSecondary,
+    textTransform: 'capitalize',
+  },
+  productListPrice: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: TheatreColors.accent,
   },
   row: {
     justifyContent: 'space-between',
