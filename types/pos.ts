@@ -122,6 +122,8 @@ export interface NightlyReport {
     boxOfficeCard: number;
     candyCounterCash: number;
     candyCounterCard: number;
+    afterClosingCash: number;
+    afterClosingCard: number;
   };
   userBreakdown: {
     userId: string;

@@ -111,8 +111,8 @@ export default function ReportsScreen() {
     if (report.paymentBreakdown) {
       boxOfficeCashSales = report.paymentBreakdown.boxOfficeCash || 0;
       boxOfficeCardSales = report.paymentBreakdown.boxOfficeCard || 0;
-      candyCounterCashSales = report.paymentBreakdown.candyCounterCash || 0;
-      candyCounterCardSales = report.paymentBreakdown.candyCounterCard || 0;
+      candyCounterCashSales = (report.paymentBreakdown.candyCounterCash || 0) + (report.paymentBreakdown.afterClosingCash || 0);
+      candyCounterCardSales = (report.paymentBreakdown.candyCounterCard || 0) + (report.paymentBreakdown.afterClosingCard || 0);
     } else {
       // Fallback to proportional calculation if detailed breakdown not available
       if (report.totalSales > 0) {
@@ -129,24 +129,34 @@ export default function ReportsScreen() {
     // Use actual card fees from the report (already calculated correctly from orders)
     const totalFees = report.creditCardFees;
     
-    // Calculate proportional fees by department based on card sales
+    // Calculate actual card fees from orders by department
     let boxOfficeCardFees = 0;
     let candyCounterCardFees = 0;
     let afterClosingCardFees = 0;
     
-    if (report.cardSales > 0 && totalFees > 0) {
-      // Calculate fees proportionally based on card sales by department
+    // Get actual card fees from the report's order data
+    if (report.paymentBreakdown && report.cardSales > 0 && totalFees > 0) {
+      // Calculate fees based on actual card sales by department
+      const feeRate = totalFees / report.cardSales;
+      boxOfficeCardFees = (report.paymentBreakdown.boxOfficeCard || 0) * feeRate;
+      candyCounterCardFees = (report.paymentBreakdown.candyCounterCard || 0) * feeRate;
+      
+      // After closing fees are already included in candy counter card fees
+      // since after closing orders go through candy counter department
+      afterClosingCardFees = 0; // Don't double count
+    } else if (report.cardSales > 0 && totalFees > 0) {
+      // Fallback calculation using proportional method
       const feeRate = totalFees / report.cardSales;
       boxOfficeCardFees = boxOfficeCardSales * feeRate;
       candyCounterCardFees = candyCounterCardSales * feeRate;
       
-      // After closing fees from the card portion of after closing sales
+      // After closing card fees (these are part of candy counter operations)
       const overallCardRatio = report.totalSales > 0 ? report.cardSales / report.totalSales : 0;
       const afterClosingCardSales = afterClosingTotal * overallCardRatio;
       afterClosingCardFees = afterClosingCardSales * feeRate;
     }
     
-    // Total candy counter fees includes both candy counter and after closing fees
+    // Total candy counter fees includes candy counter + after closing fees
     const totalCandyCounterFees = candyCounterCardFees + afterClosingCardFees;
     
 
@@ -711,6 +721,7 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
               boxOfficeCardSales = boxOfficeTotal * overallCardRatio;
             }
             
+            // Calculate box office card fees from actual card sales
             const feeRate = currentReport.cardSales > 0 ? currentReport.creditCardFees / currentReport.cardSales : 0;
             const boxOfficeCardFees = boxOfficeCardSales * feeRate;
             
@@ -743,8 +754,8 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
             // Use actual payment breakdown if available, otherwise calculate proportionally
             let candyCounterCashSales, candyCounterCardSales;
             if (currentReport.paymentBreakdown) {
-              candyCounterCashSales = currentReport.paymentBreakdown.candyCounterCash || 0;
-              candyCounterCardSales = currentReport.paymentBreakdown.candyCounterCard || 0;
+              candyCounterCashSales = (currentReport.paymentBreakdown.candyCounterCash || 0) + (currentReport.paymentBreakdown.afterClosingCash || 0);
+              candyCounterCardSales = (currentReport.paymentBreakdown.candyCounterCard || 0) + (currentReport.paymentBreakdown.afterClosingCard || 0);
             } else {
               const overallCashRatio = currentReport.totalSales > 0 ? currentReport.cashSales / currentReport.totalSales : 0;
               const overallCardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
@@ -752,15 +763,9 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
               candyCounterCardSales = candyCounterTotal * overallCardRatio;
             }
             
-            // Calculate card fees for candy counter concessions only
+            // Calculate candy counter card fees (already includes after closing since we combined them above)
             const feeRate = currentReport.cardSales > 0 ? currentReport.creditCardFees / currentReport.cardSales : 0;
-            const candyCounterCardFees = candyCounterCardSales * feeRate;
-            // Calculate after closing card fees from the card portion only
-            const overallCardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
-            const afterClosingCardSales = afterClosingTotal * overallCardRatio;
-            const afterClosingCardFees = afterClosingCardSales * feeRate;
-            // Total candy counter fees includes both candy counter and after closing
-            const totalCandyCounterFees = candyCounterCardFees + afterClosingCardFees;
+            const totalCandyCounterFees = candyCounterCardSales * feeRate;
             
             return (
               <View style={styles.section}>
@@ -802,16 +807,11 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                   // Use actual payment breakdown for accurate fee calculation
                   const boxOfficeCardSales = currentReport.paymentBreakdown.boxOfficeCard || 0;
                   const candyCounterCardSales = currentReport.paymentBreakdown.candyCounterCard || 0;
+                  const afterClosingCardSales = currentReport.paymentBreakdown.afterClosingCard || 0;
                   
                   boxOfficeCardFees = boxOfficeCardSales * feeRate;
                   candyCounterCardFees = candyCounterCardSales * feeRate;
-                  
-                  // After closing fees are calculated from the after closing card sales
-                  if (afterClosingTotal > 0) {
-                    const overallCardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
-                    const afterClosingCardSales = afterClosingTotal * overallCardRatio;
-                    afterClosingCardFees = afterClosingCardSales * feeRate;
-                  }
+                  afterClosingCardFees = afterClosingCardSales * feeRate;
                 } else {
                   // Fallback calculation using proportional method
                   const overallCardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
