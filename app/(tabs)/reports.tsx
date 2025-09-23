@@ -140,14 +140,27 @@ export default function ReportsScreen() {
     let candyCounterCardFees = 0;
     let afterClosingCardFees = 0;
     
-    // Get actual card fees from the report's order data
+    // Get actual card fees from the report's order data with enhanced logging
+    console.log(`=== REPORT TEXT CARD FEES CALCULATION ===`);
+    console.log(`Report card sales: ${report.cardSales.toFixed(2)}`);
+    console.log(`Report total fees: ${totalFees.toFixed(2)}`);
+    console.log(`After closing cash sales: ${afterClosingCashSales.toFixed(2)}`);
+    console.log(`After closing card sales: ${afterClosingCardSales.toFixed(2)}`);
+    console.log(`After closing total: ${afterClosingTotal.toFixed(2)}`);
+    
     if (report.cardSales > 0 && totalFees > 0) {
       // Calculate fees based on actual card sales by department
       const feeRate = totalFees / report.cardSales;
       boxOfficeCardFees = boxOfficeCardSales * feeRate;
       candyCounterCardFees = candyCounterCardSales * feeRate;
       afterClosingCardFees = afterClosingCardSales * feeRate;
+      
+      console.log(`Fee rate: ${(feeRate * 100).toFixed(4)}%`);
+      console.log(`Calculated after closing card fees: ${afterClosingCardFees.toFixed(2)}`);
+    } else {
+      console.log(`No card fees to calculate (cardSales: ${report.cardSales}, totalFees: ${totalFees})`);
     }
+    console.log(`=== END REPORT TEXT CARD FEES ===`);
     
     // Total candy counter fees includes candy counter + after closing fees
     const totalCandyCounterFees = candyCounterCardFees + afterClosingCardFees;
@@ -932,9 +945,17 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
               afterClosingCardSales = afterClosingTotal * overallCardRatio;
             }
             
-            // Calculate after closing card fees
+            // Calculate after closing card fees with enhanced logging
             const feeRate = currentReport.cardSales > 0 ? currentReport.creditCardFees / currentReport.cardSales : 0;
             const afterClosingCardFees = afterClosingCardSales * feeRate;
+            
+            console.log(`=== AFTER CLOSING CARD FEES CALCULATION (REPORTS) ===`);
+            console.log(`Total card sales: ${currentReport.cardSales.toFixed(2)}`);
+            console.log(`Total credit card fees: ${currentReport.creditCardFees.toFixed(2)}`);
+            console.log(`Fee rate: ${(feeRate * 100).toFixed(4)}%`);
+            console.log(`After closing card sales: ${afterClosingCardSales.toFixed(2)}`);
+            console.log(`After closing card fees: ${afterClosingCardFees.toFixed(2)}`);
+            console.log(`=== END AFTER CLOSING FEES (REPORTS) ===`);
             
             // Calculate manager sales for after closing payment breakdown
             const dayOrders = orders.filter((order: any) => {

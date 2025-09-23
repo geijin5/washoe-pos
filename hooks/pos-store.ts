@@ -631,15 +631,31 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       }
     });
     
-    // After Closing orders with proper rounding
-    afterClosingOrders.forEach(order => {
+    // After Closing orders with proper rounding and enhanced logging
+    console.log(`=== PROCESSING AFTER CLOSING ORDERS ===`);
+    console.log(`Found ${afterClosingOrders.length} after closing orders`);
+    afterClosingOrders.forEach((order, index) => {
       const orderTotal = Math.round(order.total * 100) / 100;
+      console.log(`After Closing Order ${index + 1}: ID=${order.id}, Total=${orderTotal.toFixed(2)}, Payment=${order.paymentMethod}, User=${order.userName}`);
       if (order.paymentMethod === 'cash') {
         afterClosingCashSales += orderTotal;
+        console.log(`  Added ${orderTotal.toFixed(2)} to after closing cash (running total: ${(afterClosingCashSales).toFixed(2)})`);
       } else if (order.paymentMethod === 'card') {
         afterClosingCardSales += orderTotal;
+        console.log(`  Added ${orderTotal.toFixed(2)} to after closing card (running total: ${(afterClosingCardSales).toFixed(2)})`);
       }
     });
+    console.log(`After Closing Cash Total: ${afterClosingCashSales.toFixed(2)}`);
+    console.log(`After Closing Card Total: ${afterClosingCardSales.toFixed(2)}`);
+    console.log(`After Closing Combined Total: ${(afterClosingCashSales + afterClosingCardSales).toFixed(2)}`);
+    console.log(`Expected After Closing Total: ${afterClosingSales.toFixed(2)}`);
+    const afterClosingPaymentDiff = Math.abs((afterClosingCashSales + afterClosingCardSales) - afterClosingSales);
+    if (afterClosingPaymentDiff > 0.01) {
+      console.error(`AFTER CLOSING PAYMENT MISMATCH: Cash+Card (${(afterClosingCashSales + afterClosingCardSales).toFixed(2)}) != Total (${afterClosingSales.toFixed(2)}) - Diff: ${afterClosingPaymentDiff.toFixed(4)}`);
+    } else {
+      console.log(`✓ After closing payment breakdown verified`);
+    }
+    console.log(`=== END AFTER CLOSING PROCESSING ===`);
     
     // Apply final rounding to prevent floating point precision issues
     boxOfficeCashSales = Math.round(boxOfficeCashSales * 100) / 100;
