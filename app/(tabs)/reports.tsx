@@ -32,7 +32,7 @@ import { NightlyReport } from '@/types/pos';
 
 
 export default function ReportsScreen() {
-  const { generateNightlyReport, clearNightlyReport, generateAggregatedReport } = usePOS();
+  const { generateNightlyReport, clearNightlyReport, generateAggregatedReport, orders } = usePOS();
   const { user, getDailyLogins } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isGenerating, setIsGenerating] = useState(false);
@@ -295,6 +295,42 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
     console.log(`After Closing (All Tickets): ${(report.departmentBreakdown['after-closing']?.sales || 0).toFixed(2)} (${report.departmentBreakdown['after-closing']?.orders || 0} orders)`);
     console.log('============================================');
 
+    // Calculate manager sales by department from actual orders
+    const managerSalesByDept = {
+      candyCounter: 0,
+      afterClosing: 0,
+      boxOffice: 0
+    };
+    
+    // Get all orders for this date to calculate manager department breakdown
+    const reportDateObj = new Date(report.date + 'T12:00:00.000Z');
+    const dayOrders = orders.filter((order: any) => {
+      const orderDate = new Date(order.timestamp);
+      let orderBusinessDate = new Date(orderDate);
+      if (orderDate.getHours() < 2) {
+        orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
+      }
+      const orderYear = orderBusinessDate.getFullYear();
+      const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
+      const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
+      const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
+      return orderDateStr === report.date;
+    });
+    
+    // Calculate manager sales by department
+    dayOrders.forEach((order: any) => {
+      const userRole = order.userRole?.toLowerCase();
+      if (userRole === 'manager' || userRole === 'admin') {
+        if (order.department === 'candy-counter' && !order.isAfterClosing) {
+          managerSalesByDept.candyCounter += order.total;
+        } else if (order.department === 'candy-counter' && order.isAfterClosing) {
+          managerSalesByDept.afterClosing += order.total;
+        } else if (order.department === 'box-office') {
+          managerSalesByDept.boxOffice += order.total;
+        }
+      }
+    });
+    
     // Separate managers and other staff - Enhanced to ensure managers show up properly
     const managers = report.userBreakdown.filter(user => {
       const role = user.userRole?.toLowerCase();
@@ -313,6 +349,7 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
     });
     console.log(`Managers found: ${managers.length}`);
     console.log(`Other staff found: ${otherStaff.length}`);
+    console.log(`Manager sales by department:`, managerSalesByDept);
     console.log('================================');
     
     reportText += `\n\nMANAGER SALES PERFORMANCE`;
@@ -321,6 +358,22 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
         const roleText = userReport.userRole ? ` (${userReport.userRole})` : '';
         return `${userReport.userName}${roleText}: ${formatCurrency(userReport.sales)} (${userReport.orders} orders)`;
       }).join('\n')}`;
+      
+      // Add manager sales breakdown by department
+      reportText += `\n\nMANAGER SALES BY DEPARTMENT`;
+      if (managerSalesByDept.candyCounter > 0) {
+        reportText += `\nCandy Counter Sales: ${formatCurrency(managerSalesByDept.candyCounter)}`;
+      }
+      if (managerSalesByDept.afterClosing > 0) {
+        reportText += `\nAfter Closing Sales: ${formatCurrency(managerSalesByDept.afterClosing)}`;
+      }
+      if (managerSalesByDept.boxOffice > 0) {
+        reportText += `\nBox Office Sales: ${formatCurrency(managerSalesByDept.boxOffice)}`;
+      }
+      const totalManagerSales = managerSalesByDept.candyCounter + managerSalesByDept.afterClosing + managerSalesByDept.boxOffice;
+      if (totalManagerSales > 0) {
+        reportText += `\nTotal Manager Sales: ${formatCurrency(totalManagerSales)}`;
+      }
     } else {
       reportText += `\nNo manager sales activity recorded for this date`;
     }
@@ -342,7 +395,7 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
     reportText += `\n\nUSERS LOGGED IN\n${loginsText}\n\nReport generated on ${new Date().toLocaleString()}`;
     
     return reportText;
-  }, [user, getDailyLogins, formatDate, formatCurrency]);
+  }, [user, getDailyLogins, formatDate, formatCurrency, orders]);
 
 
 
@@ -1047,6 +1100,107 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
               );
             })()}
           </View>
+
+          {/* Manager Sales by Department */}
+          {(() => {
+            const managers = currentReport.userBreakdown?.filter(user => {
+              const role = user.userRole?.toLowerCase();
+              return role === 'manager' || role === 'admin';
+            }) || [];
+            
+            if (managers.length === 0) return null;
+            
+            // Calculate manager sales by department from actual orders
+            const managerSalesByDept = {
+              candyCounter: 0,
+              afterClosing: 0,
+              boxOffice: 0
+            };
+            
+            // Get all orders for this date to calculate manager department breakdown
+            const dayOrders = orders.filter((order: any) => {
+              const orderDate = new Date(order.timestamp);
+              let orderBusinessDate = new Date(orderDate);
+              if (orderDate.getHours() < 2) {
+                orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
+              }
+              const orderYear = orderBusinessDate.getFullYear();
+              const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
+              const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
+              const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
+              return orderDateStr === currentReport.date;
+            });
+            
+            // Calculate manager sales by department
+            dayOrders.forEach((order: any) => {
+              const userRole = order.userRole?.toLowerCase();
+              if (userRole === 'manager' || userRole === 'admin') {
+                if (order.department === 'candy-counter' && !order.isAfterClosing) {
+                  managerSalesByDept.candyCounter += order.total;
+                } else if (order.department === 'candy-counter' && order.isAfterClosing) {
+                  managerSalesByDept.afterClosing += order.total;
+                } else if (order.department === 'box-office') {
+                  managerSalesByDept.boxOffice += order.total;
+                }
+              }
+            });
+            
+            const totalManagerSales = managerSalesByDept.candyCounter + managerSalesByDept.afterClosing + managerSalesByDept.boxOffice;
+            
+            if (totalManagerSales === 0) return null;
+            
+            return (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Manager Sales by Department</Text>
+                <Text style={styles.sectionDescription}>Manager sales breakdown by candy counter and after closing</Text>
+                <View style={styles.departmentGrid}>
+                  {managerSalesByDept.candyCounter > 0 && (
+                    <View style={styles.departmentCard}>
+                      <Text style={styles.departmentName}>Candy Counter</Text>
+                      <Text style={styles.departmentSubtitle}>Manager Sales</Text>
+                      <Text style={styles.departmentSales}>
+                        ${formatCurrency(managerSalesByDept.candyCounter)}
+                      </Text>
+                      <Text style={styles.departmentOrders}>
+                        Manager concession sales
+                      </Text>
+                    </View>
+                  )}
+                  
+                  {managerSalesByDept.afterClosing > 0 && (
+                    <View style={styles.departmentCard}>
+                      <Text style={styles.departmentName}>After Closing</Text>
+                      <Text style={styles.departmentSubtitle}>Manager Sales</Text>
+                      <Text style={styles.departmentSales}>
+                        ${formatCurrency(managerSalesByDept.afterClosing)}
+                      </Text>
+                      <Text style={styles.departmentOrders}>
+                        Manager ticket sales
+                      </Text>
+                    </View>
+                  )}
+                  
+                  {managerSalesByDept.boxOffice > 0 && (
+                    <View style={styles.departmentCard}>
+                      <Text style={styles.departmentName}>Box Office</Text>
+                      <Text style={styles.departmentSubtitle}>Manager Sales</Text>
+                      <Text style={styles.departmentSales}>
+                        ${formatCurrency(managerSalesByDept.boxOffice)}
+                      </Text>
+                      <Text style={styles.departmentOrders}>
+                        Manager box office sales
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                
+                <View style={[styles.paymentRow, { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: TheatreColors.surfaceLight }]}>
+                  <Text style={[styles.paymentLabel, { fontWeight: 'bold', fontSize: 16 }]}>Total Manager Sales:</Text>
+                  <Text style={[styles.paymentValue, { fontWeight: 'bold', color: TheatreColors.accent, fontSize: 18 }]}>${formatCurrency(totalManagerSales)}</Text>
+                </View>
+              </View>
+            );
+          })()}
 
           {/* Other Staff Performance */}
           <View style={styles.section}>
