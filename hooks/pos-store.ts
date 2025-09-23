@@ -410,30 +410,26 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     
     const name = userName.toLowerCase().trim();
     
-    // Filter out common test/demo/default account patterns but be more lenient
+    // Only filter out very obvious test/demo patterns - be very inclusive for real users
     const invalidPatterns = [
       'test user',
-      'demo user',
+      'demo user', 
       'default user',
       'guest user',
       'sample user',
       'example user',
       'temp user',
-      'temporary user',
-      'system user',
-      'pos user',
-      'staff member',
-      'test account',
-      'demo account'
+      'temporary user'
     ];
     
-    // Check if name exactly matches invalid patterns (more specific matching)
-    const hasInvalidPattern = invalidPatterns.some(pattern => name === pattern || name.includes(pattern));
+    // Only exclude if name exactly matches invalid patterns (very strict matching)
+    const hasInvalidPattern = invalidPatterns.some(pattern => name === pattern);
     
-    // Check if name is too generic (single character, numbers only, etc.)
-    const isGeneric = name.length < 1 || /^\d+$/.test(name);
+    // Only exclude if name is completely empty or just numbers
+    const isGeneric = name.length === 0 || /^\d+$/.test(name);
     
-    // Allow real names including admin, manager, cashier roles - be more permissive
+    // Accept ALL other names including admin, manager, cashier, staff names, etc.
+    // This ensures all legitimate user accounts show up in reports
     const isRealName = name.length >= 1 && !hasInvalidPattern && !isGeneric;
     
     console.log(`User validation: "${userName}" -> ${isRealName ? 'VALID' : 'INVALID'} (hasInvalidPattern: ${hasInvalidPattern}, isGeneric: ${isGeneric})`);
