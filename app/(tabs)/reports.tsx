@@ -1103,7 +1103,7 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                           </View>
                         </View>
                       );
-                    })()}
+                    )}
                   </View>
                 );
               }
