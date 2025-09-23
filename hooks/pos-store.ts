@@ -545,6 +545,26 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     const candyCounterOrders = dayOrders.filter(o => o.department === 'candy-counter' && !o.isAfterClosing);
     const afterClosingOrders = dayOrders.filter(o => o.department === 'candy-counter' && o.isAfterClosing);
     
+    console.log(`=== MIXED ORDER FILTERING DEBUG ===`);
+    console.log(`Total day orders: ${dayOrders.length}`);
+    console.log(`Candy counter orders (non-after-closing): ${candyCounterOrders.length}`);
+    console.log(`After closing orders: ${afterClosingOrders.length}`);
+    
+    // Log each candy counter order to see if it has mixed items
+    candyCounterOrders.forEach(order => {
+      const ticketItems = order.items.filter(item => item.product.category === 'tickets');
+      const nonTicketItems = order.items.filter(item => item.product.category !== 'tickets');
+      const orderType = ticketItems.length > 0 && nonTicketItems.length > 0 ? 'MIXED' : 
+                       ticketItems.length > 0 ? 'TICKETS_ONLY' : 'CONCESSIONS_ONLY';
+      console.log(`  Order ${order.id} (${order.userName}): ${orderType} - ${ticketItems.length} tickets, ${nonTicketItems.length} concessions`);
+      if (orderType === 'MIXED') {
+        console.log(`    🔄 MIXED ORDER DETECTED: This should be split between departments`);
+        console.log(`    Ticket items: ${ticketItems.map(i => i.product.name).join(', ')}`);
+        console.log(`    Concession items: ${nonTicketItems.map(i => i.product.name).join(', ')}`);
+      }
+    });
+    console.log(`=== END MIXED ORDER FILTERING DEBUG ===`);
+    
     console.log(`Found ${candyCounterOrders.length} candy counter orders to analyze for mixed content`);
     
     // Process mixed candy counter orders - split by item type
