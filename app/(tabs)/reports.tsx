@@ -621,6 +621,268 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
             </Text>
           </View>
 
+          {/* Department Performance Overview - Top Section */}
+          <View style={[styles.section, (isTrainingMode || settings.trainingMode) && styles.trainingSection]}>
+            <Text style={styles.sectionTitle}>
+              📊 Department Performance Overview{(isTrainingMode || settings.trainingMode) ? ' 🎓 (Training)' : ''}
+            </Text>
+            <Text style={styles.sectionDescription}>
+              Complete sales breakdown by department showing all staff contributions
+              {(isTrainingMode || settings.trainingMode) ? ' (Training Data)' : ''}
+            </Text>
+            
+            {/* Department Performance Grid */}
+            <View style={styles.departmentPerformanceGrid}>
+              {/* Box Office Performance */}
+              {currentReport.departmentBreakdown['box-office'] && currentReport.departmentBreakdown['box-office'].sales > 0 && (
+                <View style={styles.departmentPerformanceCard}>
+                  <View style={styles.departmentPerformanceHeader}>
+                    <Text style={styles.departmentPerformanceName}>🎫 Box Office</Text>
+                    <Text style={styles.departmentPerformanceSales}>
+                      ${formatCurrency(currentReport.departmentBreakdown['box-office'].sales)}
+                    </Text>
+                    <Text style={styles.departmentPerformanceOrders}>
+                      {currentReport.departmentBreakdown['box-office'].orders} orders
+                    </Text>
+                  </View>
+                  
+                  {/* Box Office Staff Breakdown */}
+                  {(() => {
+                    const dayOrders = orders.filter((order: any) => {
+                      const orderDate = new Date(order.timestamp);
+                      let orderBusinessDate = new Date(orderDate);
+                      if (orderDate.getHours() < 2) {
+                        orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
+                      }
+                      const orderYear = orderBusinessDate.getFullYear();
+                      const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
+                      const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
+                      const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
+                      return orderDateStr === currentReport.date;
+                    });
+                    
+                    const boxOfficeUsers = new Map<string, { name: string; role: string; sales: number; orders: number }>();
+                    dayOrders
+                      .filter((order: any) => order.department === 'box-office')
+                      .forEach((order: any) => {
+                        const key = order.userName;
+                        const existing = boxOfficeUsers.get(key) || { name: order.userName, role: order.userRole || 'staff', sales: 0, orders: 0 };
+                        existing.sales += order.total;
+                        existing.orders += 1;
+                        boxOfficeUsers.set(key, existing);
+                      });
+                    
+                    const usersList = Array.from(boxOfficeUsers.values())
+                      .filter(user => user.sales > 0)
+                      .sort((a, b) => b.sales - a.sales);
+                    
+                    return usersList.length > 0 ? (
+                      <View style={styles.departmentStaffList}>
+                        <Text style={styles.departmentStaffHeader}>Staff Performance:</Text>
+                        {usersList.slice(0, 4).map((user, index) => (
+                          <View key={`${user.name}-${user.sales}`} style={styles.departmentStaffRow}>
+                            <Text style={[
+                              styles.departmentStaffName,
+                              user.role?.toLowerCase() === 'manager' || user.role?.toLowerCase() === 'admin' 
+                                ? styles.managerStaffText 
+                                : styles.regularStaffText
+                            ]}>
+                              {user.name} ({user.role})
+                            </Text>
+                            <Text style={styles.departmentStaffSales}>
+                              ${formatCurrency(user.sales)}
+                            </Text>
+                          </View>
+                        ))}
+                        {usersList.length > 4 && (
+                          <Text style={styles.moreStaffText}>
+                            +{usersList.length - 4} more staff members
+                          </Text>
+                        )}
+                      </View>
+                    ) : (
+                      <Text style={styles.noStaffText}>No staff activity recorded</Text>
+                    );
+                  })()}
+                </View>
+              )}
+              
+              {/* Candy Counter Performance */}
+              <View style={styles.departmentPerformanceCard}>
+                <View style={styles.departmentPerformanceHeader}>
+                  <Text style={styles.departmentPerformanceName}>🍿 Candy Counter</Text>
+                  <Text style={styles.departmentPerformanceSales}>
+                    ${formatCurrency(currentReport.departmentBreakdown['candy-counter'].sales)}
+                  </Text>
+                  <Text style={styles.departmentPerformanceOrders}>
+                    {currentReport.departmentBreakdown['candy-counter'].orders} orders
+                  </Text>
+                </View>
+                
+                {/* Candy Counter Staff Breakdown */}
+                {(() => {
+                  const dayOrders = orders.filter((order: any) => {
+                    const orderDate = new Date(order.timestamp);
+                    let orderBusinessDate = new Date(orderDate);
+                    if (orderDate.getHours() < 2) {
+                      orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
+                    }
+                    const orderYear = orderBusinessDate.getFullYear();
+                    const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
+                    const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
+                    const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
+                    return orderDateStr === currentReport.date;
+                  });
+                  
+                  const candyCounterUsers = new Map<string, { name: string; role: string; sales: number; orders: number }>();
+                  dayOrders
+                    .filter((order: any) => order.department === 'candy-counter' && !order.isAfterClosing)
+                    .forEach((order: any) => {
+                      const key = order.userName;
+                      const existing = candyCounterUsers.get(key) || { name: order.userName, role: order.userRole || 'staff', sales: 0, orders: 0 };
+                      existing.sales += order.total;
+                      existing.orders += 1;
+                      candyCounterUsers.set(key, existing);
+                    });
+                  
+                  const usersList = Array.from(candyCounterUsers.values())
+                    .filter(user => user.sales > 0)
+                    .sort((a, b) => b.sales - a.sales);
+                  
+                  return usersList.length > 0 ? (
+                    <View style={styles.departmentStaffList}>
+                      <Text style={styles.departmentStaffHeader}>Staff Performance:</Text>
+                      {usersList.slice(0, 4).map((user, index) => (
+                        <View key={`${user.name}-${user.sales}`} style={styles.departmentStaffRow}>
+                          <Text style={[
+                            styles.departmentStaffName,
+                            user.role?.toLowerCase() === 'manager' || user.role?.toLowerCase() === 'admin' 
+                              ? styles.managerStaffText 
+                              : styles.regularStaffText
+                          ]}>
+                            {user.name} ({user.role})
+                          </Text>
+                          <Text style={styles.departmentStaffSales}>
+                            ${formatCurrency(user.sales)}
+                          </Text>
+                        </View>
+                      ))}
+                      {usersList.length > 4 && (
+                        <Text style={styles.moreStaffText}>
+                          +{usersList.length - 4} more staff members
+                        </Text>
+                      )}
+                    </View>
+                  ) : (
+                    <Text style={styles.noStaffText}>No staff activity recorded</Text>
+                  );
+                })()}
+              </View>
+              
+              {/* After Closing Performance */}
+              {currentReport.departmentBreakdown['after-closing'] && currentReport.departmentBreakdown['after-closing'].sales > 0 && (
+                <View style={styles.departmentPerformanceCard}>
+                  <View style={styles.departmentPerformanceHeader}>
+                    <Text style={styles.departmentPerformanceName}>🌙 After Closing</Text>
+                    <Text style={styles.departmentPerformanceSubtitle}>Ticket Sales Only</Text>
+                    <Text style={styles.departmentPerformanceSales}>
+                      ${formatCurrency(currentReport.departmentBreakdown['after-closing'].sales)}
+                    </Text>
+                    <Text style={styles.departmentPerformanceOrders}>
+                      {currentReport.departmentBreakdown['after-closing'].orders} orders
+                    </Text>
+                  </View>
+                  
+                  {/* After Closing Staff Breakdown */}
+                  {(() => {
+                    const dayOrders = orders.filter((order: any) => {
+                      const orderDate = new Date(order.timestamp);
+                      let orderBusinessDate = new Date(orderDate);
+                      if (orderDate.getHours() < 2) {
+                        orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
+                      }
+                      const orderYear = orderBusinessDate.getFullYear();
+                      const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
+                      const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
+                      const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
+                      return orderDateStr === currentReport.date;
+                    });
+                    
+                    const afterClosingUsers = new Map<string, { name: string; role: string; sales: number; orders: number }>();
+                    dayOrders
+                      .filter((order: any) => order.department === 'candy-counter' && order.isAfterClosing)
+                      .forEach((order: any) => {
+                        const key = order.userName;
+                        const existing = afterClosingUsers.get(key) || { name: order.userName, role: order.userRole || 'staff', sales: 0, orders: 0 };
+                        existing.sales += order.total;
+                        existing.orders += 1;
+                        afterClosingUsers.set(key, existing);
+                      });
+                    
+                    const usersList = Array.from(afterClosingUsers.values())
+                      .filter(user => user.sales > 0)
+                      .sort((a, b) => b.sales - a.sales);
+                    
+                    return usersList.length > 0 ? (
+                      <View style={styles.departmentStaffList}>
+                        <Text style={styles.departmentStaffHeader}>Staff Performance:</Text>
+                        {usersList.slice(0, 4).map((user, index) => (
+                          <View key={`${user.name}-${user.sales}`} style={styles.departmentStaffRow}>
+                            <Text style={[
+                              styles.departmentStaffName,
+                              user.role?.toLowerCase() === 'manager' || user.role?.toLowerCase() === 'admin' 
+                                ? styles.managerStaffText 
+                                : styles.regularStaffText
+                            ]}>
+                              {user.name} ({user.role})
+                            </Text>
+                            <Text style={styles.departmentStaffSales}>
+                              ${formatCurrency(user.sales)}
+                            </Text>
+                          </View>
+                        ))}
+                        {usersList.length > 4 && (
+                          <Text style={styles.moreStaffText}>
+                            +{usersList.length - 4} more staff members
+                          </Text>
+                        )}
+                      </View>
+                    ) : (
+                      <Text style={styles.noStaffText}>No staff activity recorded</Text>
+                    );
+                  })()}
+                </View>
+              )}
+            </View>
+            
+            {/* Department Performance Summary */}
+            <View style={styles.departmentSummaryRow}>
+              <View style={styles.departmentSummaryItem}>
+                <Text style={styles.departmentSummaryLabel}>Total Departments Active:</Text>
+                <Text style={styles.departmentSummaryValue}>
+                  {[
+                    currentReport.departmentBreakdown['box-office']?.sales > 0,
+                    currentReport.departmentBreakdown['candy-counter']?.sales > 0,
+                    currentReport.departmentBreakdown['after-closing']?.sales > 0
+                  ].filter(Boolean).length} of 3
+                </Text>
+              </View>
+              <View style={styles.departmentSummaryItem}>
+                <Text style={styles.departmentSummaryLabel}>Highest Performing:</Text>
+                <Text style={styles.departmentSummaryValue}>
+                  {(() => {
+                    const depts = [
+                      { name: 'Box Office', sales: currentReport.departmentBreakdown['box-office']?.sales || 0 },
+                      { name: 'Candy Counter', sales: currentReport.departmentBreakdown['candy-counter']?.sales || 0 },
+                      { name: 'After Closing', sales: currentReport.departmentBreakdown['after-closing']?.sales || 0 }
+                    ].sort((a, b) => b.sales - a.sales);
+                    return depts[0].sales > 0 ? depts[0].name : 'None';
+                  })()}
+                </Text>
+              </View>
+            </View>
+          </View>
+
           {/* Summary Cards */}
           <View style={styles.summaryGrid}>
             <View style={[styles.summaryCard, (isTrainingMode || settings.trainingMode) && styles.trainingSummaryCard]}>
@@ -2363,5 +2625,125 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
     fontStyle: 'italic',
+  },
+  
+  // Department Performance Overview Styles
+  departmentPerformanceGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    marginBottom: 16,
+  },
+  departmentPerformanceCard: {
+    flex: 1,
+    minWidth: '30%',
+    backgroundColor: TheatreColors.background,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: TheatreColors.surfaceLight,
+  },
+  departmentPerformanceHeader: {
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: TheatreColors.surfaceLight,
+  },
+  departmentPerformanceName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: TheatreColors.text,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  departmentPerformanceSubtitle: {
+    fontSize: 12,
+    color: TheatreColors.textSecondary,
+    fontStyle: 'italic',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  departmentPerformanceSales: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: TheatreColors.accent,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  departmentPerformanceOrders: {
+    fontSize: 12,
+    color: TheatreColors.textSecondary,
+    textAlign: 'center',
+  },
+  departmentStaffList: {
+    gap: 6,
+  },
+  departmentStaffHeader: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: TheatreColors.text,
+    marginBottom: 8,
+  },
+  departmentStaffRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: TheatreColors.surface,
+    borderRadius: 8,
+  },
+  departmentStaffName: {
+    fontSize: 12,
+    fontWeight: '500',
+    flex: 1,
+  },
+  departmentStaffSales: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: TheatreColors.accent,
+  },
+  managerStaffText: {
+    color: TheatreColors.primary,
+  },
+  regularStaffText: {
+    color: TheatreColors.text,
+  },
+  moreStaffText: {
+    fontSize: 11,
+    fontStyle: 'italic',
+    color: TheatreColors.textSecondary,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  noStaffText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    color: TheatreColors.textSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  departmentSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: TheatreColors.surfaceLight,
+  },
+  departmentSummaryItem: {
+    alignItems: 'center',
+  },
+  departmentSummaryLabel: {
+    fontSize: 12,
+    color: TheatreColors.textSecondary,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  departmentSummaryValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: TheatreColors.accent,
+    textAlign: 'center',
   },
 });
