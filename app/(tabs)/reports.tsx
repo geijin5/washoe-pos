@@ -1046,11 +1046,19 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
               return orderDateStr === currentReport.date;
             });
             
+            // Get all manager and usher after closing orders (candy counter tickets)
             const managerAfterClosingOrders = dayOrders.filter((order: any) => {
               const userRole = order.userRole?.toLowerCase();
-              return (userRole === 'manager' || userRole === 'admin') && 
+              return (userRole === 'manager' || userRole === 'admin' || userRole === 'usher') && 
                      order.department === 'candy-counter' && order.isAfterClosing;
             });
+            
+            console.log(`=== MANAGER/USHER AFTER CLOSING ORDERS DEBUG ===`);
+            console.log(`Found ${managerAfterClosingOrders.length} after closing orders by managers/ushers`);
+            managerAfterClosingOrders.forEach(order => {
+              console.log(`  - ${order.userName} (${order.userRole}): ${order.total.toFixed(2)} [${order.paymentMethod}]`);
+            });
+            console.log(`=== END MANAGER/USHER DEBUG ===`);
             
             let managerAfterClosingCash = 0;
             let managerAfterClosingCard = 0;
@@ -1081,11 +1089,11 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                   {(managerAfterClosingCash > 0 || managerAfterClosingCard > 0) && (
                     <>
                       <View style={[styles.paymentRow, { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: TheatreColors.surfaceLight }]}>
-                        <Text style={[styles.paymentLabel, { fontWeight: '600', color: TheatreColors.primary }]}>Manager After Closing Cash:</Text>
+                        <Text style={[styles.paymentLabel, { fontWeight: '600', color: TheatreColors.primary }]}>Manager/Usher After Closing Cash:</Text>
                         <Text style={[styles.paymentValue, { color: TheatreColors.success, fontWeight: '600' }]}>${formatCurrency(managerAfterClosingCash)}</Text>
                       </View>
                       <View style={styles.paymentRow}>
-                        <Text style={[styles.paymentLabel, { fontWeight: '600', color: TheatreColors.primary }]}>Manager After Closing Card:</Text>
+                        <Text style={[styles.paymentLabel, { fontWeight: '600', color: TheatreColors.primary }]}>Manager/Usher After Closing Card:</Text>
                         <Text style={[styles.paymentValue, { fontWeight: '600' }]}>${formatCurrency(managerAfterClosingCard)}</Text>
                       </View>
                     </>
@@ -1322,7 +1330,7 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                       return orderDateStr === currentReport.date;
                     });
                     
-                    // Get all users who made after closing sales
+                    // Get all users who made after closing sales (including managers and ushers)
                     const afterClosingUsers = new Map<string, { name: string; role: string; sales: number }>();
                     dayOrders
                       .filter((order: any) => order.department === 'candy-counter' && order.isAfterClosing)
@@ -1331,6 +1339,9 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                         const existing = afterClosingUsers.get(key) || { name: order.userName, role: order.userRole || 'staff', sales: 0 };
                         existing.sales += order.total;
                         afterClosingUsers.set(key, existing);
+                        
+                        // Debug log for after closing user tracking
+                        console.log(`After closing sale by ${order.userName} (${order.userRole || 'unknown'}): ${order.total.toFixed(2)}`);
                       });
                     
                     const usersList = Array.from(afterClosingUsers.values())
