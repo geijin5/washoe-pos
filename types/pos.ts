@@ -44,6 +44,7 @@ export interface POSSettings {
   categories: Category[];
   businessId?: string;
   version?: string;
+  trainingMode?: boolean;
 }
 
 export interface CategoryData {

@@ -15,6 +15,7 @@ const DEFAULT_CATEGORIES: Category[] = ['tickets', 'concessions', 'merchandise',
 const DEFAULT_SETTINGS: POSSettings = {
   creditCardFeePercent: 5.0, // 5.0% default credit card fee
   categories: DEFAULT_CATEGORIES,
+  trainingMode: false,
 };
 
 // Global settings key for cross-account consistency
@@ -228,6 +229,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
 
     // Debug logging for all sales to track department assignment
     console.log('=== ORDER PROCESSED ===');
+    console.log(`Training Mode: ${settings.trainingMode ? 'ENABLED' : 'DISABLED'}`);
     console.log(`Order ID: ${newOrder.id}`);
     console.log(`User: ${userName} (${userRole})`);
     console.log(`Department: ${department}`);
@@ -243,11 +245,18 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       console.log(`This order should appear in candy counter reports`);
     }
 
+    // In training mode, don't save orders to persistent storage
+    if (settings.trainingMode) {
+      console.log('🎓 TRAINING MODE: Order processed but not saved to permanent records');
+      clearCart();
+      return newOrder;
+    }
+
     const updatedOrders = [newOrder, ...orders];
     saveOrders(updatedOrders);
     clearCart();
     return newOrder;
-  }, [cart, calculateTotalsWithFee, orders, saveOrders, clearCart]);
+  }, [cart, calculateTotalsWithFee, orders, saveOrders, clearCart, settings.trainingMode]);
 
   // Filtered products
   const filteredProducts = useMemo(() => {

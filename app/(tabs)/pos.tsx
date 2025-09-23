@@ -263,6 +263,15 @@ export default function POSScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Training Mode Banner */}
+      {settings.trainingMode && (
+        <View style={styles.trainingModeBanner}>
+          <Text style={styles.trainingModeText}>
+            🎓 TRAINING MODE - Transactions will not be saved to reports
+          </Text>
+        </View>
+      )}
+      
       {/* Tablet Layout: Cart on left, Products on right */}
       {isTablet ? (
         <View style={styles.tabletLayout}>
@@ -535,6 +544,15 @@ export default function POSScreen() {
       ) : (
         /* Phone Layout: Traditional modal cart */
         <View style={styles.container}>
+          {/* Training Mode Banner for Phone */}
+          {settings.trainingMode && (
+            <View style={styles.trainingModeBanner}>
+              <Text style={styles.trainingModeText}>
+                🎓 TRAINING MODE - Practice only
+              </Text>
+            </View>
+          )}
+          
           {/* Main POS View */}
           <View style={styles.mainContent}>
             {/* Search Bar and View Toggle */}
@@ -1558,5 +1576,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: TheatreColors.background,
+  },
+  trainingModeBanner: {
+    backgroundColor: '#FFF3CD',
+    borderBottomWidth: 2,
+    borderBottomColor: '#FFEAA7',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trainingModeText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#856404',
+    textAlign: 'center',
   },
 });

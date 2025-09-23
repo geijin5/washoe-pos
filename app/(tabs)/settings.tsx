@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { usePOS } from '@/hooks/pos-store';
 import { TheatreColors } from '@/constants/theatre-colors';
-import { Settings, CreditCard, Percent, Save, Users, Tag, Share as ShareIcon, Download, Info } from 'lucide-react-native';
+import { Settings, CreditCard, Percent, Save, Users, Tag, Share as ShareIcon, Download, Info, GraduationCap } from 'lucide-react-native';
 import { useAuth } from '@/hooks/auth-store';
 import { RoleGuard } from '@/components/RoleGuard';
 import { UserManagement } from '@/components/UserManagement';
@@ -28,6 +28,7 @@ export default function SettingsScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showUserManagement, setShowUserManagement] = useState(false);
   const [showCategoryManagement, setShowCategoryManagement] = useState(false);
+  const [trainingModeEnabled, setTrainingModeEnabled] = useState(settings.trainingMode || false);
 
 
   const [deviceIP, setDeviceIP] = useState<string>('Loading...');
@@ -52,6 +53,11 @@ export default function SettingsScreen() {
     loadDeviceInfo();
   }, []);
 
+  // Update training mode state when settings change
+  useEffect(() => {
+    setTrainingModeEnabled(settings.trainingMode || false);
+  }, [settings.trainingMode]);
+
   const handleSaveSettings = async () => {
     try {
       setIsLoading(true);
@@ -64,6 +70,7 @@ export default function SettingsScreen() {
 
       await updateSettings({
         creditCardFeePercent: newCreditCardFee,
+        trainingMode: trainingModeEnabled,
       });
 
       Alert.alert('Success', 'Settings updated successfully!');
@@ -172,6 +179,35 @@ export default function SettingsScreen() {
                 </Text>
               </View>
             </View>
+          </View>
+
+          {/* Training Mode Section */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <GraduationCap size={24} color={TheatreColors.accent} />
+              <Text style={styles.sectionTitle}>Training Mode</Text>
+            </View>
+            <Text style={styles.sectionDescription}>
+              Enable training mode to allow staff to practice using the POS system without affecting real sales data or reports
+            </Text>
+            
+            <View style={styles.toggleContainer}>
+              <Text style={styles.toggleLabel}>Training Mode</Text>
+              <TouchableOpacity
+                style={[styles.toggle, trainingModeEnabled && styles.toggleActive]}
+                onPress={() => setTrainingModeEnabled(!trainingModeEnabled)}
+              >
+                <View style={[styles.toggleThumb, trainingModeEnabled && styles.toggleThumbActive]} />
+              </TouchableOpacity>
+            </View>
+            
+            {trainingModeEnabled && (
+              <View style={styles.trainingModeWarning}>
+                <Text style={styles.warningText}>
+                  ⚠️ Training Mode is ENABLED. All transactions will be processed but not saved to permanent records or included in reports.
+                </Text>
+              </View>
+            )}
           </View>
 
           <TouchableOpacity
@@ -525,5 +561,58 @@ const styles = StyleSheet.create({
     color: TheatreColors.textSecondary,
     opacity: 0.7,
     marginTop: 2,
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  toggleLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: TheatreColors.text,
+  },
+  toggle: {
+    width: 50,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: TheatreColors.surfaceLight,
+    padding: 2,
+    justifyContent: 'center',
+  },
+  toggleActive: {
+    backgroundColor: TheatreColors.accent,
+  },
+  toggleThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: TheatreColors.background,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  toggleThumbActive: {
+    transform: [{ translateX: 22 }],
+  },
+  trainingModeWarning: {
+    backgroundColor: '#FFF3CD',
+    borderColor: '#FFEAA7',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+  },
+  warningText: {
+    fontSize: 14,
+    color: '#856404',
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });
