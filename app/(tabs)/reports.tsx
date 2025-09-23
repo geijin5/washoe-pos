@@ -96,10 +96,10 @@ export default function ReportsScreen() {
 
     // Calculate exact payment breakdown by department from actual orders
     const boxOfficeTotal = report.departmentBreakdown['box-office']?.sales || 0;
-    const boxOfficeOrders = report.departmentBreakdown['box-office']?.orders || 0;
     const candyCounterTotal = report.departmentBreakdown['candy-counter']?.sales || 0;
     const candyCounterOrders = report.departmentBreakdown['candy-counter']?.orders || 0;
     const afterClosingTotal = report.departmentBreakdown['after-closing']?.sales || 0;
+    const afterClosingOrders = report.departmentBreakdown['after-closing']?.orders || 0;
     
     // Calculate exact cash and card amounts from actual orders by department
     let boxOfficeCashSales = 0;
@@ -197,7 +197,7 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
     }
     
     if (report.departmentBreakdown['after-closing'] && report.departmentBreakdown['after-closing'].sales > 0) {
-      reportText += `\nAfter Closing (All Ticket Sales): ${formatCurrency(report.departmentBreakdown['after-closing'].sales)} (${report.departmentBreakdown['after-closing'].orders} orders)`;
+      reportText += `\nAfter Closing (Ticket Sales Only): ${formatCurrency(report.departmentBreakdown['after-closing'].sales)} (${report.departmentBreakdown['after-closing'].orders} orders)`;
     }
     
     // Add show breakdown if available
@@ -315,17 +315,17 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
     console.log(`Other staff found: ${otherStaff.length}`);
     console.log('================================');
     
-    reportText += `\n\nSALES MANAGERS PERFORMANCE (All Sales)`;
+    reportText += `\n\nMANAGER SALES PERFORMANCE`;
     if (managers.length > 0) {
       reportText += `\n${managers.map((userReport) => {
         const roleText = userReport.userRole ? ` (${userReport.userRole})` : '';
         return `${userReport.userName}${roleText}: ${formatCurrency(userReport.sales)} (${userReport.orders} orders)`;
       }).join('\n')}`;
     } else {
-      reportText += `\nNo sales manager activity recorded for this date`;
+      reportText += `\nNo manager sales activity recorded for this date`;
     }
     
-    reportText += `\n\nOTHER STAFF PERFORMANCE (All Sales)`;
+    reportText += `\n\nOTHER STAFF PERFORMANCE`;
     if (otherStaff.length > 0) {
       reportText += `\n${otherStaff.map((userReport) => {
         const roleText = userReport.userRole ? ` (${userReport.userRole})` : '';
@@ -335,7 +335,7 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
       reportText += `\nNo other staff activity recorded for this date`;
     }
     
-    reportText += `\n\nNote: Staff performance includes all sales made by each user including candy counter and after-closing transactions.`;
+    reportText += `\n\nNote: Staff performance includes all sales made by each user including candy counter, box office, and after-closing transactions.`;
 
 
 
@@ -999,9 +999,9 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
             );
           })()}
 
-          {/* Sales Managers Performance */}
+          {/* Manager Sales Performance */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Sales Managers Performance</Text>
+            <Text style={styles.sectionTitle}>Manager Sales Performance</Text>
             <Text style={styles.sectionDescription}>Managers and admins - includes all sales transactions</Text>
             {(() => {
               const managers = currentReport.userBreakdown?.filter(user => {
@@ -1041,8 +1041,8 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
               ) : (
                 <View style={styles.emptyState}>
                   <Users size={32} color={TheatreColors.textSecondary} />
-                  <Text style={styles.emptyStateText}>No sales manager activity recorded for this date</Text>
-                  <Text style={styles.emptyStateSubtext}>Sales manager performance will appear here when managers process orders</Text>
+                  <Text style={styles.emptyStateText}>No manager sales activity recorded for this date</Text>
+                  <Text style={styles.emptyStateSubtext}>Manager performance will appear here when managers process orders</Text>
                 </View>
               );
             })()}
