@@ -771,6 +771,35 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
             const feeRate = currentReport.cardSales > 0 ? currentReport.creditCardFees / currentReport.cardSales : 0;
             const boxOfficeCardFees = boxOfficeCardSales * feeRate;
             
+            // Calculate manager sales for box office payment breakdown
+            const dayOrders = orders.filter((order: any) => {
+              const orderDate = new Date(order.timestamp);
+              let orderBusinessDate = new Date(orderDate);
+              if (orderDate.getHours() < 2) {
+                orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
+              }
+              const orderYear = orderBusinessDate.getFullYear();
+              const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
+              const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
+              const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
+              return orderDateStr === currentReport.date;
+            });
+            
+            const managerBoxOfficeOrders = dayOrders.filter((order: any) => {
+              const userRole = order.userRole?.toLowerCase();
+              return (userRole === 'manager' || userRole === 'admin') && order.department === 'box-office';
+            });
+            
+            let managerBoxOfficeCash = 0;
+            let managerBoxOfficeCard = 0;
+            managerBoxOfficeOrders.forEach((order: any) => {
+              if (order.paymentMethod === 'cash') {
+                managerBoxOfficeCash += order.total;
+              } else if (order.paymentMethod === 'card') {
+                managerBoxOfficeCard += order.total;
+              }
+            });
+            
             return (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Box Office Payment Breakdown</Text>
@@ -787,6 +816,18 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                     <Text style={styles.paymentLabel}>Box Office Card Fees:</Text>
                     <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(boxOfficeCardFees)}</Text>
                   </View>
+                  {(managerBoxOfficeCash > 0 || managerBoxOfficeCard > 0) && (
+                    <>
+                      <View style={[styles.paymentRow, { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: TheatreColors.surfaceLight }]}>
+                        <Text style={[styles.paymentLabel, { fontWeight: '600', color: TheatreColors.primary }]}>Manager Box Office Cash:</Text>
+                        <Text style={[styles.paymentValue, { color: TheatreColors.success, fontWeight: '600' }]}>${formatCurrency(managerBoxOfficeCash)}</Text>
+                      </View>
+                      <View style={styles.paymentRow}>
+                        <Text style={[styles.paymentLabel, { fontWeight: '600', color: TheatreColors.primary }]}>Manager Box Office Card:</Text>
+                        <Text style={[styles.paymentValue, { fontWeight: '600' }]}>${formatCurrency(managerBoxOfficeCard)}</Text>
+                      </View>
+                    </>
+                  )}
                 </View>
               </View>
             );
@@ -812,6 +853,36 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
             const feeRate = currentReport.cardSales > 0 ? currentReport.creditCardFees / currentReport.cardSales : 0;
             const candyCounterCardFees = candyCounterCardSales * feeRate;
             
+            // Calculate manager sales for candy counter payment breakdown
+            const dayOrders = orders.filter((order: any) => {
+              const orderDate = new Date(order.timestamp);
+              let orderBusinessDate = new Date(orderDate);
+              if (orderDate.getHours() < 2) {
+                orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
+              }
+              const orderYear = orderBusinessDate.getFullYear();
+              const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
+              const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
+              const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
+              return orderDateStr === currentReport.date;
+            });
+            
+            const managerCandyCounterOrders = dayOrders.filter((order: any) => {
+              const userRole = order.userRole?.toLowerCase();
+              return (userRole === 'manager' || userRole === 'admin') && 
+                     order.department === 'candy-counter' && !order.isAfterClosing;
+            });
+            
+            let managerCandyCounterCash = 0;
+            let managerCandyCounterCard = 0;
+            managerCandyCounterOrders.forEach((order: any) => {
+              if (order.paymentMethod === 'cash') {
+                managerCandyCounterCash += order.total;
+              } else if (order.paymentMethod === 'card') {
+                managerCandyCounterCard += order.total;
+              }
+            });
+            
             return (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Candy Counter Payment Breakdown</Text>
@@ -828,6 +899,18 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                     <Text style={styles.paymentLabel}>Candy Counter Card Fees:</Text>
                     <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(candyCounterCardFees)}</Text>
                   </View>
+                  {(managerCandyCounterCash > 0 || managerCandyCounterCard > 0) && (
+                    <>
+                      <View style={[styles.paymentRow, { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: TheatreColors.surfaceLight }]}>
+                        <Text style={[styles.paymentLabel, { fontWeight: '600', color: TheatreColors.primary }]}>Manager Candy Counter Cash:</Text>
+                        <Text style={[styles.paymentValue, { color: TheatreColors.success, fontWeight: '600' }]}>${formatCurrency(managerCandyCounterCash)}</Text>
+                      </View>
+                      <View style={styles.paymentRow}>
+                        <Text style={[styles.paymentLabel, { fontWeight: '600', color: TheatreColors.primary }]}>Manager Candy Counter Card:</Text>
+                        <Text style={[styles.paymentValue, { fontWeight: '600' }]}>${formatCurrency(managerCandyCounterCard)}</Text>
+                      </View>
+                    </>
+                  )}
                 </View>
               </View>
             );
@@ -853,6 +936,36 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
             const feeRate = currentReport.cardSales > 0 ? currentReport.creditCardFees / currentReport.cardSales : 0;
             const afterClosingCardFees = afterClosingCardSales * feeRate;
             
+            // Calculate manager sales for after closing payment breakdown
+            const dayOrders = orders.filter((order: any) => {
+              const orderDate = new Date(order.timestamp);
+              let orderBusinessDate = new Date(orderDate);
+              if (orderDate.getHours() < 2) {
+                orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
+              }
+              const orderYear = orderBusinessDate.getFullYear();
+              const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
+              const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
+              const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
+              return orderDateStr === currentReport.date;
+            });
+            
+            const managerAfterClosingOrders = dayOrders.filter((order: any) => {
+              const userRole = order.userRole?.toLowerCase();
+              return (userRole === 'manager' || userRole === 'admin') && 
+                     order.department === 'candy-counter' && order.isAfterClosing;
+            });
+            
+            let managerAfterClosingCash = 0;
+            let managerAfterClosingCard = 0;
+            managerAfterClosingOrders.forEach((order: any) => {
+              if (order.paymentMethod === 'cash') {
+                managerAfterClosingCash += order.total;
+              } else if (order.paymentMethod === 'card') {
+                managerAfterClosingCard += order.total;
+              }
+            });
+            
             return (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>After Closing Payment Breakdown</Text>
@@ -869,6 +982,18 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                     <Text style={styles.paymentLabel}>After Closing Card Fees:</Text>
                     <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(afterClosingCardFees)}</Text>
                   </View>
+                  {(managerAfterClosingCash > 0 || managerAfterClosingCard > 0) && (
+                    <>
+                      <View style={[styles.paymentRow, { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: TheatreColors.surfaceLight }]}>
+                        <Text style={[styles.paymentLabel, { fontWeight: '600', color: TheatreColors.primary }]}>Manager After Closing Cash:</Text>
+                        <Text style={[styles.paymentValue, { color: TheatreColors.success, fontWeight: '600' }]}>${formatCurrency(managerAfterClosingCash)}</Text>
+                      </View>
+                      <View style={styles.paymentRow}>
+                        <Text style={[styles.paymentLabel, { fontWeight: '600', color: TheatreColors.primary }]}>Manager After Closing Card:</Text>
+                        <Text style={[styles.paymentValue, { fontWeight: '600' }]}>${formatCurrency(managerAfterClosingCard)}</Text>
+                      </View>
+                    </>
+                  )}
                 </View>
               </View>
             );
@@ -956,6 +1081,35 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                 <Text style={styles.departmentOrders}>
                   {currentReport.departmentBreakdown['candy-counter'].orders} orders
                 </Text>
+                {(() => {
+                  // Calculate manager sales for candy counter
+                  const dayOrders = orders.filter((order: any) => {
+                    const orderDate = new Date(order.timestamp);
+                    let orderBusinessDate = new Date(orderDate);
+                    if (orderDate.getHours() < 2) {
+                      orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
+                    }
+                    const orderYear = orderBusinessDate.getFullYear();
+                    const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
+                    const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
+                    const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
+                    return orderDateStr === currentReport.date;
+                  });
+                  
+                  const managerCandyCounterSales = dayOrders
+                    .filter((order: any) => {
+                      const userRole = order.userRole?.toLowerCase();
+                      return (userRole === 'manager' || userRole === 'admin') && 
+                             order.department === 'candy-counter' && !order.isAfterClosing;
+                    })
+                    .reduce((sum: number, order: any) => sum + order.total, 0);
+                  
+                  return managerCandyCounterSales > 0 ? (
+                    <Text style={[styles.departmentOrders, { color: TheatreColors.primary, fontWeight: '600' }]}>
+                      Manager Sales: ${formatCurrency(managerCandyCounterSales)}
+                    </Text>
+                  ) : null;
+                })()}
               </View>
               
               {currentReport.departmentBreakdown['box-office'] && currentReport.departmentBreakdown['box-office'].sales > 0 && (
@@ -967,6 +1121,35 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                   <Text style={styles.departmentOrders}>
                     {currentReport.departmentBreakdown['box-office'].orders} orders
                   </Text>
+                  {(() => {
+                    // Calculate manager sales for box office
+                    const dayOrders = orders.filter((order: any) => {
+                      const orderDate = new Date(order.timestamp);
+                      let orderBusinessDate = new Date(orderDate);
+                      if (orderDate.getHours() < 2) {
+                        orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
+                      }
+                      const orderYear = orderBusinessDate.getFullYear();
+                      const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
+                      const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
+                      const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
+                      return orderDateStr === currentReport.date;
+                    });
+                    
+                    const managerBoxOfficeSales = dayOrders
+                      .filter((order: any) => {
+                        const userRole = order.userRole?.toLowerCase();
+                        return (userRole === 'manager' || userRole === 'admin') && 
+                               order.department === 'box-office';
+                      })
+                      .reduce((sum: number, order: any) => sum + order.total, 0);
+                    
+                    return managerBoxOfficeSales > 0 ? (
+                      <Text style={[styles.departmentOrders, { color: TheatreColors.primary, fontWeight: '600' }]}>
+                        Manager Sales: ${formatCurrency(managerBoxOfficeSales)}
+                      </Text>
+                    ) : null;
+                  })()}
                 </View>
               )}
               
@@ -980,6 +1163,35 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                   <Text style={styles.departmentOrders}>
                     {currentReport.departmentBreakdown['after-closing'].orders} orders
                   </Text>
+                  {(() => {
+                    // Calculate manager sales for after closing
+                    const dayOrders = orders.filter((order: any) => {
+                      const orderDate = new Date(order.timestamp);
+                      let orderBusinessDate = new Date(orderDate);
+                      if (orderDate.getHours() < 2) {
+                        orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
+                      }
+                      const orderYear = orderBusinessDate.getFullYear();
+                      const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
+                      const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
+                      const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
+                      return orderDateStr === currentReport.date;
+                    });
+                    
+                    const managerAfterClosingSales = dayOrders
+                      .filter((order: any) => {
+                        const userRole = order.userRole?.toLowerCase();
+                        return (userRole === 'manager' || userRole === 'admin') && 
+                               order.department === 'candy-counter' && order.isAfterClosing;
+                      })
+                      .reduce((sum: number, order: any) => sum + order.total, 0);
+                    
+                    return managerAfterClosingSales > 0 ? (
+                      <Text style={[styles.departmentOrders, { color: TheatreColors.primary, fontWeight: '600' }]}>
+                        Manager Sales: ${formatCurrency(managerAfterClosingSales)}
+                      </Text>
+                    ) : null;
+                  })()}
                 </View>
               )}
             </View>
