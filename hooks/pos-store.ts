@@ -463,7 +463,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
 
 
 
-  // Generate nightly report - Enhanced to capture ALL accounts with sales
+  // Generate nightly report - Enhanced to capture ALL accounts with sales and handle mixed orders
   const generateNightlyReport = useCallback((date?: Date): NightlyReport => {
     const reportDate = date || new Date();
     
@@ -534,10 +534,80 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     }
     console.log(`=== END TOTAL VERIFICATION ===`);
 
-    // Department breakdown - Enhanced to properly separate mixed orders (tickets + concessions)
+    // Department breakdown - Enhanced to properly handle mixed orders (tickets + concessions)
+    // For candy counter orders, we need to split mixed orders by item type
+    console.log(`=== PROCESSING MIXED ORDERS FOR DEPARTMENT BREAKDOWN ===`);
+    
     const boxOfficeOrders = dayOrders.filter(o => o.department === 'box-office');
+    
+    // For candy counter orders, we need to analyze the items to separate tickets from other items
     const candyCounterOrders = dayOrders.filter(o => o.department === 'candy-counter' && !o.isAfterClosing);
     const afterClosingOrders = dayOrders.filter(o => o.department === 'candy-counter' && o.isAfterClosing);
+    
+    // Process mixed candy counter orders - split by item type
+    let candyCounterSalesFromMixed = 0;
+    let afterClosingSalesFromMixed = 0;
+    let candyCounterOrdersFromMixed = 0;
+    let afterClosingOrdersFromMixed = 0;
+    
+    // Track payment methods for mixed orders
+    let candyCounterCashFromMixed = 0;
+    let candyCounterCardFromMixed = 0;
+    let afterClosingCashFromMixed = 0;
+    let afterClosingCardFromMixed = 0;
+    
+    candyCounterOrders.forEach(order => {
+      // Check if this order has both tickets and other items
+      const ticketItems = order.items.filter(item => item.product.category === 'tickets');
+      const nonTicketItems = order.items.filter(item => item.product.category !== 'tickets');
+      
+      if (ticketItems.length > 0 && nonTicketItems.length > 0) {
+        // Mixed order - split it
+        console.log(`Mixed order detected: Order ${order.id} by ${order.userName}`);
+        
+        // Calculate ticket portion
+        const ticketSubtotal = ticketItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+        const nonTicketSubtotal = nonTicketItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+        const totalSubtotal = ticketSubtotal + nonTicketSubtotal;
+        
+        // Calculate proportional fees and totals
+        const ticketProportion = ticketSubtotal / totalSubtotal;
+        const nonTicketProportion = nonTicketSubtotal / totalSubtotal;
+        
+        const ticketFee = (order.creditCardFee || 0) * ticketProportion;
+        const nonTicketFee = (order.creditCardFee || 0) * nonTicketProportion;
+        
+        const ticketTotal = ticketSubtotal + ticketFee;
+        const nonTicketTotal = nonTicketSubtotal + nonTicketFee;
+        
+        console.log(`  Ticket items: ${ticketItems.map(i => i.product.name).join(', ')} = ${ticketTotal.toFixed(2)}`);
+        console.log(`  Non-ticket items: ${nonTicketItems.map(i => i.product.name).join(', ')} = ${nonTicketTotal.toFixed(2)}`);
+        
+        // Add ticket portion to after-closing
+        afterClosingSalesFromMixed += ticketTotal;
+        afterClosingOrdersFromMixed += 1; // Count as one order for after-closing
+        
+        // Add non-ticket portion to candy counter
+        candyCounterSalesFromMixed += nonTicketTotal;
+        candyCounterOrdersFromMixed += 1; // Count as one order for candy counter
+        
+        // Split payment methods proportionally
+        if (order.paymentMethod === 'cash') {
+          afterClosingCashFromMixed += ticketTotal;
+          candyCounterCashFromMixed += nonTicketTotal;
+        } else if (order.paymentMethod === 'card') {
+          afterClosingCardFromMixed += ticketTotal;
+          candyCounterCardFromMixed += nonTicketTotal;
+        }
+        
+        console.log(`  Split result: After-closing +${ticketTotal.toFixed(2)}, Candy counter +${nonTicketTotal.toFixed(2)}`);
+      }
+    });
+    
+    console.log(`Mixed order processing complete:`);
+    console.log(`  After-closing from mixed: ${afterClosingSalesFromMixed.toFixed(2)} (${afterClosingOrdersFromMixed} order portions)`);
+    console.log(`  Candy counter from mixed: ${candyCounterSalesFromMixed.toFixed(2)} (${candyCounterOrdersFromMixed} order portions)`);
+    console.log(`=== END MIXED ORDER PROCESSING ===`);
     
     console.log(`=== CANDY COUNTER DEBUG FOR REPORT ${dateStr} ===`);
     console.log(`Total orders for date: ${dayOrders.length}`);
@@ -563,10 +633,27 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log(`  - After Closing orders (tickets): ${afterClosingOrders.length}`);
     console.log('===============================================');
     
-    // Calculate department sales with enhanced precision - include ALL sales from each department
+    // Calculate department sales with enhanced precision - include mixed order handling
     const boxOfficeSales = parseFloat(boxOfficeOrders.reduce((sum, order) => sum + order.total, 0).toFixed(2));
-    const candyCounterSales = parseFloat(candyCounterOrders.reduce((sum, order) => sum + order.total, 0).toFixed(2));
-    const afterClosingSales = parseFloat(afterClosingOrders.reduce((sum, order) => sum + order.total, 0).toFixed(2));
+    
+    // For candy counter sales, we need to subtract the ticket portions from mixed orders
+    let candyCounterSalesRaw = parseFloat(candyCounterOrders.reduce((sum, order) => sum + order.total, 0).toFixed(2));
+    let candyCounterSalesAdjusted = candyCounterSalesRaw - afterClosingSalesFromMixed + candyCounterSalesFromMixed;
+    const candyCounterSales = parseFloat(candyCounterSalesAdjusted.toFixed(2));
+    
+    // For after-closing sales, add the ticket portions from mixed orders
+    let afterClosingSalesRaw = parseFloat(afterClosingOrders.reduce((sum, order) => sum + order.total, 0).toFixed(2));
+    let afterClosingSalesAdjusted = afterClosingSalesRaw + afterClosingSalesFromMixed;
+    const afterClosingSales = parseFloat(afterClosingSalesAdjusted.toFixed(2));
+    
+    console.log(`=== MIXED ORDER ADJUSTMENT SUMMARY ===`);
+    console.log(`Candy Counter Raw: ${candyCounterSalesRaw.toFixed(2)}`);
+    console.log(`Candy Counter Mixed Adjustment: -${afterClosingSalesFromMixed.toFixed(2)} (tickets) +${candyCounterSalesFromMixed.toFixed(2)} (non-tickets)`);
+    console.log(`Candy Counter Final: ${candyCounterSales.toFixed(2)}`);
+    console.log(`After Closing Raw: ${afterClosingSalesRaw.toFixed(2)}`);
+    console.log(`After Closing Mixed Addition: +${afterClosingSalesFromMixed.toFixed(2)} (tickets from mixed orders)`);
+    console.log(`After Closing Final: ${afterClosingSales.toFixed(2)}`);
+    console.log('===============================================');
     
     console.log(`=== DEPARTMENT SALES CALCULATION VERIFICATION ===`);
     console.log(`Box Office Sales: ${boxOfficeSales.toFixed(2)} from ${boxOfficeOrders.length} orders`);
@@ -614,11 +701,11 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       },
       'candy-counter': {
         sales: parseFloat(candyCounterSales.toFixed(2)),
-        orders: candyCounterOrders.length,
+        orders: candyCounterOrders.length + candyCounterOrdersFromMixed,
       },
       'after-closing': {
         sales: parseFloat(afterClosingSales.toFixed(2)),
-        orders: afterClosingOrders.length,
+        orders: afterClosingOrders.length + afterClosingOrdersFromMixed,
       },
     };
     
@@ -641,7 +728,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     }
     console.log('===============================================');
 
-    // Calculate payment breakdown by department - simplified and accurate with proper rounding
+    // Calculate payment breakdown by department - enhanced to handle mixed orders
     let boxOfficeCashSales = 0;
     let boxOfficeCardSales = 0;
     let candyCounterCashSales = 0;
@@ -649,7 +736,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     let afterClosingCashSales = 0;
     let afterClosingCardSales = 0;
     
-    console.log(`=== CALCULATING PAYMENT BREAKDOWN BY DEPARTMENT ===`);
+    console.log(`=== CALCULATING PAYMENT BREAKDOWN BY DEPARTMENT WITH MIXED ORDER HANDLING ===`);
     
     // Box Office orders with proper rounding
     boxOfficeOrders.forEach(order => {
@@ -661,19 +748,43 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       }
     });
     
-    // Candy Counter orders with proper rounding
+    // Candy Counter orders with proper rounding - need to handle mixed orders
     candyCounterOrders.forEach(order => {
-      const orderTotal = Math.round(order.total * 100) / 100;
-      if (order.paymentMethod === 'cash') {
-        candyCounterCashSales += orderTotal;
-      } else if (order.paymentMethod === 'card') {
-        candyCounterCardSales += orderTotal;
+      // Check if this is a mixed order
+      const ticketItems = order.items.filter(item => item.product.category === 'tickets');
+      const nonTicketItems = order.items.filter(item => item.product.category !== 'tickets');
+      
+      if (ticketItems.length > 0 && nonTicketItems.length > 0) {
+        // Mixed order - only count the non-ticket portion for candy counter
+        const ticketSubtotal = ticketItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+        const nonTicketSubtotal = nonTicketItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+        const totalSubtotal = ticketSubtotal + nonTicketSubtotal;
+        
+        const nonTicketProportion = nonTicketSubtotal / totalSubtotal;
+        const nonTicketFee = (order.creditCardFee || 0) * nonTicketProportion;
+        const nonTicketTotal = nonTicketSubtotal + nonTicketFee;
+        
+        if (order.paymentMethod === 'cash') {
+          candyCounterCashSales += nonTicketTotal;
+        } else if (order.paymentMethod === 'card') {
+          candyCounterCardSales += nonTicketTotal;
+        }
+        
+        console.log(`Mixed order ${order.id}: Candy counter portion = ${nonTicketTotal.toFixed(2)} (${order.paymentMethod})`);
+      } else {
+        // Pure candy counter order (no tickets)
+        const orderTotal = Math.round(order.total * 100) / 100;
+        if (order.paymentMethod === 'cash') {
+          candyCounterCashSales += orderTotal;
+        } else if (order.paymentMethod === 'card') {
+          candyCounterCardSales += orderTotal;
+        }
       }
     });
     
     // After Closing orders with proper rounding and enhanced logging
     console.log(`=== PROCESSING AFTER CLOSING ORDERS ===`);
-    console.log(`Found ${afterClosingOrders.length} after closing orders`);
+    console.log(`Found ${afterClosingOrders.length} pure after closing orders`);
     afterClosingOrders.forEach((order, index) => {
       const orderTotal = Math.round(order.total * 100) / 100;
       console.log(`After Closing Order ${index + 1}: ID=${order.id}, Total=${orderTotal.toFixed(2)}, Payment=${order.paymentMethod}, User=${order.userName}`);
@@ -685,6 +796,32 @@ export const [POSProvider, usePOS] = createContextHook(() => {
         console.log(`  Added ${orderTotal.toFixed(2)} to after closing card (running total: ${(afterClosingCardSales).toFixed(2)})`);
       }
     });
+    
+    // Add ticket portions from mixed orders to after-closing
+    candyCounterOrders.forEach(order => {
+      const ticketItems = order.items.filter(item => item.product.category === 'tickets');
+      const nonTicketItems = order.items.filter(item => item.product.category !== 'tickets');
+      
+      if (ticketItems.length > 0 && nonTicketItems.length > 0) {
+        // Mixed order - add ticket portion to after-closing
+        const ticketSubtotal = ticketItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+        const nonTicketSubtotal = nonTicketItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+        const totalSubtotal = ticketSubtotal + nonTicketSubtotal;
+        
+        const ticketProportion = ticketSubtotal / totalSubtotal;
+        const ticketFee = (order.creditCardFee || 0) * ticketProportion;
+        const ticketTotal = ticketSubtotal + ticketFee;
+        
+        if (order.paymentMethod === 'cash') {
+          afterClosingCashSales += ticketTotal;
+        } else if (order.paymentMethod === 'card') {
+          afterClosingCardSales += ticketTotal;
+        }
+        
+        console.log(`Mixed order ${order.id}: After closing portion = ${ticketTotal.toFixed(2)} (${order.paymentMethod})`);
+      }
+    });
+    
     console.log(`After Closing Cash Total: ${afterClosingCashSales.toFixed(2)}`);
     console.log(`After Closing Card Total: ${afterClosingCardSales.toFixed(2)}`);
     console.log(`After Closing Combined Total: ${(afterClosingCashSales + afterClosingCardSales).toFixed(2)}`);
