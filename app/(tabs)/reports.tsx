@@ -1092,6 +1092,7 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
           {/* Department Performance */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Department Performance</Text>
+            <Text style={styles.sectionDescription}>Sales breakdown by department showing all staff contributions</Text>
             <View style={styles.departmentGrid}>
               <View style={styles.departmentCard}>
                 <Text style={styles.departmentName}>Candy Counter</Text>
@@ -1103,7 +1104,7 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                   {currentReport.departmentBreakdown['candy-counter'].orders} orders
                 </Text>
                 {(() => {
-                  // Calculate manager sales for candy counter
+                  // Calculate sales by all users for candy counter
                   const dayOrders = orders.filter((order: any) => {
                     const orderDate = new Date(order.timestamp);
                     let orderBusinessDate = new Date(orderDate);
@@ -1117,18 +1118,39 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                     return orderDateStr === currentReport.date;
                   });
                   
-                  const managerCandyCounterSales = dayOrders
-                    .filter((order: any) => {
-                      const userRole = order.userRole?.toLowerCase();
-                      return (userRole === 'manager' || userRole === 'admin') && 
-                             order.department === 'candy-counter' && !order.isAfterClosing;
-                    })
-                    .reduce((sum: number, order: any) => sum + order.total, 0);
+                  // Get all users who made candy counter sales
+                  const candyCounterUsers = new Map<string, { name: string; role: string; sales: number }>();
+                  dayOrders
+                    .filter((order: any) => order.department === 'candy-counter' && !order.isAfterClosing)
+                    .forEach((order: any) => {
+                      const key = order.userName;
+                      const existing = candyCounterUsers.get(key) || { name: order.userName, role: order.userRole || 'staff', sales: 0 };
+                      existing.sales += order.total;
+                      candyCounterUsers.set(key, existing);
+                    });
                   
-                  return managerCandyCounterSales > 0 ? (
-                    <Text style={[styles.departmentOrders, { color: TheatreColors.primary, fontWeight: '600' }]}>
-                      Manager Sales: ${formatCurrency(managerCandyCounterSales)}
-                    </Text>
+                  const usersList = Array.from(candyCounterUsers.values())
+                    .filter(user => user.sales > 0)
+                    .sort((a, b) => b.sales - a.sales);
+                  
+                  return usersList.length > 0 ? (
+                    <View style={styles.userListContainer}>
+                      {usersList.slice(0, 3).map((user, index) => (
+                        <Text key={`${user.name}-${user.sales}`} style={[
+                          styles.departmentOrders, 
+                          user.role?.toLowerCase() === 'manager' || user.role?.toLowerCase() === 'admin' 
+                            ? styles.managerUserText 
+                            : styles.staffUserText
+                        ]}>
+                          {user.name}: ${formatCurrency(user.sales)}
+                        </Text>
+                      ))}
+                      {usersList.length > 3 && (
+                        <Text style={styles.moreUsersText}>
+                          +{usersList.length - 3} more users
+                        </Text>
+                      )}
+                    </View>
                   ) : null;
                 })()}
               </View>
@@ -1143,7 +1165,7 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                     {currentReport.departmentBreakdown['box-office'].orders} orders
                   </Text>
                   {(() => {
-                    // Calculate manager sales for box office
+                    // Calculate sales by all users for box office
                     const dayOrders = orders.filter((order: any) => {
                       const orderDate = new Date(order.timestamp);
                       let orderBusinessDate = new Date(orderDate);
@@ -1157,18 +1179,39 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                       return orderDateStr === currentReport.date;
                     });
                     
-                    const managerBoxOfficeSales = dayOrders
-                      .filter((order: any) => {
-                        const userRole = order.userRole?.toLowerCase();
-                        return (userRole === 'manager' || userRole === 'admin') && 
-                               order.department === 'box-office';
-                      })
-                      .reduce((sum: number, order: any) => sum + order.total, 0);
+                    // Get all users who made box office sales
+                    const boxOfficeUsers = new Map<string, { name: string; role: string; sales: number }>();
+                    dayOrders
+                      .filter((order: any) => order.department === 'box-office')
+                      .forEach((order: any) => {
+                        const key = order.userName;
+                        const existing = boxOfficeUsers.get(key) || { name: order.userName, role: order.userRole || 'staff', sales: 0 };
+                        existing.sales += order.total;
+                        boxOfficeUsers.set(key, existing);
+                      });
                     
-                    return managerBoxOfficeSales > 0 ? (
-                      <Text style={[styles.departmentOrders, { color: TheatreColors.primary, fontWeight: '600' }]}>
-                        Manager Sales: ${formatCurrency(managerBoxOfficeSales)}
-                      </Text>
+                    const usersList = Array.from(boxOfficeUsers.values())
+                      .filter(user => user.sales > 0)
+                      .sort((a, b) => b.sales - a.sales);
+                    
+                    return usersList.length > 0 ? (
+                      <View style={styles.userListContainer}>
+                        {usersList.slice(0, 3).map((user, index) => (
+                          <Text key={`${user.name}-${user.sales}`} style={[
+                            styles.departmentOrders, 
+                            user.role?.toLowerCase() === 'manager' || user.role?.toLowerCase() === 'admin' 
+                              ? styles.managerUserText 
+                              : styles.staffUserText
+                          ]}>
+                            {user.name}: ${formatCurrency(user.sales)}
+                          </Text>
+                        ))}
+                        {usersList.length > 3 && (
+                          <Text style={styles.moreUsersText}>
+                            +{usersList.length - 3} more users
+                          </Text>
+                        )}
+                      </View>
                     ) : null;
                   })()}
                 </View>
@@ -1185,7 +1228,7 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                     {currentReport.departmentBreakdown['after-closing'].orders} orders
                   </Text>
                   {(() => {
-                    // Calculate manager sales for after closing
+                    // Calculate sales by all users for after closing
                     const dayOrders = orders.filter((order: any) => {
                       const orderDate = new Date(order.timestamp);
                       let orderBusinessDate = new Date(orderDate);
@@ -1199,18 +1242,39 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                       return orderDateStr === currentReport.date;
                     });
                     
-                    const managerAfterClosingSales = dayOrders
-                      .filter((order: any) => {
-                        const userRole = order.userRole?.toLowerCase();
-                        return (userRole === 'manager' || userRole === 'admin') && 
-                               order.department === 'candy-counter' && order.isAfterClosing;
-                      })
-                      .reduce((sum: number, order: any) => sum + order.total, 0);
+                    // Get all users who made after closing sales
+                    const afterClosingUsers = new Map<string, { name: string; role: string; sales: number }>();
+                    dayOrders
+                      .filter((order: any) => order.department === 'candy-counter' && order.isAfterClosing)
+                      .forEach((order: any) => {
+                        const key = order.userName;
+                        const existing = afterClosingUsers.get(key) || { name: order.userName, role: order.userRole || 'staff', sales: 0 };
+                        existing.sales += order.total;
+                        afterClosingUsers.set(key, existing);
+                      });
                     
-                    return managerAfterClosingSales > 0 ? (
-                      <Text style={[styles.departmentOrders, { color: TheatreColors.primary, fontWeight: '600' }]}>
-                        Manager Sales: ${formatCurrency(managerAfterClosingSales)}
-                      </Text>
+                    const usersList = Array.from(afterClosingUsers.values())
+                      .filter(user => user.sales > 0)
+                      .sort((a, b) => b.sales - a.sales);
+                    
+                    return usersList.length > 0 ? (
+                      <View style={styles.userListContainer}>
+                        {usersList.slice(0, 3).map((user, index) => (
+                          <Text key={`${user.name}-${user.sales}`} style={[
+                            styles.departmentOrders, 
+                            user.role?.toLowerCase() === 'manager' || user.role?.toLowerCase() === 'admin' 
+                              ? styles.managerUserText 
+                              : styles.staffUserText
+                          ]}>
+                            {user.name}: ${formatCurrency(user.sales)}
+                          </Text>
+                        ))}
+                        {usersList.length > 3 && (
+                          <Text style={styles.moreUsersText}>
+                            +{usersList.length - 3} more users
+                          </Text>
+                        )}
+                      </View>
                     ) : null;
                   })()}
                 </View>
@@ -2059,5 +2123,23 @@ const styles = StyleSheet.create({
     color: TheatreColors.text,
     marginBottom: 12,
     textAlign: 'center',
+  },
+  userListContainer: {
+    marginTop: 8,
+  },
+  managerUserText: {
+    color: TheatreColors.primary,
+    fontWeight: '500',
+    fontSize: 11,
+  },
+  staffUserText: {
+    color: TheatreColors.accent,
+    fontWeight: '500',
+    fontSize: 11,
+  },
+  moreUsersText: {
+    fontSize: 10,
+    fontStyle: 'italic',
+    color: TheatreColors.textSecondary,
   },
 });
