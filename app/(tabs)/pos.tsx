@@ -119,7 +119,7 @@ export default function POSScreen() {
   };
 
   // Show box office show selection
-  if (user?.role === 'usher' && selectedDepartment === 'box-office' && !selectedShow) {
+  if ((user?.role === 'usher' || user?.role === 'manager' || user?.role === 'admin') && selectedDepartment === 'box-office' && !selectedShow) {
     const showLayout = TabletUtils.getDepartmentCardLayout();
     
     return (
@@ -207,8 +207,8 @@ export default function POSScreen() {
     );
   }
 
-  // Show department selection for ushers
-  if (user?.role === 'usher' && !selectedDepartment) {
+  // Show department selection for ushers, managers, and admins
+  if ((user?.role === 'usher' || user?.role === 'manager' || user?.role === 'admin') && !selectedDepartment) {
     const departmentLayout = TabletUtils.getDepartmentCardLayout();
     
     return (
@@ -450,8 +450,8 @@ export default function POSScreen() {
               </View>
             )}
 
-            {/* Department Header for Ushers */}
-            {user?.role === 'usher' && selectedDepartment && (
+            {/* Department Header for Ushers, Managers, and Admins */}
+            {(user?.role === 'usher' || user?.role === 'manager' || user?.role === 'admin') && selectedDepartment && (
               <View style={styles.departmentHeader}>
                 <View style={styles.departmentInfo}>
                   {selectedDepartment === 'box-office' ? (
@@ -596,8 +596,8 @@ export default function POSScreen() {
               selectedDepartment={selectedDepartment}
             />
 
-            {/* Department Header for Ushers */}
-            {user?.role === 'usher' && selectedDepartment && (
+            {/* Department Header for Ushers, Managers, and Admins */}
+            {(user?.role === 'usher' || user?.role === 'manager' || user?.role === 'admin') && selectedDepartment && (
               <View style={styles.departmentHeader}>
                 <View style={styles.departmentInfo}>
                   {selectedDepartment === 'box-office' ? (
