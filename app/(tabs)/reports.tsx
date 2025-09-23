@@ -1178,7 +1178,7 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
               Department Performance{(isTrainingMode || settings.trainingMode) ? ' 🎓 (Training)' : ''}
             </Text>
             <Text style={styles.sectionDescription}>
-              Sales breakdown by department showing all staff contributions
+              Sales breakdown by department showing all staff contributions including managers
               {(isTrainingMode || settings.trainingMode) ? ' (Training Data)' : ''}
             </Text>
             <View style={styles.departmentGrid}>
@@ -1206,7 +1206,7 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                     return orderDateStr === currentReport.date;
                   });
                   
-                  // Get all users who made candy counter sales
+                  // Get all users who made candy counter sales (including managers)
                   const candyCounterUsers = new Map<string, { name: string; role: string; sales: number }>();
                   dayOrders
                     .filter((order: any) => order.department === 'candy-counter' && !order.isAfterClosing)
@@ -1215,6 +1215,9 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                       const existing = candyCounterUsers.get(key) || { name: order.userName, role: order.userRole || 'staff', sales: 0 };
                       existing.sales += order.total;
                       candyCounterUsers.set(key, existing);
+                      
+                      // Debug log for candy counter sales by user
+                      console.log(`Candy Counter Sale: ${order.userName} (${order.userRole || 'unknown'}) - ${order.total.toFixed(2)}`);
                     });
                   
                   const usersList = Array.from(candyCounterUsers.values())
@@ -1267,7 +1270,7 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                       return orderDateStr === currentReport.date;
                     });
                     
-                    // Get all users who made box office sales
+                    // Get all users who made box office sales (including managers)
                     const boxOfficeUsers = new Map<string, { name: string; role: string; sales: number }>();
                     dayOrders
                       .filter((order: any) => order.department === 'box-office')
@@ -1276,6 +1279,9 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                         const existing = boxOfficeUsers.get(key) || { name: order.userName, role: order.userRole || 'staff', sales: 0 };
                         existing.sales += order.total;
                         boxOfficeUsers.set(key, existing);
+                        
+                        // Debug log for box office sales by user
+                        console.log(`Box Office Sale: ${order.userName} (${order.userRole || 'unknown'}) - ${order.total.toFixed(2)}`);
                       });
                     
                     const usersList = Array.from(boxOfficeUsers.values())
