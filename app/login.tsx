@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { User, Lock } from 'lucide-react-native';
+import { User, Lock, GraduationCap } from 'lucide-react-native';
 import { useAuth } from '@/hooks/auth-store';
 import { TheatreColors } from '@/constants/theatre-colors';
 import { TabletUtils } from '@/constants/tablet-utils';
@@ -22,7 +22,7 @@ export default function LoginScreen() {
   const [selectedUsername, setSelectedUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, users } = useAuth();
+  const { login, users, isTrainingMode, toggleTrainingMode } = useAuth();
   const router = useRouter();
 
   const handleLogin = async () => {
@@ -156,6 +156,21 @@ export default function LoginScreen() {
               </TouchableOpacity>
             )}
 
+            {/* Training Mode Toggle */}
+            <TouchableOpacity
+              style={[styles.trainingModeButton, isTrainingMode && styles.trainingModeButtonActive]}
+              onPress={toggleTrainingMode}
+              testID="training-mode-button"
+            >
+              <GraduationCap 
+                size={20} 
+                color={isTrainingMode ? TheatreColors.background : TheatreColors.accent} 
+                style={styles.trainingModeIcon}
+              />
+              <Text style={[styles.trainingModeText, isTrainingMode && styles.trainingModeTextActive]}>
+                {isTrainingMode ? 'Training Mode: ON' : 'Training Mode: OFF'}
+              </Text>
+            </TouchableOpacity>
 
           </View>
 
@@ -356,5 +371,42 @@ const styles = StyleSheet.create({
     fontSize: TabletUtils.getResponsiveFontSize(12, 14),
     color: TheatreColors.textSecondary,
     opacity: 0.7,
+  },
+  trainingModeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: TheatreColors.surface,
+    borderRadius: 12,
+    padding: TabletUtils.getResponsivePadding(12, 16),
+    marginTop: TabletUtils.getResponsivePadding(16, 20),
+    borderWidth: 2,
+    borderColor: TheatreColors.accent,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  trainingModeButtonActive: {
+    backgroundColor: TheatreColors.accent,
+    borderColor: TheatreColors.accent,
+    shadowColor: TheatreColors.accent,
+    shadowOpacity: 0.3,
+    elevation: 6,
+  },
+  trainingModeIcon: {
+    marginRight: 8,
+  },
+  trainingModeText: {
+    fontSize: TabletUtils.getResponsiveFontSize(14, 16),
+    fontWeight: '600' as const,
+    color: TheatreColors.accent,
+  },
+  trainingModeTextActive: {
+    color: TheatreColors.background,
   },
 });

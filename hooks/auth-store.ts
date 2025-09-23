@@ -9,6 +9,7 @@ const USERS_KEY = 'theatre_users';
 const PASSWORDS_KEY = 'theatre_passwords';
 const DEVICE_SETUP_KEY = 'theatre_device_setup';
 const DAILY_LOGINS_KEY = 'theatre_daily_logins';
+const TRAINING_MODE_KEY = 'theatre_training_mode';
 
 // No default users - must be created during setup
 
@@ -26,6 +27,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const [isDeviceSetup, setIsDeviceSetup] = useState<boolean>(false);
   const [isCheckingSetup, setIsCheckingSetup] = useState<boolean>(true);
   const [dailyLogins, setDailyLogins] = useState<Record<string, { userId: string; userName: string; loginTime: string }[]>>({});
+  const [isTrainingMode, setIsTrainingMode] = useState<boolean>(false);
 
   // Load auth state, users, and device setup from storage
   useEffect(() => {
@@ -66,6 +68,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           const storedDailyLogins = await AsyncStorage.getItem(DAILY_LOGINS_KEY);
           if (storedDailyLogins) {
             setDailyLogins(JSON.parse(storedDailyLogins));
+          }
+
+          // Load training mode
+          const storedTrainingMode = await AsyncStorage.getItem(TRAINING_MODE_KEY);
+          if (storedTrainingMode) {
+            setIsTrainingMode(JSON.parse(storedTrainingMode));
           }
         } else {
           setAuthState(prev => ({ ...prev, isLoading: false }));
@@ -498,12 +506,24 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     };
   }, [clearOldLoginData, checkAutoSignOut]);
 
+  const toggleTrainingMode = useCallback(async () => {
+    try {
+      const newTrainingMode = !isTrainingMode;
+      await AsyncStorage.setItem(TRAINING_MODE_KEY, JSON.stringify(newTrainingMode));
+      setIsTrainingMode(newTrainingMode);
+      console.log('Training mode', newTrainingMode ? 'enabled' : 'disabled');
+    } catch (error) {
+      console.error('Error toggling training mode:', error);
+    }
+  }, [isTrainingMode]);
+
   return {
     ...authState,
     users,
     isDeviceSetup,
     isCheckingSetup,
     dailyLogins,
+    isTrainingMode,
     login,
     logout,
     hasPermission,
@@ -516,5 +536,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     exportDeviceConfiguration,
     getDailyLogins,
     clearOldLoginData,
+    toggleTrainingMode,
   };
 });
