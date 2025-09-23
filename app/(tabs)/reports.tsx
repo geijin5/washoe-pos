@@ -1627,7 +1627,10 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                     });
                     
                     // Get all users who made after closing sales (including managers and ushers)
+                    // This includes both pure after-closing orders and ticket portions from mixed orders
                     const afterClosingUsers = new Map<string, { name: string; role: string; sales: number }>();
+                    
+                    // Process pure after-closing orders
                     dayOrders
                       .filter((order: any) => order.department === 'candy-counter' && order.isAfterClosing)
                       .forEach((order: any) => {
@@ -1636,8 +1639,39 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                         existing.sales += order.total;
                         afterClosingUsers.set(key, existing);
                         
-                        // Debug log for after closing user tracking
-                        console.log(`After closing sale by ${order.userName} (${order.userRole || 'unknown'}): ${order.total.toFixed(2)}`);
+                        console.log(`Pure after closing sale by ${order.userName} (${order.userRole || 'unknown'}): ${order.total.toFixed(2)}`);
+                      });
+                    
+                    // Process ticket portions from mixed candy counter orders
+                    dayOrders
+                      .filter((order: any) => order.department === 'candy-counter' && !order.isAfterClosing)
+                      .forEach((order: any) => {
+                        // Check if this order has tickets (mixed or pure ticket order)
+                        const ticketItems = order.items.filter((item: any) => item.product.category === 'tickets');
+                        const nonTicketItems = order.items.filter((item: any) => item.product.category !== 'tickets');
+                        
+                        if (ticketItems.length > 0) {
+                          const key = order.userName;
+                          const existing = afterClosingUsers.get(key) || { name: order.userName, role: order.userRole || 'staff', sales: 0 };
+                          
+                          if (ticketItems.length > 0 && nonTicketItems.length > 0) {
+                            // Mixed order - only count ticket portion
+                            const ticketSubtotal = ticketItems.reduce((sum: number, item: any) => sum + (item.product.price * item.quantity), 0);
+                            const totalSubtotal = order.items.reduce((sum: number, item: any) => sum + (item.product.price * item.quantity), 0);
+                            const ticketProportion = ticketSubtotal / totalSubtotal;
+                            const ticketFee = Math.round((order.creditCardFee || 0) * ticketProportion * 100) / 100;
+                            const ticketTotal = Math.round((ticketSubtotal + ticketFee) * 100) / 100;
+                            
+                            existing.sales += ticketTotal;
+                            console.log(`Mixed order ticket portion by ${order.userName} (${order.userRole || 'unknown'}): ${ticketTotal.toFixed(2)} (from total ${order.total.toFixed(2)})`);
+                          } else {
+                            // Pure ticket order in candy counter - count full amount
+                            existing.sales += order.total;
+                            console.log(`Pure ticket order in candy counter by ${order.userName} (${order.userRole || 'unknown'}): ${order.total.toFixed(2)}`);
+                          }
+                          
+                          afterClosingUsers.set(key, existing);
+                        }
                       });
                     
                     const usersList = Array.from(afterClosingUsers.values())
