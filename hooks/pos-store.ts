@@ -200,10 +200,10 @@ export const [POSProvider, usePOS] = createContextHook(() => {
 
   // Calculate totals with credit card fee - Enhanced logging for verification
   const calculateTotalsWithFee = useCallback((paymentMethod: 'cash' | 'card') => {
-    const subtotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+    const subtotal = Math.round(cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0) * 100) / 100;
     const feePercent = settings.creditCardFeePercent;
-    const creditCardFee = paymentMethod === 'card' ? subtotal * (feePercent / 100) : 0;
-    const total = subtotal + creditCardFee;
+    const creditCardFee = paymentMethod === 'card' ? Math.round(subtotal * (feePercent / 100) * 100) / 100 : 0;
+    const total = Math.round((subtotal + creditCardFee) * 100) / 100;
     
     // Enhanced logging for fee calculation verification
     if (paymentMethod === 'card' && creditCardFee > 0) {
@@ -511,13 +511,14 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log(`Found ${dayOrders.length} orders for ${dateStr}`);
 
     // Calculate totals with enhanced precision - ensure exact match with orders
-    const totalSales = parseFloat(dayOrders.reduce((sum, order) => sum + order.total, 0).toFixed(2));
-    const cashSales = parseFloat(dayOrders.filter(o => o.paymentMethod === 'cash').reduce((sum, order) => sum + order.total, 0).toFixed(2));
-    const cardSales = parseFloat(dayOrders.filter(o => o.paymentMethod === 'card').reduce((sum, order) => sum + order.total, 0).toFixed(2));
-    const creditCardFees = parseFloat(dayOrders.reduce((sum, order) => sum + (order.creditCardFee || 0), 0).toFixed(2));
+    // Use Math.round to avoid floating point precision issues
+    const totalSales = Math.round(dayOrders.reduce((sum, order) => sum + order.total, 0) * 100) / 100;
+    const cashSales = Math.round(dayOrders.filter(o => o.paymentMethod === 'cash').reduce((sum, order) => sum + order.total, 0) * 100) / 100;
+    const cardSales = Math.round(dayOrders.filter(o => o.paymentMethod === 'card').reduce((sum, order) => sum + order.total, 0) * 100) / 100;
+    const creditCardFees = Math.round(dayOrders.reduce((sum, order) => sum + (order.creditCardFee || 0), 0) * 100) / 100;
     
     // Verify cash + card = total (with enhanced precision)
-    const calculatedTotal = parseFloat((cashSales + cardSales).toFixed(2));
+    const calculatedTotal = Math.round((cashSales + cardSales) * 100) / 100;
     const totalDifference = Math.abs(calculatedTotal - totalSales);
     
     console.log(`=== TOTAL SALES VERIFICATION ===`);
@@ -574,21 +575,21 @@ export const [POSProvider, usePOS] = createContextHook(() => {
         const ticketProportion = ticketSubtotal / totalSubtotal;
         const nonTicketProportion = nonTicketSubtotal / totalSubtotal;
         
-        const ticketFee = (order.creditCardFee || 0) * ticketProportion;
-        const nonTicketFee = (order.creditCardFee || 0) * nonTicketProportion;
+        const ticketFee = Math.round((order.creditCardFee || 0) * ticketProportion * 100) / 100;
+        const nonTicketFee = Math.round((order.creditCardFee || 0) * nonTicketProportion * 100) / 100;
         
-        const ticketTotal = ticketSubtotal + ticketFee;
-        const nonTicketTotal = nonTicketSubtotal + nonTicketFee;
+        const ticketTotal = Math.round((ticketSubtotal + ticketFee) * 100) / 100;
+        const nonTicketTotal = Math.round((nonTicketSubtotal + nonTicketFee) * 100) / 100;
         
         console.log(`  Ticket items: ${ticketItems.map(i => i.product.name).join(', ')} = ${ticketTotal.toFixed(2)}`);
         console.log(`  Non-ticket items: ${nonTicketItems.map(i => i.product.name).join(', ')} = ${nonTicketTotal.toFixed(2)}`);
         
-        // Add ticket portion to after-closing
-        afterClosingSalesFromMixed += ticketTotal;
+        // Add ticket portion to after-closing with proper rounding
+        afterClosingSalesFromMixed = Math.round((afterClosingSalesFromMixed + ticketTotal) * 100) / 100;
         afterClosingOrdersFromMixed += 1; // Count as one order for after-closing
         
-        // Add non-ticket portion to candy counter
-        candyCounterSalesFromMixed += nonTicketTotal;
+        // Add non-ticket portion to candy counter with proper rounding
+        candyCounterSalesFromMixed = Math.round((candyCounterSalesFromMixed + nonTicketTotal) * 100) / 100;
         candyCounterOrdersFromMixed += 1; // Count as one order for candy counter
         
         // Split payment methods proportionally
@@ -634,17 +635,17 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log('===============================================');
     
     // Calculate department sales with enhanced precision - include mixed order handling
-    const boxOfficeSales = parseFloat(boxOfficeOrders.reduce((sum, order) => sum + order.total, 0).toFixed(2));
+    const boxOfficeSales = Math.round(boxOfficeOrders.reduce((sum, order) => sum + order.total, 0) * 100) / 100;
     
     // For candy counter sales, we need to subtract the ticket portions from mixed orders
-    let candyCounterSalesRaw = parseFloat(candyCounterOrders.reduce((sum, order) => sum + order.total, 0).toFixed(2));
+    let candyCounterSalesRaw = Math.round(candyCounterOrders.reduce((sum, order) => sum + order.total, 0) * 100) / 100;
     let candyCounterSalesAdjusted = candyCounterSalesRaw - afterClosingSalesFromMixed + candyCounterSalesFromMixed;
-    const candyCounterSales = parseFloat(candyCounterSalesAdjusted.toFixed(2));
+    const candyCounterSales = Math.round(candyCounterSalesAdjusted * 100) / 100;
     
     // For after-closing sales, add the ticket portions from mixed orders
-    let afterClosingSalesRaw = parseFloat(afterClosingOrders.reduce((sum, order) => sum + order.total, 0).toFixed(2));
+    let afterClosingSalesRaw = Math.round(afterClosingOrders.reduce((sum, order) => sum + order.total, 0) * 100) / 100;
     let afterClosingSalesAdjusted = afterClosingSalesRaw + afterClosingSalesFromMixed;
-    const afterClosingSales = parseFloat(afterClosingSalesAdjusted.toFixed(2));
+    const afterClosingSales = Math.round(afterClosingSalesAdjusted * 100) / 100;
     
     console.log(`=== MIXED ORDER ADJUSTMENT SUMMARY ===`);
     console.log(`Candy Counter Raw: ${candyCounterSalesRaw.toFixed(2)}`);
@@ -660,7 +661,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log(`Candy Counter Sales: ${candyCounterSales.toFixed(2)} from ${candyCounterOrders.length} orders`);
     console.log(`After Closing Sales: ${afterClosingSales.toFixed(2)} from ${afterClosingOrders.length} orders`);
     
-    const departmentTotal = parseFloat((boxOfficeSales + candyCounterSales + afterClosingSales).toFixed(2));
+    const departmentTotal = Math.round((boxOfficeSales + candyCounterSales + afterClosingSales) * 100) / 100;
     console.log(`Total Department Sales: ${departmentTotal.toFixed(2)}`);
     console.log(`Total Sales from Orders: ${totalSales.toFixed(2)}`);
     
@@ -696,15 +697,15 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     
     const departmentBreakdown = {
       'box-office': {
-        sales: parseFloat(boxOfficeSales.toFixed(2)),
+        sales: Math.round(boxOfficeSales * 100) / 100,
         orders: boxOfficeOrders.length,
       },
       'candy-counter': {
-        sales: parseFloat(candyCounterSales.toFixed(2)),
+        sales: Math.round(candyCounterSales * 100) / 100,
         orders: candyCounterOrders.length + candyCounterOrdersFromMixed,
       },
       'after-closing': {
-        sales: parseFloat(afterClosingSales.toFixed(2)),
+        sales: Math.round(afterClosingSales * 100) / 100,
         orders: afterClosingOrders.length + afterClosingOrdersFromMixed,
       },
     };
@@ -742,9 +743,9 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     boxOfficeOrders.forEach(order => {
       const orderTotal = Math.round(order.total * 100) / 100;
       if (order.paymentMethod === 'cash') {
-        boxOfficeCashSales += orderTotal;
+        boxOfficeCashSales = Math.round((boxOfficeCashSales + orderTotal) * 100) / 100;
       } else if (order.paymentMethod === 'card') {
-        boxOfficeCardSales += orderTotal;
+        boxOfficeCardSales = Math.round((boxOfficeCardSales + orderTotal) * 100) / 100;
       }
     });
     
@@ -761,13 +762,13 @@ export const [POSProvider, usePOS] = createContextHook(() => {
         const totalSubtotal = ticketSubtotal + nonTicketSubtotal;
         
         const nonTicketProportion = nonTicketSubtotal / totalSubtotal;
-        const nonTicketFee = (order.creditCardFee || 0) * nonTicketProportion;
-        const nonTicketTotal = nonTicketSubtotal + nonTicketFee;
+        const nonTicketFee = Math.round((order.creditCardFee || 0) * nonTicketProportion * 100) / 100;
+        const nonTicketTotal = Math.round((nonTicketSubtotal + nonTicketFee) * 100) / 100;
         
         if (order.paymentMethod === 'cash') {
-          candyCounterCashSales += nonTicketTotal;
+          candyCounterCashSales = Math.round((candyCounterCashSales + nonTicketTotal) * 100) / 100;
         } else if (order.paymentMethod === 'card') {
-          candyCounterCardSales += nonTicketTotal;
+          candyCounterCardSales = Math.round((candyCounterCardSales + nonTicketTotal) * 100) / 100;
         }
         
         console.log(`Mixed order ${order.id}: Candy counter portion = ${nonTicketTotal.toFixed(2)} (${order.paymentMethod})`);
@@ -775,9 +776,9 @@ export const [POSProvider, usePOS] = createContextHook(() => {
         // Pure candy counter order (no tickets)
         const orderTotal = Math.round(order.total * 100) / 100;
         if (order.paymentMethod === 'cash') {
-          candyCounterCashSales += orderTotal;
+          candyCounterCashSales = Math.round((candyCounterCashSales + orderTotal) * 100) / 100;
         } else if (order.paymentMethod === 'card') {
-          candyCounterCardSales += orderTotal;
+          candyCounterCardSales = Math.round((candyCounterCardSales + orderTotal) * 100) / 100;
         }
       }
     });
@@ -789,10 +790,10 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       const orderTotal = Math.round(order.total * 100) / 100;
       console.log(`After Closing Order ${index + 1}: ID=${order.id}, Total=${orderTotal.toFixed(2)}, Payment=${order.paymentMethod}, User=${order.userName}`);
       if (order.paymentMethod === 'cash') {
-        afterClosingCashSales += orderTotal;
+        afterClosingCashSales = Math.round((afterClosingCashSales + orderTotal) * 100) / 100;
         console.log(`  Added ${orderTotal.toFixed(2)} to after closing cash (running total: ${(afterClosingCashSales).toFixed(2)})`);
       } else if (order.paymentMethod === 'card') {
-        afterClosingCardSales += orderTotal;
+        afterClosingCardSales = Math.round((afterClosingCardSales + orderTotal) * 100) / 100;
         console.log(`  Added ${orderTotal.toFixed(2)} to after closing card (running total: ${(afterClosingCardSales).toFixed(2)})`);
       }
     });
@@ -809,13 +810,13 @@ export const [POSProvider, usePOS] = createContextHook(() => {
         const totalSubtotal = ticketSubtotal + nonTicketSubtotal;
         
         const ticketProportion = ticketSubtotal / totalSubtotal;
-        const ticketFee = (order.creditCardFee || 0) * ticketProportion;
-        const ticketTotal = ticketSubtotal + ticketFee;
+        const ticketFee = Math.round((order.creditCardFee || 0) * ticketProportion * 100) / 100;
+        const ticketTotal = Math.round((ticketSubtotal + ticketFee) * 100) / 100;
         
         if (order.paymentMethod === 'cash') {
-          afterClosingCashSales += ticketTotal;
+          afterClosingCashSales = Math.round((afterClosingCashSales + ticketTotal) * 100) / 100;
         } else if (order.paymentMethod === 'card') {
-          afterClosingCardSales += ticketTotal;
+          afterClosingCardSales = Math.round((afterClosingCardSales + ticketTotal) * 100) / 100;
         }
         
         console.log(`Mixed order ${order.id}: After closing portion = ${ticketTotal.toFixed(2)} (${order.paymentMethod})`);
@@ -835,12 +836,12 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log(`=== END AFTER CLOSING PROCESSING ===`);
     
     // Apply enhanced precision rounding to prevent floating point issues
-    boxOfficeCashSales = parseFloat(boxOfficeCashSales.toFixed(2));
-    boxOfficeCardSales = parseFloat(boxOfficeCardSales.toFixed(2));
-    candyCounterCashSales = parseFloat(candyCounterCashSales.toFixed(2));
-    candyCounterCardSales = parseFloat(candyCounterCardSales.toFixed(2));
-    afterClosingCashSales = parseFloat(afterClosingCashSales.toFixed(2));
-    afterClosingCardSales = parseFloat(afterClosingCardSales.toFixed(2));
+    boxOfficeCashSales = Math.round(boxOfficeCashSales * 100) / 100;
+    boxOfficeCardSales = Math.round(boxOfficeCardSales * 100) / 100;
+    candyCounterCashSales = Math.round(candyCounterCashSales * 100) / 100;
+    candyCounterCardSales = Math.round(candyCounterCardSales * 100) / 100;
+    afterClosingCashSales = Math.round(afterClosingCashSales * 100) / 100;
+    afterClosingCardSales = Math.round(afterClosingCardSales * 100) / 100;
     
     console.log(`=== PAYMENT BREAKDOWN BY DEPARTMENT VERIFICATION ===`);
     console.log(`Box Office Cash: ${boxOfficeCashSales.toFixed(2)}`);
@@ -850,8 +851,8 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log(`After Closing Cash: ${afterClosingCashSales.toFixed(2)}`);
     console.log(`After Closing Card: ${afterClosingCardSales.toFixed(2)}`);
     
-    const totalCashByDept = parseFloat((boxOfficeCashSales + candyCounterCashSales + afterClosingCashSales).toFixed(2));
-    const totalCardByDept = parseFloat((boxOfficeCardSales + candyCounterCardSales + afterClosingCardSales).toFixed(2));
+    const totalCashByDept = Math.round((boxOfficeCashSales + candyCounterCashSales + afterClosingCashSales) * 100) / 100;
+    const totalCardByDept = Math.round((boxOfficeCardSales + candyCounterCardSales + afterClosingCardSales) * 100) / 100;
     
     console.log(`Total Cash by Department: ${totalCashByDept.toFixed(2)} (should match ${cashSales.toFixed(2)})`);
     console.log(`Total Card by Department: ${totalCardByDept.toFixed(2)} (should match ${cardSales.toFixed(2)})`);
@@ -883,12 +884,12 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log('===============================================');
     
     const paymentBreakdown = {
-      boxOfficeCash: parseFloat(boxOfficeCashSales.toFixed(2)),
-      boxOfficeCard: parseFloat(boxOfficeCardSales.toFixed(2)),
-      candyCounterCash: parseFloat(candyCounterCashSales.toFixed(2)),
-      candyCounterCard: parseFloat(candyCounterCardSales.toFixed(2)),
-      afterClosingCash: parseFloat(afterClosingCashSales.toFixed(2)),
-      afterClosingCard: parseFloat(afterClosingCardSales.toFixed(2)),
+      boxOfficeCash: Math.round(boxOfficeCashSales * 100) / 100,
+      boxOfficeCard: Math.round(boxOfficeCardSales * 100) / 100,
+      candyCounterCash: Math.round(candyCounterCashSales * 100) / 100,
+      candyCounterCard: Math.round(candyCounterCardSales * 100) / 100,
+      afterClosingCash: Math.round(afterClosingCashSales * 100) / 100,
+      afterClosingCard: Math.round(afterClosingCardSales * 100) / 100,
     };
 
     // ENHANCED User breakdown - Ensure ALL accounts with sales are captured
@@ -1080,11 +1081,11 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log(`=== COMPREHENSIVE CALCULATION VERIFICATION ===`);
     
     // Calculate verification values with enhanced precision
-    const cashPlusCard = parseFloat((cashSales + cardSales).toFixed(2));
-    const departmentSum = parseFloat((boxOfficeSales + candyCounterSales + afterClosingSales).toFixed(2));
-    const deptCashSum = parseFloat((boxOfficeCashSales + candyCounterCashSales + afterClosingCashSales).toFixed(2));
-    const deptCardSum = parseFloat((boxOfficeCardSales + candyCounterCardSales + afterClosingCardSales).toFixed(2));
-    const showSum = parseFloat(Object.values(showBreakdown).reduce((sum, show) => sum + show.sales, 0).toFixed(2));
+    const cashPlusCard = Math.round((cashSales + cardSales) * 100) / 100;
+    const departmentSum = Math.round((boxOfficeSales + candyCounterSales + afterClosingSales) * 100) / 100;
+    const deptCashSum = Math.round((boxOfficeCashSales + candyCounterCashSales + afterClosingCashSales) * 100) / 100;
+    const deptCardSum = Math.round((boxOfficeCardSales + candyCounterCardSales + afterClosingCardSales) * 100) / 100;
+    const showSum = Math.round(Object.values(showBreakdown).reduce((sum, show) => sum + show.sales, 0) * 100) / 100;
     
     // Enhanced verification with tighter tolerances
     const verificationResults = {
