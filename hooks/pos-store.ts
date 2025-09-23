@@ -13,7 +13,7 @@ const SETTINGS_KEY = 'theatre_settings';
 const DEFAULT_CATEGORIES: Category[] = ['tickets', 'concessions', 'merchandise', 'beverages'];
 
 const DEFAULT_SETTINGS: POSSettings = {
-  creditCardFeePercent: 5.0, // 5.0% default credit card fee
+  creditCardFeePercent: 5.0, // Exactly 5.0% credit card fee
   categories: DEFAULT_CATEGORIES,
   trainingMode: false,
 };
@@ -198,11 +198,24 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     return { subtotal, total };
   }, [cart]);
 
-  // Calculate totals with credit card fee
+  // Calculate totals with credit card fee - Enhanced logging for verification
   const calculateTotalsWithFee = useCallback((paymentMethod: 'cash' | 'card') => {
     const subtotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-    const creditCardFee = paymentMethod === 'card' ? subtotal * (settings.creditCardFeePercent / 100) : 0;
+    const feePercent = settings.creditCardFeePercent;
+    const creditCardFee = paymentMethod === 'card' ? subtotal * (feePercent / 100) : 0;
     const total = subtotal + creditCardFee;
+    
+    // Enhanced logging for fee calculation verification
+    if (paymentMethod === 'card' && creditCardFee > 0) {
+      console.log(`=== CREDIT CARD FEE CALCULATION ===`);
+      console.log(`Subtotal: ${subtotal.toFixed(2)}`);
+      console.log(`Fee Percentage: ${feePercent}%`);
+      console.log(`Fee Amount: ${creditCardFee.toFixed(2)}`);
+      console.log(`Total with Fee: ${total.toFixed(2)}`);
+      console.log(`Verification: ${subtotal.toFixed(2)} * ${feePercent}% = ${(subtotal * feePercent / 100).toFixed(2)}`);
+      console.log(`=== END FEE CALCULATION ===`);
+    }
+    
     return { subtotal, creditCardFee, total };
   }, [cart, settings.creditCardFeePercent]);
 
@@ -227,7 +240,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       showType,
     };
 
-    // Debug logging for all sales to track department assignment
+    // Debug logging for all sales to track department assignment and fees
     console.log('=== ORDER PROCESSED ===');
     console.log(`Training Mode: ${settings.trainingMode ? 'ENABLED' : 'DISABLED'}`);
     console.log(`Order ID: ${newOrder.id}`);
@@ -235,6 +248,8 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log(`Department: ${department}`);
     console.log(`Is After Closing: ${isAfterClosing}`);
     console.log(`Payment Method: ${paymentMethod}`);
+    console.log(`Subtotal: ${totals.subtotal.toFixed(2)}`);
+    console.log(`Credit Card Fee: ${totals.creditCardFee.toFixed(2)} (${settings.creditCardFeePercent}%)`);
     console.log(`Total: ${totals.total.toFixed(2)}`);
     console.log(`Items: ${cart.map(item => `${item.product.name} (${item.product.category}) x${item.quantity}`).join(', ')}`);
     console.log('==========================');

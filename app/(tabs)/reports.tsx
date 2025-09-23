@@ -148,6 +148,7 @@ export default function ReportsScreen() {
     console.log(`=== REPORT TEXT CARD FEES CALCULATION ===`);
     console.log(`Report card sales: ${report.cardSales.toFixed(2)}`);
     console.log(`Report total fees: ${totalFees.toFixed(2)}`);
+    console.log(`Credit card fee percentage: ${settings.creditCardFeePercent}%`);
     console.log(`After closing cash sales: ${afterClosingCashSales.toFixed(2)}`);
     console.log(`After closing card sales: ${afterClosingCardSales.toFixed(2)}`);
     console.log(`After closing total: ${afterClosingTotal.toFixed(2)}`);
@@ -159,10 +160,21 @@ export default function ReportsScreen() {
       candyCounterCardFees = candyCounterCardSales * feeRate;
       afterClosingCardFees = afterClosingCardSales * feeRate;
       
-      console.log(`Fee rate: ${(feeRate * 100).toFixed(4)}%`);
-      console.log(`Calculated after closing card fees: ${afterClosingCardFees.toFixed(2)}`);
+      console.log(`Calculated fee rate: ${(feeRate * 100).toFixed(4)}% (should be ${settings.creditCardFeePercent}%)`);
+      console.log(`Box office card fees: ${boxOfficeCardFees.toFixed(2)}`);
+      console.log(`Candy counter card fees: ${candyCounterCardFees.toFixed(2)}`);
+      console.log(`After closing card fees: ${afterClosingCardFees.toFixed(2)}`);
+      
+      // Verify the fee rate matches the expected 5%
+      const expectedFeeRate = settings.creditCardFeePercent / 100;
+      const feeRateDifference = Math.abs(feeRate - expectedFeeRate);
+      if (feeRateDifference > 0.001) {
+        console.warn(`⚠️ FEE RATE MISMATCH: Calculated ${(feeRate * 100).toFixed(4)}% vs Expected ${settings.creditCardFeePercent}%`);
+      } else {
+        console.log(`✅ FEE RATE VERIFIED: ${(feeRate * 100).toFixed(2)}% matches expected ${settings.creditCardFeePercent}%`);
+      }
     } else {
-      console.log(`No card fees to calculate (cardSales: ${report.cardSales}, totalFees: ${totalFees})`);
+      console.log(`No card fees to calculate (cardSales: ${report.cardSales.toFixed(2)}, totalFees: ${totalFees.toFixed(2)})`);
     }
     console.log(`=== END REPORT TEXT CARD FEES ===`);
     
@@ -646,7 +658,7 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                 )}
               </Text>
               <Text style={styles.summaryLabel}>
-                Card Fees{(isTrainingMode || settings.trainingMode) ? ' (Training)' : ''}
+                Card Fees ({settings.creditCardFeePercent}%){(isTrainingMode || settings.trainingMode) ? ' (Training)' : ''}
               </Text>
             </View>
             
@@ -855,9 +867,15 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
               boxOfficeCardSales = boxOfficeTotal * overallCardRatio;
             }
             
-            // Calculate box office card fees from actual card sales
+            // Calculate box office card fees from actual card sales with verification
             const feeRate = currentReport.cardSales > 0 ? currentReport.creditCardFees / currentReport.cardSales : 0;
             const boxOfficeCardFees = boxOfficeCardSales * feeRate;
+            
+            // Verify the fee rate is correct (should be 5%)
+            const expectedFeeRate = settings.creditCardFeePercent / 100;
+            if (Math.abs(feeRate - expectedFeeRate) > 0.001) {
+              console.warn(`⚠️ BOX OFFICE FEE RATE MISMATCH: Calculated ${(feeRate * 100).toFixed(4)}% vs Expected ${settings.creditCardFeePercent}%`);
+            }
             
             // Calculate manager sales for box office payment breakdown
             const dayOrders = orders.filter((order: any) => {
@@ -937,9 +955,15 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
               candyCounterCardSales = candyCounterTotal * overallCardRatio;
             }
             
-            // Calculate candy counter card fees
+            // Calculate candy counter card fees with verification
             const feeRate = currentReport.cardSales > 0 ? currentReport.creditCardFees / currentReport.cardSales : 0;
             const candyCounterCardFees = candyCounterCardSales * feeRate;
+            
+            // Verify the fee rate is correct (should be 5%)
+            const expectedFeeRate = settings.creditCardFeePercent / 100;
+            if (Math.abs(feeRate - expectedFeeRate) > 0.001) {
+              console.warn(`⚠️ CANDY COUNTER FEE RATE MISMATCH: Calculated ${(feeRate * 100).toFixed(4)}% vs Expected ${settings.creditCardFeePercent}%`);
+            }
             
             // Calculate manager sales for candy counter payment breakdown
             const dayOrders = orders.filter((order: any) => {
@@ -1027,9 +1051,19 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
             console.log(`=== AFTER CLOSING CARD FEES CALCULATION (REPORTS) ===`);
             console.log(`Total card sales: ${currentReport.cardSales.toFixed(2)}`);
             console.log(`Total credit card fees: ${currentReport.creditCardFees.toFixed(2)}`);
-            console.log(`Fee rate: ${(feeRate * 100).toFixed(4)}%`);
+            console.log(`Calculated fee rate: ${(feeRate * 100).toFixed(4)}%`);
+            console.log(`Expected fee rate: ${settings.creditCardFeePercent}%`);
             console.log(`After closing card sales: ${afterClosingCardSales.toFixed(2)}`);
             console.log(`After closing card fees: ${afterClosingCardFees.toFixed(2)}`);
+            
+            // Verify the 5% fee rate is correct
+            const expectedFeeRate = settings.creditCardFeePercent / 100;
+            const feeRateDifference = Math.abs(feeRate - expectedFeeRate);
+            if (feeRateDifference > 0.001) {
+              console.warn(`⚠️ AFTER CLOSING FEE RATE MISMATCH: Calculated ${(feeRate * 100).toFixed(4)}% vs Expected ${settings.creditCardFeePercent}%`);
+            } else {
+              console.log(`✅ AFTER CLOSING FEE RATE VERIFIED: ${(feeRate * 100).toFixed(2)}% matches expected ${settings.creditCardFeePercent}%`);
+            }
             console.log(`=== END AFTER CLOSING FEES (REPORTS) ===`);
             
             // Calculate manager sales for after closing payment breakdown
@@ -1118,6 +1152,14 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                 
                 const feeRate = currentReport.cardSales > 0 ? currentReport.creditCardFees / currentReport.cardSales : 0;
                 
+                // Verify the fee rate is exactly 5%
+                const expectedFeeRate = settings.creditCardFeePercent / 100;
+                if (Math.abs(feeRate - expectedFeeRate) > 0.001) {
+                  console.warn(`⚠️ FEES SECTION FEE RATE MISMATCH: Calculated ${(feeRate * 100).toFixed(4)}% vs Expected ${settings.creditCardFeePercent}%`);
+                } else {
+                  console.log(`✅ FEES SECTION FEE RATE VERIFIED: ${(feeRate * 100).toFixed(2)}% matches expected ${settings.creditCardFeePercent}%`);
+                }
+                
                 if (currentReport.paymentBreakdown) {
                   // Use actual payment breakdown for accurate fee calculation
                   const boxOfficeCardSales = currentReport.paymentBreakdown.boxOfficeCard || 0;
@@ -1127,6 +1169,12 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                   boxOfficeCardFees = boxOfficeCardSales * feeRate;
                   candyCounterCardFees = candyCounterCardSales * feeRate;
                   afterClosingCardFees = afterClosingCardSales * feeRate;
+                  
+                  console.log(`=== FEES SECTION CALCULATION DETAILS ===`);
+                  console.log(`Box Office Card Sales: ${boxOfficeCardSales.toFixed(2)} × ${(feeRate * 100).toFixed(2)}% = ${boxOfficeCardFees.toFixed(2)}`);
+                  console.log(`Candy Counter Card Sales: ${candyCounterCardSales.toFixed(2)} × ${(feeRate * 100).toFixed(2)}% = ${candyCounterCardFees.toFixed(2)}`);
+                  console.log(`After Closing Card Sales: ${afterClosingCardSales.toFixed(2)} × ${(feeRate * 100).toFixed(2)}% = ${afterClosingCardFees.toFixed(2)}`);
+                  console.log(`=== END FEES SECTION DETAILS ===`);
                 } else {
                   // Fallback calculation using proportional method
                   const overallCardRatio = currentReport.totalSales > 0 ? currentReport.cardSales / currentReport.totalSales : 0;
@@ -1137,6 +1185,10 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                   boxOfficeCardFees = boxOfficeCardSales * feeRate;
                   candyCounterCardFees = candyCounterCardSales * feeRate;
                   afterClosingCardFees = afterClosingCardSales * feeRate;
+                  
+                  console.log(`=== FEES SECTION FALLBACK CALCULATION ===`);
+                  console.log(`Using proportional method with ${(feeRate * 100).toFixed(2)}% fee rate`);
+                  console.log(`=== END FEES SECTION FALLBACK ===`);
                 }
                 
                 // Use the actual total fees from the report
