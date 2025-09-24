@@ -23,7 +23,7 @@ import {
   generateDepartmentBreakdownSection,
   calculateManagerSalesByDepartment,
   calculateUsherAfterClosingSales
-} from './reports-helpers';
+} from '@/hooks/reports-helpers';
 import { 
   BarChart3, 
   Calendar, 
@@ -453,7 +453,7 @@ ${departmentBreakdown}`;
 
   if (reportMode === 'aggregated' && isLoadingAggregated) {
     if (!hasAccess) {
-      return (
+    return (
         <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
           {isUsher ? (
             <View style={styles.usherAccessContainer}>
@@ -483,7 +483,7 @@ ${departmentBreakdown}`;
 
   if (!currentReport) {
     if (!hasAccess) {
-      return (
+    return (
         <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
           {isUsher ? (
             <View style={styles.usherAccessContainer}>
@@ -495,9 +495,9 @@ ${departmentBreakdown}`;
             </View>
           ) : (
             <View style={styles.noAccessContainer}>
-              <Text style={styles.title}>No Report Available</Text>
-              <Text style={styles.subtitle}>Unable to generate report for selected date</Text>
-            </View>
+          <Text style={styles.title}>No Report Available</Text>
+          <Text style={styles.subtitle}>Unable to generate report for selected date</Text>
+        </View>
           )}
         </View>
       );
