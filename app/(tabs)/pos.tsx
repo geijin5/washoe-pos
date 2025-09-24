@@ -72,14 +72,21 @@ export default function POSScreen() {
     if (!selectedDepartment) return filteredProducts;
     
     if (selectedDepartment === 'box-office') {
-      return filteredProducts.filter(product => {
+      const boxOfficeProducts = filteredProducts.filter(product => {
         // Check if it's a hardcoded box office ticket category
-        if (product.category === 'box-office-tickets') return true;
+        if (product.category === 'box-office-tickets') {
+          console.log(`✅ Box Office Product (hardcoded): ${product.name} - ${product.category}`);
+          return true;
+        }
         
         // Check if it's a custom category marked as box office ticket
         const categoryMetadata = getCategoryMetadata(product.category);
-        return categoryMetadata?.isBoxOfficeTicket === true;
+        const isBoxOffice = categoryMetadata?.isBoxOfficeTicket === true;
+        console.log(`🔍 Box Office Check - Product: ${product.name}, Category: ${product.category}, Metadata:`, categoryMetadata, `isBoxOffice: ${isBoxOffice}`);
+        return isBoxOffice;
       });
+      console.log(`📊 Box Office Products Found: ${boxOfficeProducts.length} out of ${filteredProducts.length} total products`);
+      return boxOfficeProducts;
     } else if (selectedDepartment === 'candy-counter') {
       // Candy counter includes all products except box office tickets
       // But includes after-closing tickets (which will be processed as tickets in reports)

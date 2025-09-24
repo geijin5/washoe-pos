@@ -19,7 +19,7 @@ const formatCategoryName = (category: string) => {
 };
 
 export function CategoryFilter({ selected, onSelect, selectedDepartment }: CategoryFilterProps) {
-  const { availableCategories } = usePOS();
+  const { availableCategories, getCategoryMetadata } = usePOS();
   
   // Force re-render when categories change
   React.useEffect(() => {
@@ -30,13 +30,27 @@ export function CategoryFilter({ selected, onSelect, selectedDepartment }: Categ
     console.log('CategoryFilter: Rebuilding categories list. Available categories:', availableCategories);
     const categoryOptions: { value: Category | 'all' | 'candy-counter-sales' | 'after-closing-tickets'; label: string }[] = [];
     
-    // For box office: only show "All" and "Box Office Tickets"
+    // For box office: show "All", "Box Office Tickets", and custom categories marked as box office tickets
     if (selectedDepartment === 'box-office') {
       categoryOptions.push(
         { value: 'all', label: 'All' },
         { value: 'box-office-tickets', label: 'Box Office Tickets' }
       );
-      console.log('CategoryFilter: Box office mode - showing only All and Box Office Tickets');
+      
+      // Add custom categories that are marked as box office tickets
+      availableCategories.forEach(category => {
+        if (category !== 'box-office-tickets') {
+          const metadata = getCategoryMetadata(category);
+          if (metadata?.isBoxOfficeTicket === true) {
+            categoryOptions.push({
+              value: category,
+              label: formatCategoryName(category),
+            });
+          }
+        }
+      });
+      
+      console.log('CategoryFilter: Box office mode - showing All, Box Office Tickets, and custom box office categories:', categoryOptions);
       return categoryOptions;
     }
     
@@ -59,7 +73,7 @@ export function CategoryFilter({ selected, onSelect, selectedDepartment }: Categ
     
     console.log('CategoryFilter: Final category options:', categoryOptions);
     return categoryOptions;
-  }, [availableCategories, selectedDepartment]);
+  }, [availableCategories, selectedDepartment, getCategoryMetadata]);
   
   const handleCategoryPress = async (category: Category | 'all' | 'candy-counter-sales' | 'after-closing-tickets') => {
     if (Platform.OS !== 'web') {

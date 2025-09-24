@@ -310,7 +310,10 @@ export const [POSProvider, usePOS] = createContextHook(() => {
   }, [settings.categories]);
 
   const getCategoryMetadata = useCallback((categoryId: string): CategoryMetadata | undefined => {
-    return settings.categoryMetadata?.find(m => m.id === categoryId);
+    const metadata = settings.categoryMetadata?.find(m => m.id === categoryId);
+    console.log(`🔍 getCategoryMetadata - Category: "${categoryId}", Found:`, metadata);
+    console.log(`📋 All category metadata:`, settings.categoryMetadata);
+    return metadata;
   }, [settings.categoryMetadata]);
 
   // Helper function to check if a category is a ticket (including custom categories)
@@ -331,24 +334,26 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       const currentCategories = settings.categories || DEFAULT_CATEGORIES;
       if (!currentCategories.includes(category)) {
         const updatedCategories = [...currentCategories, category];
-        console.log(`Adding category: ${category}. Updated categories:`, updatedCategories);
+        console.log(`➕ Adding category: ${category}. Updated categories:`, updatedCategories);
         
         // Update category metadata if provided
         let updatedMetadata = settings.categoryMetadata || [];
         if (metadata) {
           updatedMetadata = [...updatedMetadata, metadata];
+          console.log(`📝 Adding category metadata:`, metadata);
+          console.log(`📋 Updated metadata array:`, updatedMetadata);
         }
         
         await updateSettings({ 
           categories: updatedCategories,
           categoryMetadata: updatedMetadata
         });
-        console.log(`Category ${category} added successfully. Available categories updated.`);
+        console.log(`✅ Category ${category} added successfully with metadata. Available categories updated.`);
       } else {
-        console.log(`Category ${category} already exists in:`, currentCategories);
+        console.log(`⚠️ Category ${category} already exists in:`, currentCategories);
       }
     } catch (error) {
-      console.error('Error adding category:', error);
+      console.error('❌ Error adding category:', error);
       throw error;
     }
   }, [settings.categories, settings.categoryMetadata, updateSettings]);
