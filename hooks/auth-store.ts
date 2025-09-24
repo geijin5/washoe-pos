@@ -511,6 +511,13 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       const newTrainingMode = !isTrainingMode;
       await AsyncStorage.setItem(TRAINING_MODE_KEY, JSON.stringify(newTrainingMode));
       setIsTrainingMode(newTrainingMode);
+      
+      // If turning off training mode, clear all training data
+      if (!newTrainingMode) {
+        await AsyncStorage.removeItem('theatre_training_orders');
+        console.log('🎓 Training data cleared when training mode was disabled');
+      }
+      
       console.log('Training mode', newTrainingMode ? 'enabled' : 'disabled');
     } catch (error) {
       console.error('Error toggling training mode:', error);

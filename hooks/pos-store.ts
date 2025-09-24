@@ -8,6 +8,7 @@ import { defaultProducts } from '@/mocks/default-products';
 
 const PRODUCTS_KEY = 'theatre_products';
 const ORDERS_KEY = 'theatre_orders';
+const TRAINING_ORDERS_KEY = 'theatre_training_orders';
 const SETTINGS_KEY = 'theatre_settings';
 
 const DEFAULT_CATEGORIES: Category[] = ['box-office-tickets', 'after-closing-tickets', 'concessions', 'merchandise', 'beverages'];
@@ -24,6 +25,7 @@ const GLOBAL_SETTINGS_KEY = 'theatre_global_settings';
 export const [POSProvider, usePOS] = createContextHook(() => {
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [trainingOrders, setTrainingOrders] = useState<Order[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [settings, setSettings] = useState<POSSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,9 +36,10 @@ export const [POSProvider, usePOS] = createContextHook(() => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [storedProducts, storedOrders, storedSettings, globalSettings] = await Promise.all([
+        const [storedProducts, storedOrders, storedTrainingOrders, storedSettings, globalSettings] = await Promise.all([
           AsyncStorage.getItem(PRODUCTS_KEY),
           AsyncStorage.getItem(ORDERS_KEY),
+          AsyncStorage.getItem(TRAINING_ORDERS_KEY),
           AsyncStorage.getItem(SETTINGS_KEY),
           AsyncStorage.getItem(GLOBAL_SETTINGS_KEY),
         ]);
@@ -51,6 +54,10 @@ export const [POSProvider, usePOS] = createContextHook(() => {
 
         if (storedOrders) {
           setOrders(JSON.parse(storedOrders));
+        }
+
+        if (storedTrainingOrders) {
+          setTrainingOrders(JSON.parse(storedTrainingOrders));
         }
 
         // Load settings with global credit card fee consistency
@@ -107,6 +114,27 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       setOrders(newOrders);
     } catch (error) {
       console.error('Error saving orders:', error);
+    }
+  }, []);
+
+  // Save training orders when they change
+  const saveTrainingOrders = useCallback(async (newTrainingOrders: Order[]) => {
+    try {
+      await AsyncStorage.setItem(TRAINING_ORDERS_KEY, JSON.stringify(newTrainingOrders));
+      setTrainingOrders(newTrainingOrders);
+    } catch (error) {
+      console.error('Error saving training orders:', error);
+    }
+  }, []);
+
+  // Clear all training data
+  const clearTrainingData = useCallback(async () => {
+    try {
+      setTrainingOrders([]);
+      await AsyncStorage.removeItem(TRAINING_ORDERS_KEY);
+      console.log('🎓 Training data cleared');
+    } catch (error) {
+      console.error('Error clearing training data:', error);
     }
   }, []);
 
@@ -260,9 +288,11 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       console.log(`This order should appear in candy counter reports`);
     }
 
-    // In training mode, don't save orders to persistent storage
+    // In training mode, save to training orders instead of regular orders
     if (settings.trainingMode) {
-      console.log('🎓 TRAINING MODE: Order processed but not saved to permanent records');
+      console.log('🎓 TRAINING MODE: Order saved to training records');
+      const updatedTrainingOrders = [newOrder, ...trainingOrders];
+      saveTrainingOrders(updatedTrainingOrders);
       clearCart();
       return newOrder;
     }
@@ -271,7 +301,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     saveOrders(updatedOrders);
     clearCart();
     return newOrder;
-  }, [cart, calculateTotalsWithFee, orders, saveOrders, clearCart, settings.trainingMode]);
+  }, [cart, calculateTotalsWithFee, orders, trainingOrders, saveOrders, saveTrainingOrders, clearCart, settings.trainingMode]);
 
   // Filtered products
   const filteredProducts = useMemo(() => {
@@ -527,13 +557,17 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     const day = String(businessDate.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
     
-    console.log(`=== GENERATING LOCAL NIGHTLY REPORT ===`);
+    console.log(`=== GENERATING ${settings.trainingMode ? 'TRAINING' : 'LOCAL'} NIGHTLY REPORT ===`);
     console.log(`Report Date: ${reportDate.toISOString()}`);
     console.log(`Business Date: ${dateStr}`);
+    console.log(`Training Mode: ${settings.trainingMode ? 'ENABLED' : 'DISABLED'}`);
     console.log('Ensuring ALL local accounts with sales are included...');
     
+    // Use training orders if in training mode, otherwise use regular orders
+    const sourceOrders = settings.trainingMode ? trainingOrders : orders;
+    
     // Filter orders for the specific business date - ensure proper date comparison
-    const dayOrders = orders.filter(order => {
+    const dayOrders = sourceOrders.filter(order => {
       const orderDate = new Date(order.timestamp);
       
       // Apply same 2am cutoff logic to order dates
@@ -1220,7 +1254,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       userBreakdown,
       topProducts,
     };
-  }, [orders, isValidRealUser, shouldUpdateRole]);
+  }, [orders, trainingOrders, settings.trainingMode, isValidRealUser, shouldUpdateRole]);
 
   // Save nightly report and prepare for new day
   const saveNightlyReportAndReset = useCallback(async () => {
@@ -1925,5 +1959,8 @@ export const [POSProvider, usePOS] = createContextHook(() => {
         return false;
       }
     }, [orders]),
+    
+    // Training mode functions
+    clearTrainingData,
   };
 });

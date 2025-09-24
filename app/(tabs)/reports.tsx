@@ -61,8 +61,9 @@ export default function ReportsScreen() {
       return null;
     }
     console.log(`=== REPORTS SCREEN: Generating report for ${selectedDate.toISOString().split('T')[0]} ===`);
+    console.log(`Training Mode: ${isTrainingMode || settings.trainingMode ? 'ENABLED' : 'DISABLED'}`);
     return generateNightlyReport(selectedDate);
-  }, [generateNightlyReport, selectedDate, reportMode]);
+  }, [generateNightlyReport, selectedDate, reportMode, isTrainingMode, settings.trainingMode]);
 
   useEffect(() => {
     if (reportMode === 'aggregated') {
