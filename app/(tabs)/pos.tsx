@@ -83,17 +83,19 @@ export default function POSScreen() {
       return boxOfficeProducts;
     } else if (selectedDepartment === 'candy-counter') {
       // Candy counter includes all products except box office tickets
-      // But includes after-closing tickets (which will be processed as tickets in reports)
-      return filteredProducts.filter(product => {
+      // But includes after-closing tickets and custom categories with after-closing checkbox
+      const candyCounterProducts = filteredProducts.filter(product => {
         // Check custom category metadata
         const categoryMetadata = getCategoryMetadata(product.category);
         
         // Exclude custom categories marked as box office ticket only
-        if (categoryMetadata?.isBoxOfficeTicket === true) return false;
+        if (categoryMetadata?.isBoxOfficeTicket === true && !categoryMetadata?.isAfterClosingTicket) return false;
         
-        // Include everything else (including after-closing tickets)
+        // Include everything else (including after-closing tickets and after-closing categories)
         return true;
       });
+      console.log(`📊 Candy Counter Products Found: ${candyCounterProducts.length} out of ${filteredProducts.length} total products`);
+      return candyCounterProducts;
     }
     
     return filteredProducts;

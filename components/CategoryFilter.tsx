@@ -53,7 +53,7 @@ export function CategoryFilter({ selected, onSelect, selectedDepartment }: Categ
       return categoryOptions;
     }
     
-    // For candy counter: show all categories except the special buttons
+    // For candy counter: show all categories except box office only categories
     categoryOptions.push({ value: 'all', label: 'All' });
     
     // Always use availableCategories from the store - this ensures real-time updates
@@ -64,10 +64,20 @@ export function CategoryFilter({ selected, onSelect, selectedDepartment }: Categ
     console.log('CategoryFilter: Categories to show:', categoriesToShow);
     
     categoriesToShow.forEach(category => {
-      categoryOptions.push({
-        value: category,
-        label: formatCategoryName(category),
-      });
+      // Check if this category should be shown in candy counter
+      const categoryMetadata = getCategoryMetadata(category);
+      
+      // Show category if:
+      // 1. It's not a box office only category (isBoxOfficeTicket = true AND isAfterClosingTicket = false)
+      // 2. OR it's an after-closing category (isAfterClosingTicket = true)
+      const shouldShow = !(categoryMetadata?.isBoxOfficeTicket === true && !categoryMetadata?.isAfterClosingTicket);
+      
+      if (shouldShow) {
+        categoryOptions.push({
+          value: category,
+          label: formatCategoryName(category),
+        });
+      }
     });
     
     console.log('CategoryFilter: Final category options:', categoryOptions);

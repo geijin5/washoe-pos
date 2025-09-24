@@ -355,7 +355,8 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     
     // Check custom category metadata
     const metadata = getCategoryMetadata(categoryId);
-    return metadata?.isTicket === true;
+    // Return true if it's marked as a ticket OR as an after-closing ticket
+    return metadata?.isTicket === true || metadata?.isAfterClosingTicket === true;
   }, [getCategoryMetadata]);
 
   // Category management
