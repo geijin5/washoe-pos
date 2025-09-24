@@ -11,8 +11,8 @@ import {
 } from 'react-native';
 import { usePOS } from '@/hooks/pos-store';
 import { TheatreColors } from '@/constants/theatre-colors';
-import { X, Plus, Trash2, Tag } from 'lucide-react-native';
-import { Category } from '@/types/pos';
+import { X, Plus, Trash2, Tag, Check } from 'lucide-react-native';
+import { Category, CategoryMetadata } from '@/types/pos';
 
 interface CategoryManagementProps {
   visible: boolean;
@@ -20,9 +20,11 @@ interface CategoryManagementProps {
 }
 
 export function CategoryManagement({ visible, onClose }: CategoryManagementProps) {
-  const { availableCategories, addCategory, removeCategory } = usePOS();
+  const { availableCategories, addCategory, removeCategory, getCategoryMetadata } = usePOS();
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isBoxOfficeTicket, setIsBoxOfficeTicket] = useState(false);
+  const [isAfterClosingTicket, setIsAfterClosingTicket] = useState(false);
 
   const handleAddCategory = async () => {
     if (!newCategoryName.trim()) {
@@ -37,10 +39,26 @@ export function CategoryManagement({ visible, onClose }: CategoryManagementProps
       return;
     }
 
+    // If it's a ticket category, require at least one checkbox to be selected
+    if (isBoxOfficeTicket || isAfterClosingTicket) {
+      if (!isBoxOfficeTicket && !isAfterClosingTicket) {
+        Alert.alert('Error', 'Please select at least one ticket type (Box Office or After Closing)');
+        return;
+      }
+    }
+
     try {
       setIsLoading(true);
-      await addCategory(categoryId);
+      await addCategory(categoryId, {
+        id: categoryId,
+        name: newCategoryName.trim(),
+        isBoxOfficeTicket,
+        isAfterClosingTicket,
+        isTicket: isBoxOfficeTicket || isAfterClosingTicket
+      });
       setNewCategoryName('');
+      setIsBoxOfficeTicket(false);
+      setIsAfterClosingTicket(false);
       Alert.alert('Success', 'Category added successfully!');
     } catch (error) {
       console.error('Error adding category:', error);
@@ -83,6 +101,17 @@ export function CategoryManagement({ visible, onClose }: CategoryManagementProps
 
   const formatCategoryName = (category: string) => {
     return category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, ' ');
+  };
+
+  const getCategoryDisplayInfo = (category: string) => {
+    const metadata = getCategoryMetadata(category);
+    if (metadata) {
+      const types = [];
+      if (metadata.isBoxOfficeTicket) types.push('Box Office');
+      if (metadata.isAfterClosingTicket) types.push('After Closing');
+      return types.length > 0 ? `${formatCategoryName(category)} (${types.join(', ')})` : formatCategoryName(category);
+    }
+    return formatCategoryName(category);
   };
 
   return (
@@ -130,6 +159,46 @@ export function CategoryManagement({ visible, onClose }: CategoryManagementProps
                 </Text>
               </TouchableOpacity>
             </View>
+
+            {/* Ticket Type Checkboxes */}
+            <View style={styles.checkboxSection}>
+              <Text style={styles.checkboxSectionTitle}>Ticket Type (Optional)</Text>
+              <Text style={styles.checkboxSectionDescription}>
+                Select if this category is for tickets and where they should appear
+              </Text>
+              
+              <View style={styles.checkboxContainer}>
+                <TouchableOpacity
+                  style={styles.checkbox}
+                  onPress={() => setIsBoxOfficeTicket(!isBoxOfficeTicket)}
+                >
+                  <View style={[
+                    styles.checkboxBox,
+                    isBoxOfficeTicket && styles.checkboxBoxChecked
+                  ]}>
+                    {isBoxOfficeTicket && (
+                      <Check size={16} color={TheatreColors.background} />
+                    )}
+                  </View>
+                  <Text style={styles.checkboxLabel}>Box Office Tickets</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.checkbox}
+                  onPress={() => setIsAfterClosingTicket(!isAfterClosingTicket)}
+                >
+                  <View style={[
+                    styles.checkboxBox,
+                    isAfterClosingTicket && styles.checkboxBoxChecked
+                  ]}>
+                    {isAfterClosingTicket && (
+                      <Check size={16} color={TheatreColors.background} />
+                    )}
+                  </View>
+                  <Text style={styles.checkboxLabel}>After Closing Tickets</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
 
           <View style={styles.section}>
@@ -144,7 +213,7 @@ export function CategoryManagement({ visible, onClose }: CategoryManagementProps
                   <View style={styles.categoryInfo}>
                     <Tag size={20} color={TheatreColors.accent} />
                     <Text style={styles.categoryName}>
-                      {formatCategoryName(category)}
+                      {getCategoryDisplayInfo(category)}
                     </Text>
                   </View>
                   
@@ -298,5 +367,51 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: TheatreColors.textSecondary,
     lineHeight: 20,
+  },
+  checkboxSection: {
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: TheatreColors.surfaceLight,
+  },
+  checkboxSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: TheatreColors.text,
+    marginBottom: 4,
+  },
+  checkboxSectionDescription: {
+    fontSize: 14,
+    color: TheatreColors.textSecondary,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  checkboxContainer: {
+    gap: 12,
+  },
+  checkbox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  checkboxBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: TheatreColors.surfaceLight,
+    backgroundColor: TheatreColors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  checkboxBoxChecked: {
+    backgroundColor: TheatreColors.primary,
+    borderColor: TheatreColors.primary,
+  },
+  checkboxLabel: {
+    fontSize: 16,
+    color: TheatreColors.text,
+    flex: 1,
   },
 });

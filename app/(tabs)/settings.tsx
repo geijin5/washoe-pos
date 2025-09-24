@@ -17,6 +17,7 @@ import { useAuth } from '@/hooks/auth-store';
 import { RoleGuard } from '@/components/RoleGuard';
 import { UserManagement } from '@/components/UserManagement';
 import { CategoryManagement } from '@/components/CategoryManagement';
+import { SyncManagement } from '@/components/SyncManagement';
 
 import { TabletUtils } from '@/constants/tablet-utils';
 import * as Clipboard from 'expo-clipboard';
@@ -28,6 +29,7 @@ export default function SettingsScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showUserManagement, setShowUserManagement] = useState(false);
   const [showCategoryManagement, setShowCategoryManagement] = useState(false);
+  const [showSyncManagement, setShowSyncManagement] = useState(false);
   const [trainingModeEnabled, setTrainingModeEnabled] = useState(settings.trainingMode || false);
 
 
@@ -332,6 +334,25 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Sync Management Section */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <ShareIcon size={24} color={TheatreColors.accent} />
+              <Text style={styles.sectionTitle}>Sync Management</Text>
+            </View>
+            <Text style={styles.sectionDescription}>
+              Sync products and categories with other devices on your network
+            </Text>
+            
+            <TouchableOpacity
+              style={styles.managementButton}
+              onPress={() => setShowSyncManagement(true)}
+            >
+              <ShareIcon size={20} color={TheatreColors.background} />
+              <Text style={styles.managementButtonText}>Manage Sync</Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.footer}>
             <Text style={styles.footerText}>
               Settings updated by: {user?.name} ({user?.role})
@@ -350,6 +371,11 @@ export default function SettingsScreen() {
       <UserManagement
         visible={showUserManagement}
         onClose={() => setShowUserManagement(false)}
+      />
+      
+      <SyncManagement
+        visible={showSyncManagement}
+        onClose={() => setShowSyncManagement(false)}
       />
     </RoleGuard>
   );

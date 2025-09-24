@@ -1,5 +1,6 @@
 export const TheatreColors = {
   primary: '#8B0000', // Deep burgundy
+  primaryLight: 'rgba(139, 0, 0, 0.2)', // Light burgundy with transparency
   secondary: '#DC143C', // Crimson
   accent: '#FFD700', // Gold
   accentLight: 'rgba(255, 215, 0, 0.2)', // Light gold with transparency
@@ -14,6 +15,8 @@ export const TheatreColors = {
   
   categoryColors: {
     tickets: '#8B0000',
+    'box-office-tickets': '#8B0000',
+    'after-closing-tickets': '#DC143C',
     concessions: '#FF6B6B',
     merchandise: '#4ECDC4',
     beverages: '#45B7D1',

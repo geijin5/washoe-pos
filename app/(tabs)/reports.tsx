@@ -12,6 +12,18 @@ import {
 } from 'react-native';
 import { usePOS } from '@/hooks/pos-store';
 import { TheatreColors } from '@/constants/theatre-colors';
+import { UsherReportAccess } from '@/components/UsherReportAccess';
+import {
+  filterOrdersByDate,
+  calculateUserSalesByDepartment,
+  calculatePaymentBreakdown,
+  calculateCardFeesByDepartment,
+  generateReportHeader,
+  generateSummarySection,
+  generateDepartmentBreakdownSection,
+  calculateManagerSalesByDepartment,
+  calculateUsherAfterClosingSales
+} from './reports-helpers';
 import { 
   BarChart3, 
   Calendar, 
@@ -41,6 +53,8 @@ export default function ReportsScreen() {
   const [isClearingReport, setIsClearingReport] = useState(false);
   const [aggregatedReport, setAggregatedReport] = useState<NightlyReport | null>(null);
   const [isLoadingAggregated, setIsLoadingAggregated] = useState(false);
+  const [showUsherAccess, setShowUsherAccess] = useState(false);
+  const [temporaryUser, setTemporaryUser] = useState<any>(null);
 
   const report = useMemo(() => {
     if (reportMode === 'aggregated') {
@@ -98,142 +112,27 @@ export default function ReportsScreen() {
     // Check if this is a training mode report
     const isTrainingReport = isTrainingMode || settings.trainingMode;
 
-    // Calculate exact payment breakdown by department from actual orders
-    const boxOfficeTotal = report.departmentBreakdown['box-office']?.sales || 0;
-    const candyCounterTotal = report.departmentBreakdown['candy-counter']?.sales || 0;
-    const candyCounterOrders = report.departmentBreakdown['candy-counter']?.orders || 0;
-    const afterClosingTotal = report.departmentBreakdown['after-closing']?.sales || 0;
-    const afterClosingOrders = report.departmentBreakdown['after-closing']?.orders || 0;
+    // Use temporary user if available, otherwise use current user
+    const currentUser = temporaryUser || user;
+
+    // Use helper function to calculate payment breakdown
+    const paymentBreakdown = calculatePaymentBreakdown(report);
     
-    // Calculate exact cash and card amounts from actual orders by department
-    let boxOfficeCashSales = 0;
-    let boxOfficeCardSales = 0;
-    let candyCounterCashSales = 0;
-    let candyCounterCardSales = 0;
-    let afterClosingCashSales = 0;
-    let afterClosingCardSales = 0;
-    
-    // Get actual payment breakdown from the report's payment calculations
-    if (report.paymentBreakdown) {
-      boxOfficeCashSales = report.paymentBreakdown.boxOfficeCash || 0;
-      boxOfficeCardSales = report.paymentBreakdown.boxOfficeCard || 0;
-      candyCounterCashSales = report.paymentBreakdown.candyCounterCash || 0;
-      candyCounterCardSales = report.paymentBreakdown.candyCounterCard || 0;
-      afterClosingCashSales = report.paymentBreakdown.afterClosingCash || 0;
-      afterClosingCardSales = report.paymentBreakdown.afterClosingCard || 0;
-    } else {
-      // Fallback to proportional calculation if detailed breakdown not available
-      if (report.totalSales > 0) {
-        const overallCashRatio = report.cashSales / report.totalSales;
-        const overallCardRatio = report.cardSales / report.totalSales;
-        
-        boxOfficeCashSales = boxOfficeTotal * overallCashRatio;
-        boxOfficeCardSales = boxOfficeTotal * overallCardRatio;
-        candyCounterCashSales = candyCounterTotal * overallCashRatio;
-        candyCounterCardSales = candyCounterTotal * overallCardRatio;
-        afterClosingCashSales = afterClosingTotal * overallCashRatio;
-        afterClosingCardSales = afterClosingTotal * overallCardRatio;
-      }
-    }
-    
-    // Use actual card fees from the report (already calculated correctly from orders)
-    const totalFees = report.creditCardFees;
-    
-    // Calculate actual card fees from orders by department
-    let boxOfficeCardFees = 0;
-    let candyCounterCardFees = 0;
-    let afterClosingCardFees = 0;
-    
-    // Get actual card fees from the report's order data with enhanced logging
-    console.log(`=== REPORT TEXT CARD FEES CALCULATION ===`);
-    console.log(`Report card sales: ${report.cardSales.toFixed(2)}`);
-    console.log(`Report total fees: ${totalFees.toFixed(2)}`);
-    console.log(`Credit card fee percentage: ${settings.creditCardFeePercent}%`);
-    console.log(`After closing cash sales: ${afterClosingCashSales.toFixed(2)}`);
-    console.log(`After closing card sales: ${afterClosingCardSales.toFixed(2)}`);
-    console.log(`After closing total: ${afterClosingTotal.toFixed(2)}`);
-    
-    if (report.cardSales > 0 && totalFees > 0) {
-      // Calculate fees based on actual card sales by department
-      const feeRate = totalFees / report.cardSales;
-      boxOfficeCardFees = boxOfficeCardSales * feeRate;
-      candyCounterCardFees = candyCounterCardSales * feeRate;
-      afterClosingCardFees = afterClosingCardSales * feeRate;
-      
-      console.log(`Calculated fee rate: ${(feeRate * 100).toFixed(4)}% (should be ${settings.creditCardFeePercent}%)`);
-      console.log(`Box office card fees: ${boxOfficeCardFees.toFixed(2)}`);
-      console.log(`Candy counter card fees: ${candyCounterCardFees.toFixed(2)}`);
-      console.log(`After closing card fees: ${afterClosingCardFees.toFixed(2)}`);
-      
-      // Verify the fee rate matches the expected 5%
-      const expectedFeeRate = settings.creditCardFeePercent / 100;
-      const feeRateDifference = Math.abs(feeRate - expectedFeeRate);
-      if (feeRateDifference > 0.001) {
-        console.warn(`⚠️ FEE RATE MISMATCH: Calculated ${(feeRate * 100).toFixed(4)}% vs Expected ${settings.creditCardFeePercent}%`);
-      } else {
-        console.log(`✅ FEE RATE VERIFIED: ${(feeRate * 100).toFixed(2)}% matches expected ${settings.creditCardFeePercent}%`);
-      }
-    } else {
-      console.log(`No card fees to calculate (cardSales: ${report.cardSales.toFixed(2)}, totalFees: ${totalFees.toFixed(2)})`);
-    }
-    console.log(`=== END REPORT TEXT CARD FEES ===`);
-    
-    // Total candy counter fees includes candy counter + after closing fees
-    const totalCandyCounterFees = candyCounterCardFees + afterClosingCardFees;
+    // Use helper function to calculate card fees
+    const cardFees = calculateCardFeesByDepartment(report, paymentBreakdown, settings.creditCardFeePercent);
     
 
 
-    const reportTypeHeader = isTrainingReport 
-      ? `🎓 TRAINING MODE NIGHTLY SALES REPORT (LOCAL DEVICE ONLY)
-⚠️  THIS IS A TRAINING REPORT - DATA IS FOR PRACTICE ONLY
-⚠️  TRAINING SALES ARE NOT SAVED TO PERMANENT RECORDS`
-      : `NIGHTLY SALES REPORT (LOCAL DEVICE ONLY)`;
+    // Generate report sections using helper functions
+    const header = generateReportHeader(report, currentUser, isTrainingReport || false, formatDate);
+    const summary = generateSummarySection(report, isTrainingReport || false, formatCurrency);
+    const departmentBreakdown = generateDepartmentBreakdownSection(report, paymentBreakdown, cardFees, isTrainingReport || false, formatCurrency);
 
-    let reportText = `${reportTypeHeader}
-${formatDate(reportDate)}
-Generated by: ${user?.name} (${user?.role})
+    let reportText = `${header}
 
-${isTrainingReport ? '🎓 TRAINING MODE ACTIVE - This report shows practice data only\n\n' : ''}IMPORTANT: Reports older than 14 days are automatically cleared to maintain system performance.
+${summary}
 
-SUMMARY
-Total Sales: ${formatCurrency(report.totalSales)}${isTrainingReport ? ' (TRAINING)' : ''}
-Total Orders: ${report.totalOrders}${isTrainingReport ? ' (TRAINING)' : ''}
-Average Order: ${formatCurrency(report.totalOrders > 0 ? report.totalSales / report.totalOrders : 0)}${isTrainingReport ? ' (TRAINING)' : ''}
-
-PAYMENT BREAKDOWN
-Cash Sales: ${formatCurrency(report.cashSales)}${isTrainingReport ? ' (TRAINING)' : ''}
-Card Sales: ${formatCurrency(report.cardSales)}${isTrainingReport ? ' (TRAINING)' : ''}
-
-BOX OFFICE CASH SECTION
-Box Office Cash: ${formatCurrency(boxOfficeCashSales)}${isTrainingReport ? ' (TRAINING)' : ''}
-Box Office Card: ${formatCurrency(boxOfficeCardSales)}${isTrainingReport ? ' (TRAINING)' : ''}
-Box Office Card Fees: ${formatCurrency(boxOfficeCardFees)}${isTrainingReport ? ' (TRAINING)' : ''}
-
-CANDY COUNTER CASH SECTION
-Candy Counter Cash: ${formatCurrency(candyCounterCashSales)}${isTrainingReport ? ' (TRAINING)' : ''}
-Candy Counter Card: ${formatCurrency(candyCounterCardSales)}${isTrainingReport ? ' (TRAINING)' : ''}
-Candy Counter Card Fees: ${formatCurrency(candyCounterCardFees)}${isTrainingReport ? ' (TRAINING)' : ''}
-
-AFTER CLOSING CASH SECTION
-After Closing Cash: ${formatCurrency(afterClosingCashSales)}${isTrainingReport ? ' (TRAINING)' : ''}
-After Closing Card: ${formatCurrency(afterClosingCardSales)}${isTrainingReport ? ' (TRAINING)' : ''}
-After Closing Card Fees: ${formatCurrency(afterClosingCardFees)}${isTrainingReport ? ' (TRAINING)' : ''}
-
-FEES SECTION
-Box Office Fees: ${formatCurrency(boxOfficeCardFees)}${isTrainingReport ? ' (TRAINING)' : ''}
-Candy Counter Fees: ${formatCurrency(totalCandyCounterFees)}${isTrainingReport ? ' (TRAINING)' : ''}
-Total Fees: ${formatCurrency(totalFees)}${isTrainingReport ? ' (TRAINING)' : ''}
-
-DEPARTMENT BREAKDOWN
-Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdown['candy-counter'].sales)} (${report.departmentBreakdown['candy-counter'].orders} orders)${isTrainingReport ? ' (TRAINING)' : ''}`;
-
-    if (report.departmentBreakdown['box-office'] && report.departmentBreakdown['box-office'].sales > 0) {
-      reportText += `\nBox Office: ${formatCurrency(report.departmentBreakdown['box-office'].sales)} (${report.departmentBreakdown['box-office'].orders} orders)${isTrainingReport ? ' (TRAINING)' : ''}`;
-    }
-    
-    if (report.departmentBreakdown['after-closing'] && report.departmentBreakdown['after-closing'].sales > 0) {
-      reportText += `\nAfter Closing (Ticket Sales Only): ${formatCurrency(report.departmentBreakdown['after-closing'].sales)} (${report.departmentBreakdown['after-closing'].orders} orders)${isTrainingReport ? ' (TRAINING)' : ''}`;
-    }
+${departmentBreakdown}`;
     
     // Add show breakdown if available
     if (report.showBreakdown) {
@@ -432,7 +331,7 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
     reportText += `\n\nUSERS LOGGED IN\n${loginsText}\n\nReport generated on ${new Date().toLocaleString()}${isTrainingReport ? ' (TRAINING MODE)' : ''}`;
     
     return reportText;
-  }, [user, getDailyLogins, formatDate, formatCurrency, orders, isTrainingMode, settings.trainingMode]);
+  }, [user, temporaryUser, getDailyLogins, formatDate, formatCurrency, orders, isTrainingMode, settings.trainingMode]);
 
 
 
@@ -490,8 +389,22 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
     }
   }, [currentReport, generateReportText]);
 
+  const handleUsherAccess = useCallback(() => {
+    setShowUsherAccess(true);
+  }, []);
+
+  const handleUsherAccessGranted = useCallback((selectedUser: any) => {
+    setTemporaryUser(selectedUser);
+    setShowUsherAccess(false);
+  }, []);
+
+  const handleUsherAccessClose = useCallback(() => {
+    setShowUsherAccess(false);
+  }, []);
+
   const handleClearNightlyReport = useCallback(async () => {
-    if (user?.role !== 'admin') {
+    const currentUser = temporaryUser || user;
+    if (currentUser?.role !== 'admin') {
       Alert.alert('Access Denied', 'Only admin users can clear nightly reports.');
       return;
     }
@@ -534,31 +447,77 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
     );
   }, [user?.role, clearNightlyReport, selectedDate, formatDate]);
 
+  // Check if user has access (either through role or temporary access)
+  const hasAccess = user?.role === 'manager' || user?.role === 'admin' || temporaryUser;
+  const isUsher = user?.role === 'usher';
+
   if (reportMode === 'aggregated' && isLoadingAggregated) {
+    if (!hasAccess) {
+      return (
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          {isUsher ? (
+            <View style={styles.usherAccessContainer}>
+              <Text style={styles.title}>Report Access Required</Text>
+              <Text style={styles.subtitle}>Click the button below to access reports</Text>
+              <TouchableOpacity style={styles.accessButton} onPress={handleUsherAccess}>
+                <Text style={styles.accessButtonText}>Access Reports</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.noAccessContainer}>
+              <Text style={styles.title}>Access Restricted</Text>
+              <Text style={styles.subtitle}>Manager or admin access required</Text>
+            </View>
+          )}
+        </View>
+      );
+    }
     return (
-      <RoleGuard requiredRole={['manager', 'admin']}>
         <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
           <ActivityIndicator size="large" color={TheatreColors.accent} />
           <Text style={[styles.title, { marginTop: 16 }]}>Generating Report...</Text>
           <Text style={styles.subtitle}>Including box office data from all devices</Text>
         </View>
-      </RoleGuard>
     );
   }
 
   if (!currentReport) {
-    return (
-      <RoleGuard requiredRole={['manager', 'admin']}>
+    if (!hasAccess) {
+      return (
         <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-          <Text style={styles.title}>No Report Available</Text>
-          <Text style={styles.subtitle}>Unable to generate report for selected date</Text>
+          {isUsher ? (
+            <View style={styles.usherAccessContainer}>
+              <Text style={styles.title}>Report Access Required</Text>
+              <Text style={styles.subtitle}>Click the button below to access reports</Text>
+              <TouchableOpacity style={styles.accessButton} onPress={handleUsherAccess}>
+                <Text style={styles.accessButtonText}>Access Reports</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.noAccessContainer}>
+              <Text style={styles.title}>No Report Available</Text>
+              <Text style={styles.subtitle}>Unable to generate report for selected date</Text>
+            </View>
+          )}
         </View>
-      </RoleGuard>
+      );
+    }
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={styles.title}>No Report Available</Text>
+        <Text style={styles.subtitle}>Unable to generate report for selected date</Text>
+      </View>
     );
   }
 
+  // Calculate card fees for each department
+  const feeRate = currentReport.cardSales > 0 ? currentReport.creditCardFees / currentReport.cardSales : 0;
+  const boxOfficeCardFees = (currentReport.paymentBreakdown?.boxOfficeCard || 0) * feeRate;
+  const candyCounterCardFees = (currentReport.paymentBreakdown?.candyCounterCard || 0) * feeRate;
+  const afterClosingCardFees = (currentReport.paymentBreakdown?.afterClosingCard || 0) * feeRate;
+
   return (
-    <RoleGuard requiredRole={['manager', 'admin']}>
+    <>
       <ScrollView style={styles.container}>
         <View style={styles.content}>
           {/* Training Mode Banner */}
@@ -644,33 +603,15 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                     <Text style={styles.departmentPerformanceOrders}>
                       {currentReport.departmentBreakdown['box-office'].orders} orders
                     </Text>
+                    <Text style={styles.departmentPerformanceFees}>
+                      Card Fees: ${formatCurrency(boxOfficeCardFees)}
+                    </Text>
                   </View>
                   
                   {/* Box Office Staff Breakdown */}
                   {(() => {
-                    const dayOrders = orders.filter((order: any) => {
-                      const orderDate = new Date(order.timestamp);
-                      let orderBusinessDate = new Date(orderDate);
-                      if (orderDate.getHours() < 2) {
-                        orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
-                      }
-                      const orderYear = orderBusinessDate.getFullYear();
-                      const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
-                      const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
-                      const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
-                      return orderDateStr === currentReport.date;
-                    });
-                    
-                    const boxOfficeUsers = new Map<string, { name: string; role: string; sales: number; orders: number }>();
-                    dayOrders
-                      .filter((order: any) => order.department === 'box-office')
-                      .forEach((order: any) => {
-                        const key = order.userName;
-                        const existing = boxOfficeUsers.get(key) || { name: order.userName, role: order.userRole || 'staff', sales: 0, orders: 0 };
-                        existing.sales += order.total;
-                        existing.orders += 1;
-                        boxOfficeUsers.set(key, existing);
-                      });
+                    const dayOrders = filterOrdersByDate(orders, currentReport.date);
+                    const boxOfficeUsers = calculateUserSalesByDepartment(dayOrders, 'box-office');
                     
                     const usersList = Array.from(boxOfficeUsers.values())
                       .filter(user => user.sales > 0)
@@ -717,33 +658,15 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                   <Text style={styles.departmentPerformanceOrders}>
                     {currentReport.departmentBreakdown['candy-counter'].orders} orders
                   </Text>
+                  <Text style={styles.departmentPerformanceFees}>
+                    Card Fees: ${formatCurrency(candyCounterCardFees)}
+                  </Text>
                 </View>
                 
                 {/* Candy Counter Staff Breakdown */}
                 {(() => {
-                  const dayOrders = orders.filter((order: any) => {
-                    const orderDate = new Date(order.timestamp);
-                    let orderBusinessDate = new Date(orderDate);
-                    if (orderDate.getHours() < 2) {
-                      orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
-                    }
-                    const orderYear = orderBusinessDate.getFullYear();
-                    const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
-                    const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
-                    const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
-                    return orderDateStr === currentReport.date;
-                  });
-                  
-                  const candyCounterUsers = new Map<string, { name: string; role: string; sales: number; orders: number }>();
-                  dayOrders
-                    .filter((order: any) => order.department === 'candy-counter' && !order.isAfterClosing)
-                    .forEach((order: any) => {
-                      const key = order.userName;
-                      const existing = candyCounterUsers.get(key) || { name: order.userName, role: order.userRole || 'staff', sales: 0, orders: 0 };
-                      existing.sales += order.total;
-                      existing.orders += 1;
-                      candyCounterUsers.set(key, existing);
-                    });
+                  const dayOrders = filterOrdersByDate(orders, currentReport.date);
+                  const candyCounterUsers = calculateUserSalesByDepartment(dayOrders, 'candy-counter', false);
                   
                   const usersList = Array.from(candyCounterUsers.values())
                     .filter(user => user.sales > 0)
@@ -790,6 +713,9 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                     </Text>
                     <Text style={styles.departmentPerformanceOrders}>
                       {currentReport.departmentBreakdown['after-closing'].orders} orders
+                    </Text>
+                    <Text style={styles.departmentPerformanceFees}>
+                      Card Fees: ${formatCurrency(afterClosingCardFees)}
                     </Text>
                   </View>
                   
@@ -882,6 +808,73 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
               </View>
             </View>
           </View>
+
+          {/* Show Performance - Only show if there are show sales */}
+          {currentReport.showBreakdown && (() => {
+            // Debug logging for show breakdown display
+            console.log('=== SHOW BREAKDOWN DISPLAY DEBUG ===');
+            console.log('Show breakdown data:', currentReport.showBreakdown);
+            Object.entries(currentReport.showBreakdown).forEach(([show, data]) => {
+              console.log(`${show}: ${data.sales.toFixed(2)} (${data.orders} orders)`);
+            });
+            console.log('======================================');
+            
+            return (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Show Performance</Text>
+                <Text style={styles.sectionDescription}>Box office ticket sales by show</Text>
+                <View style={styles.departmentGrid}>
+                {currentReport.showBreakdown['1st-show'].sales > 0 && (
+                  <View style={styles.departmentCard}>
+                    <Text style={styles.departmentName}>1st Show</Text>
+                    <Text style={styles.departmentSales}>
+                      ${formatCurrency(currentReport.showBreakdown['1st-show'].sales)}
+                    </Text>
+                    <Text style={styles.departmentOrders}>
+                      {currentReport.showBreakdown['1st-show'].orders} orders
+                    </Text>
+                  </View>
+                )}
+                
+                {currentReport.showBreakdown['2nd-show'].sales > 0 && (
+                  <View style={styles.departmentCard}>
+                    <Text style={styles.departmentName}>2nd Show</Text>
+                    <Text style={styles.departmentSales}>
+                      ${formatCurrency(currentReport.showBreakdown['2nd-show'].sales)}
+                    </Text>
+                    <Text style={styles.departmentOrders}>
+                      {currentReport.showBreakdown['2nd-show'].orders} orders
+                    </Text>
+                  </View>
+                )}
+                
+                {currentReport.showBreakdown['nightly-show'].sales > 0 && (
+                  <View style={styles.departmentCard}>
+                    <Text style={styles.departmentName}>Nightly Show</Text>
+                    <Text style={styles.departmentSales}>
+                      ${formatCurrency(currentReport.showBreakdown['nightly-show'].sales)}
+                    </Text>
+                    <Text style={styles.departmentOrders}>
+                      {currentReport.showBreakdown['nightly-show'].orders} orders
+                    </Text>
+                  </View>
+                )}
+                
+                {currentReport.showBreakdown['matinee'].sales > 0 && (
+                  <View style={styles.departmentCard}>
+                    <Text style={styles.departmentName}>Matinee</Text>
+                    <Text style={styles.departmentSales}>
+                      ${formatCurrency(currentReport.showBreakdown['matinee'].sales)}
+                    </Text>
+                    <Text style={styles.departmentOrders}>
+                      {currentReport.showBreakdown['matinee'].orders} orders
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+            );
+          })()}
 
           {/* Summary Cards */}
           <View style={styles.summaryGrid}>
@@ -1116,33 +1109,9 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
             }
             
             // Calculate manager sales for box office payment breakdown
-            const dayOrders = orders.filter((order: any) => {
-              const orderDate = new Date(order.timestamp);
-              let orderBusinessDate = new Date(orderDate);
-              if (orderDate.getHours() < 2) {
-                orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
-              }
-              const orderYear = orderBusinessDate.getFullYear();
-              const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
-              const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
-              const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
-              return orderDateStr === currentReport.date;
-            });
-            
-            const managerBoxOfficeOrders = dayOrders.filter((order: any) => {
-              const userRole = order.userRole?.toLowerCase();
-              return (userRole === 'manager' || userRole === 'admin') && order.department === 'box-office';
-            });
-            
-            let managerBoxOfficeCash = 0;
-            let managerBoxOfficeCard = 0;
-            managerBoxOfficeOrders.forEach((order: any) => {
-              if (order.paymentMethod === 'cash') {
-                managerBoxOfficeCash += order.total;
-              } else if (order.paymentMethod === 'card') {
-                managerBoxOfficeCard += order.total;
-              }
-            });
+            const dayOrders = filterOrdersByDate(orders, currentReport.date);
+            const { managerCash: managerBoxOfficeCash, managerCard: managerBoxOfficeCard } = 
+              calculateManagerSalesByDepartment(dayOrders, 'box-office');
             
             return (
               <View style={styles.section}>
@@ -1160,18 +1129,6 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                     <Text style={styles.paymentLabel}>Box Office Card Fees:</Text>
                     <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(boxOfficeCardFees)}</Text>
                   </View>
-                  {(managerBoxOfficeCash > 0 || managerBoxOfficeCard > 0) && (
-                    <>
-                      <View style={[styles.paymentRow, { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: TheatreColors.surfaceLight }]}>
-                        <Text style={[styles.paymentLabel, { fontWeight: '600', color: TheatreColors.primary }]}>Manager Box Office Cash:</Text>
-                        <Text style={[styles.paymentValue, { color: TheatreColors.success, fontWeight: '600' }]}>${formatCurrency(managerBoxOfficeCash)}</Text>
-                      </View>
-                      <View style={styles.paymentRow}>
-                        <Text style={[styles.paymentLabel, { fontWeight: '600', color: TheatreColors.primary }]}>Manager Box Office Card:</Text>
-                        <Text style={[styles.paymentValue, { fontWeight: '600' }]}>${formatCurrency(managerBoxOfficeCard)}</Text>
-                      </View>
-                    </>
-                  )}
                 </View>
               </View>
             );
@@ -1204,34 +1161,9 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
             }
             
             // Calculate manager sales for candy counter payment breakdown
-            const dayOrders = orders.filter((order: any) => {
-              const orderDate = new Date(order.timestamp);
-              let orderBusinessDate = new Date(orderDate);
-              if (orderDate.getHours() < 2) {
-                orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
-              }
-              const orderYear = orderBusinessDate.getFullYear();
-              const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
-              const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
-              const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
-              return orderDateStr === currentReport.date;
-            });
-            
-            const managerCandyCounterOrders = dayOrders.filter((order: any) => {
-              const userRole = order.userRole?.toLowerCase();
-              return (userRole === 'manager' || userRole === 'admin') && 
-                     order.department === 'candy-counter' && !order.isAfterClosing;
-            });
-            
-            let managerCandyCounterCash = 0;
-            let managerCandyCounterCard = 0;
-            managerCandyCounterOrders.forEach((order: any) => {
-              if (order.paymentMethod === 'cash') {
-                managerCandyCounterCash += order.total;
-              } else if (order.paymentMethod === 'card') {
-                managerCandyCounterCard += order.total;
-              }
-            });
+            const dayOrders = filterOrdersByDate(orders, currentReport.date);
+            const { managerCash: managerCandyCounterCash, managerCard: managerCandyCounterCard } = 
+              calculateManagerSalesByDepartment(dayOrders, 'candy-counter', false);
             
             return (
               <View style={styles.section}>
@@ -1364,10 +1296,6 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
                         <Text style={[styles.paymentLabel, { fontWeight: '600', color: TheatreColors.primary }]}>Manager/Usher After Closing Cash:</Text>
                         <Text style={[styles.paymentValue, { color: TheatreColors.success, fontWeight: '600' }]}>${formatCurrency(managerAfterClosingCash)}</Text>
                       </View>
-                      <View style={styles.paymentRow}>
-                        <Text style={[styles.paymentLabel, { fontWeight: '600', color: TheatreColors.primary }]}>Manager/Usher After Closing Card:</Text>
-                        <Text style={[styles.paymentValue, { fontWeight: '600' }]}>${formatCurrency(managerAfterClosingCard)}</Text>
-                      </View>
                     </>
                   )}
                 </View>
@@ -1462,313 +1390,7 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
             </View>
           </View>
 
-          {/* Department Performance */}
-          <View style={[styles.section, (isTrainingMode || settings.trainingMode) && styles.trainingSection]}>
-            <Text style={styles.sectionTitle}>
-              Department Performance{(isTrainingMode || settings.trainingMode) ? ' 🎓 (Training)' : ''}
-            </Text>
-            <Text style={styles.sectionDescription}>
-              Sales breakdown by department showing all staff contributions including managers
-              {(isTrainingMode || settings.trainingMode) ? ' (Training Data)' : ''}
-            </Text>
-            <View style={styles.departmentGrid}>
-              <View style={styles.departmentCard}>
-                <Text style={styles.departmentName}>Candy Counter</Text>
-                <Text style={styles.departmentSubtitle}>All Concession Sales</Text>
-                <Text style={styles.departmentSales}>
-                  ${formatCurrency(currentReport.departmentBreakdown['candy-counter'].sales)}
-                </Text>
-                <Text style={styles.departmentOrders}>
-                  {currentReport.departmentBreakdown['candy-counter'].orders} orders
-                </Text>
-                {(() => {
-                  // Calculate sales by all users for candy counter
-                  const dayOrders = orders.filter((order: any) => {
-                    const orderDate = new Date(order.timestamp);
-                    let orderBusinessDate = new Date(orderDate);
-                    if (orderDate.getHours() < 2) {
-                      orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
-                    }
-                    const orderYear = orderBusinessDate.getFullYear();
-                    const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
-                    const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
-                    const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
-                    return orderDateStr === currentReport.date;
-                  });
-                  
-                  // Get all users who made candy counter sales (including managers)
-                  const candyCounterUsers = new Map<string, { name: string; role: string; sales: number }>();
-                  dayOrders
-                    .filter((order: any) => order.department === 'candy-counter' && !order.isAfterClosing)
-                    .forEach((order: any) => {
-                      const key = order.userName;
-                      const existing = candyCounterUsers.get(key) || { name: order.userName, role: order.userRole || 'staff', sales: 0 };
-                      existing.sales += order.total;
-                      candyCounterUsers.set(key, existing);
-                      
-                      // Debug log for candy counter sales by user
-                      console.log(`Candy Counter Sale: ${order.userName} (${order.userRole || 'unknown'}) - ${order.total.toFixed(2)}`);
-                    });
-                  
-                  const usersList = Array.from(candyCounterUsers.values())
-                    .filter(user => user.sales > 0)
-                    .sort((a, b) => b.sales - a.sales);
-                  
-                  return usersList.length > 0 ? (
-                    <View style={styles.userListContainer}>
-                      {usersList.slice(0, 3).map((user, index) => (
-                        <Text key={`${user.name}-${user.sales}`} style={[
-                          styles.departmentOrders, 
-                          user.role?.toLowerCase() === 'manager' || user.role?.toLowerCase() === 'admin' 
-                            ? styles.managerUserText 
-                            : styles.staffUserText
-                        ]}>
-                          {user.name}: ${formatCurrency(user.sales)}
-                        </Text>
-                      ))}
-                      {usersList.length > 3 && (
-                        <Text style={styles.moreUsersText}>
-                          +{usersList.length - 3} more users
-                        </Text>
-                      )}
-                    </View>
-                  ) : null;
-                })()}
-              </View>
-              
-              {currentReport.departmentBreakdown['box-office'] && currentReport.departmentBreakdown['box-office'].sales > 0 && (
-                <View style={styles.departmentCard}>
-                  <Text style={styles.departmentName}>Box Office</Text>
-                  <Text style={styles.departmentSales}>
-                    ${formatCurrency(currentReport.departmentBreakdown['box-office'].sales)}
-                  </Text>
-                  <Text style={styles.departmentOrders}>
-                    {currentReport.departmentBreakdown['box-office'].orders} orders
-                  </Text>
-                  {(() => {
-                    // Calculate sales by all users for box office
-                    const dayOrders = orders.filter((order: any) => {
-                      const orderDate = new Date(order.timestamp);
-                      let orderBusinessDate = new Date(orderDate);
-                      if (orderDate.getHours() < 2) {
-                        orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
-                      }
-                      const orderYear = orderBusinessDate.getFullYear();
-                      const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
-                      const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
-                      const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
-                      return orderDateStr === currentReport.date;
-                    });
-                    
-                    // Get all users who made box office sales (including managers)
-                    const boxOfficeUsers = new Map<string, { name: string; role: string; sales: number }>();
-                    dayOrders
-                      .filter((order: any) => order.department === 'box-office')
-                      .forEach((order: any) => {
-                        const key = order.userName;
-                        const existing = boxOfficeUsers.get(key) || { name: order.userName, role: order.userRole || 'staff', sales: 0 };
-                        existing.sales += order.total;
-                        boxOfficeUsers.set(key, existing);
-                        
-                        // Debug log for box office sales by user
-                        console.log(`Box Office Sale: ${order.userName} (${order.userRole || 'unknown'}) - ${order.total.toFixed(2)}`);
-                      });
-                    
-                    const usersList = Array.from(boxOfficeUsers.values())
-                      .filter(user => user.sales > 0)
-                      .sort((a, b) => b.sales - a.sales);
-                    
-                    return usersList.length > 0 ? (
-                      <View style={styles.userListContainer}>
-                        {usersList.slice(0, 3).map((user, index) => (
-                          <Text key={`${user.name}-${user.sales}`} style={[
-                            styles.departmentOrders, 
-                            user.role?.toLowerCase() === 'manager' || user.role?.toLowerCase() === 'admin' 
-                              ? styles.managerUserText 
-                              : styles.staffUserText
-                          ]}>
-                            {user.name}: ${formatCurrency(user.sales)}
-                          </Text>
-                        ))}
-                        {usersList.length > 3 && (
-                          <Text style={styles.moreUsersText}>
-                            +{usersList.length - 3} more users
-                          </Text>
-                        )}
-                      </View>
-                    ) : null;
-                  })()}
-                </View>
-              )}
-              
-              {currentReport.departmentBreakdown['after-closing'] && currentReport.departmentBreakdown['after-closing'].sales > 0 && (
-                <View style={styles.departmentCard}>
-                  <Text style={styles.departmentName}>After Closing</Text>
-                  <Text style={styles.departmentSubtitle}>Ticket Sales Only</Text>
-                  <Text style={styles.departmentSales}>
-                    ${formatCurrency(currentReport.departmentBreakdown['after-closing'].sales)}
-                  </Text>
-                  <Text style={styles.departmentOrders}>
-                    {currentReport.departmentBreakdown['after-closing'].orders} orders
-                  </Text>
-                  {(() => {
-                    // Calculate sales by all users for after closing
-                    const dayOrders = orders.filter((order: any) => {
-                      const orderDate = new Date(order.timestamp);
-                      let orderBusinessDate = new Date(orderDate);
-                      if (orderDate.getHours() < 2) {
-                        orderBusinessDate.setDate(orderBusinessDate.getDate() - 1);
-                      }
-                      const orderYear = orderBusinessDate.getFullYear();
-                      const orderMonth = String(orderBusinessDate.getMonth() + 1).padStart(2, '0');
-                      const orderDay = String(orderBusinessDate.getDate()).padStart(2, '0');
-                      const orderDateStr = `${orderYear}-${orderMonth}-${orderDay}`;
-                      return orderDateStr === currentReport.date;
-                    });
-                    
-                    // Get all users who made after closing sales (including managers and ushers)
-                    // This includes both pure after-closing orders and ticket portions from mixed orders
-                    const afterClosingUsers = new Map<string, { name: string; role: string; sales: number }>();
-                    
-                    // Process pure after-closing orders
-                    dayOrders
-                      .filter((order: any) => order.department === 'candy-counter' && order.isAfterClosing)
-                      .forEach((order: any) => {
-                        const key = order.userName;
-                        const existing = afterClosingUsers.get(key) || { name: order.userName, role: order.userRole || 'staff', sales: 0 };
-                        existing.sales += order.total;
-                        afterClosingUsers.set(key, existing);
-                        
-                        console.log(`Pure after closing sale by ${order.userName} (${order.userRole || 'unknown'}): ${order.total.toFixed(2)}`);
-                      });
-                    
-                    // Process ticket portions from mixed candy counter orders
-                    dayOrders
-                      .filter((order: any) => order.department === 'candy-counter' && !order.isAfterClosing)
-                      .forEach((order: any) => {
-                        // Check if this order has tickets (mixed or pure ticket order)
-                        const ticketItems = order.items.filter((item: any) => item.product.category === 'tickets');
-                        const nonTicketItems = order.items.filter((item: any) => item.product.category !== 'tickets');
-                        
-                        if (ticketItems.length > 0) {
-                          const key = order.userName;
-                          const existing = afterClosingUsers.get(key) || { name: order.userName, role: order.userRole || 'staff', sales: 0 };
-                          
-                          if (ticketItems.length > 0 && nonTicketItems.length > 0) {
-                            // Mixed order - only count ticket portion
-                            const ticketSubtotal = ticketItems.reduce((sum: number, item: any) => sum + (item.product.price * item.quantity), 0);
-                            const totalSubtotal = order.items.reduce((sum: number, item: any) => sum + (item.product.price * item.quantity), 0);
-                            const ticketProportion = ticketSubtotal / totalSubtotal;
-                            const ticketFee = Math.round((order.creditCardFee || 0) * ticketProportion * 100) / 100;
-                            const ticketTotal = Math.round((ticketSubtotal + ticketFee) * 100) / 100;
-                            
-                            existing.sales += ticketTotal;
-                            console.log(`Mixed order ticket portion by ${order.userName} (${order.userRole || 'unknown'}): ${ticketTotal.toFixed(2)} (from total ${order.total.toFixed(2)})`);
-                          } else {
-                            // Pure ticket order in candy counter - count full amount
-                            existing.sales += order.total;
-                            console.log(`Pure ticket order in candy counter by ${order.userName} (${order.userRole || 'unknown'}): ${order.total.toFixed(2)}`);
-                          }
-                          
-                          afterClosingUsers.set(key, existing);
-                        }
-                      });
-                    
-                    const usersList = Array.from(afterClosingUsers.values())
-                      .filter(user => user.sales > 0)
-                      .sort((a, b) => b.sales - a.sales);
-                    
-                    return usersList.length > 0 ? (
-                      <View style={styles.userListContainer}>
-                        {usersList.slice(0, 3).map((user, index) => (
-                          <Text key={`${user.name}-${user.sales}`} style={[
-                            styles.departmentOrders, 
-                            user.role?.toLowerCase() === 'manager' || user.role?.toLowerCase() === 'admin' 
-                              ? styles.managerUserText 
-                              : styles.staffUserText
-                          ]}>
-                            {user.name}: ${formatCurrency(user.sales)}
-                          </Text>
-                        ))}
-                        {usersList.length > 3 && (
-                          <Text style={styles.moreUsersText}>
-                            +{usersList.length - 3} more users
-                          </Text>
-                        )}
-                      </View>
-                    ) : null;
-                  })()}
-                </View>
-              )}
-            </View>
-          </View>
 
-          {/* Show Performance - Only show if there are show sales */}
-          {currentReport.showBreakdown && (() => {
-            // Debug logging for show breakdown display
-            console.log('=== SHOW BREAKDOWN DISPLAY DEBUG ===');
-            console.log('Show breakdown data:', currentReport.showBreakdown);
-            Object.entries(currentReport.showBreakdown).forEach(([show, data]) => {
-              console.log(`${show}: ${data.sales.toFixed(2)} (${data.orders} orders)`);
-            });
-            console.log('======================================');
-            
-            return (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Show Performance</Text>
-                <Text style={styles.sectionDescription}>Box office ticket sales by show</Text>
-                <View style={styles.departmentGrid}>
-                {currentReport.showBreakdown['1st-show'].sales > 0 && (
-                  <View style={styles.departmentCard}>
-                    <Text style={styles.departmentName}>1st Show</Text>
-                    <Text style={styles.departmentSales}>
-                      ${formatCurrency(currentReport.showBreakdown['1st-show'].sales)}
-                    </Text>
-                    <Text style={styles.departmentOrders}>
-                      {currentReport.showBreakdown['1st-show'].orders} orders
-                    </Text>
-                  </View>
-                )}
-                
-                {currentReport.showBreakdown['2nd-show'].sales > 0 && (
-                  <View style={styles.departmentCard}>
-                    <Text style={styles.departmentName}>2nd Show</Text>
-                    <Text style={styles.departmentSales}>
-                      ${formatCurrency(currentReport.showBreakdown['2nd-show'].sales)}
-                    </Text>
-                    <Text style={styles.departmentOrders}>
-                      {currentReport.showBreakdown['2nd-show'].orders} orders
-                    </Text>
-                  </View>
-                )}
-                
-                {currentReport.showBreakdown['nightly-show'].sales > 0 && (
-                  <View style={styles.departmentCard}>
-                    <Text style={styles.departmentName}>Nightly Show</Text>
-                    <Text style={styles.departmentSales}>
-                      ${formatCurrency(currentReport.showBreakdown['nightly-show'].sales)}
-                    </Text>
-                    <Text style={styles.departmentOrders}>
-                      {currentReport.showBreakdown['nightly-show'].orders} orders
-                    </Text>
-                  </View>
-                )}
-                
-                {currentReport.showBreakdown['matinee'].sales > 0 && (
-                  <View style={styles.departmentCard}>
-                    <Text style={styles.departmentName}>Matinee</Text>
-                    <Text style={styles.departmentSales}>
-                      ${formatCurrency(currentReport.showBreakdown['matinee'].sales)}
-                    </Text>
-                    <Text style={styles.departmentOrders}>
-                      {currentReport.showBreakdown['matinee'].orders} orders
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
-            );
-          })()}
 
           {/* Manager Sales Performance */}
           <View style={[styles.section, (isTrainingMode || settings.trainingMode) && styles.trainingSection]}>
@@ -2066,7 +1688,14 @@ Candy Counter (All Concession Sales): ${formatCurrency(report.departmentBreakdow
           </View>
         </View>
       </ScrollView>
-    </RoleGuard>
+
+      {/* Usher Report Access Modal */}
+      <UsherReportAccess
+        visible={showUsherAccess}
+        onClose={handleUsherAccessClose}
+        onAccessGranted={handleUsherAccessGranted}
+      />
+    </>
   );
 }
 
@@ -2684,6 +2313,12 @@ const styles = StyleSheet.create({
     color: TheatreColors.textSecondary,
     textAlign: 'center',
   },
+  departmentPerformanceFees: {
+    fontSize: 12,
+    color: TheatreColors.error,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
   departmentStaffList: {
     gap: 6,
   },
@@ -2753,5 +2388,25 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: TheatreColors.accent,
     textAlign: 'center',
+  },
+  usherAccessContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  noAccessContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  accessButton: {
+    backgroundColor: TheatreColors.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 24,
+  },
+  accessButtonText: {
+    color: TheatreColors.background,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

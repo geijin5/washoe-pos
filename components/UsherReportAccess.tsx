@@ -1,75 +1,77 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
-  StyleSheet,
-  Text,
   View,
+  Text,
+  StyleSheet,
+  Modal,
   TouchableOpacity,
   TextInput,
   Alert,
-  Modal,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
+import { X, Eye, EyeOff, Shield, User } from 'lucide-react-native';
 import { TheatreColors } from '@/constants/theatre-colors';
 import { useAuth } from '@/hooks/auth-store';
-import { User, UserRole } from '@/types/auth';
-import { Shield, Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react-native';
+import { User as UserType } from '@/types/auth';
 
 interface UsherReportAccessProps {
   visible: boolean;
   onClose: () => void;
-  onAccessGranted: (selectedUser: User) => void;
+  onAccessGranted: (user: UserType) => void;
 }
 
 export function UsherReportAccess({ visible, onClose, onAccessGranted }: UsherReportAccessProps) {
-  const { users, verifyPassword } = useAuth();
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const { users, passwords } = useAuth();
+  const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Filter to only show admin and manager accounts
+  // Filter users to only show admin and manager accounts
   const adminManagerUsers = users.filter(user => 
     user.role === 'admin' || user.role === 'manager'
   );
 
-  const handleUserSelect = (user: User) => {
+  const handleUserSelect = useCallback((user: UserType) => {
     setSelectedUser(user);
     setPassword('');
-    setShowPassword(false);
-    setError(null);
-  };
+  }, []);
 
-  const handlePasswordSubmit = async () => {
+  const handlePasswordSubmit = useCallback(async () => {
     if (!selectedUser || !password.trim()) {
-      setError('Please select a user and enter a password');
+      Alert.alert('Error', 'Please select a user and enter a password');
       return;
     }
 
     setIsVerifying(true);
-    setError(null);
+
     try {
-      const isValid = await verifyPassword(selectedUser.username, password);
-      if (isValid) {
+      // Simulate a brief verification delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Check if the password matches
+      const storedPassword = passwords[selectedUser.username];
+      if (storedPassword === password) {
+        // Grant access with the selected user's credentials
         onAccessGranted(selectedUser);
         onClose();
       } else {
-        setError('Invalid password for the selected account');
+        Alert.alert('Access Denied', 'Incorrect password for the selected account');
       }
     } catch (error) {
-      setError('Failed to verify password');
+      Alert.alert('Error', 'Failed to verify credentials');
     } finally {
       setIsVerifying(false);
     }
-  };
+  }, [selectedUser, password, passwords, onAccessGranted, onClose]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setSelectedUser(null);
     setPassword('');
     setShowPassword(false);
-    setError(null);
     onClose();
-  };
+  }, [onClose]);
 
   return (
     <Modal
@@ -82,104 +84,95 @@ export function UsherReportAccess({ visible, onClose, onAccessGranted }: UsherRe
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <Shield size={24} color={TheatreColors.primary} />
-            <Text style={styles.title}>Access Nightly Reports</Text>
+            <Text style={styles.title}>Report Access</Text>
           </View>
           <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <XCircle size={24} color={TheatreColors.textSecondary} />
+            <X size={24} color={TheatreColors.textSecondary} />
           </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Select Account</Text>
-            <Text style={styles.sectionDescription}>
-              Choose an admin or manager account to access the nightly reports
-            </Text>
-            
-            <View style={styles.userList}>
-              {adminManagerUsers.map((user) => (
-                <View key={user.id}>
-                  <TouchableOpacity
-                    style={[
-                      styles.userCard,
-                      selectedUser?.id === user.id && styles.userCardSelected
-                    ]}
-                    onPress={() => handleUserSelect(user)}
-                  >
-                    <View style={styles.userInfo}>
-                      <Text style={[
-                        styles.userName,
-                        selectedUser?.id === user.id && styles.userNameSelected
-                      ]}>
-                        {user.name}
-                      </Text>
-                      <Text style={[
-                        styles.userRole,
-                        selectedUser?.id === user.id && styles.userRoleSelected
-                      ]}>
-                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                      </Text>
-                    </View>
-                    {selectedUser?.id === user.id && (
-                      <CheckCircle size={20} color={TheatreColors.primary} />
-                    )}
-                  </TouchableOpacity>
-                  
-                  {/* Password input appears directly under selected user */}
-                  {selectedUser?.id === user.id && (
-                    <View style={styles.passwordSection}>
-                      <Text style={styles.passwordLabel}>
-                        Enter password for {selectedUser.name}:
-                      </Text>
-                      <View style={styles.passwordContainer}>
-                        <TextInput
-                          style={styles.passwordInput}
-                          placeholder="Enter password"
-                          value={password}
-                          onChangeText={setPassword}
-                          secureTextEntry={!showPassword}
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                          placeholderTextColor={TheatreColors.textSecondary}
-                          autoFocus={true}
-                        />
-                        <TouchableOpacity
-                          style={styles.eyeButton}
-                          onPress={() => setShowPassword(!showPassword)}
-                        >
-                          {showPassword ? (
-                            <EyeOff size={20} color={TheatreColors.textSecondary} />
-                          ) : (
-                            <Eye size={20} color={TheatreColors.textSecondary} />
-                          )}
-                        </TouchableOpacity>
-                      </View>
-                      {error && <Text style={styles.errorText}>{error}</Text>}
-                    </View>
-                  )}
+          <Text style={styles.description}>
+            Select an admin or manager account to access the nightly report
+          </Text>
+
+          <View style={styles.userList}>
+            <Text style={styles.sectionTitle}>Available Accounts</Text>
+            {adminManagerUsers.map((user) => (
+              <TouchableOpacity
+                key={user.id}
+                style={[
+                  styles.userCard,
+                  selectedUser?.id === user.id && styles.selectedUserCard
+                ]}
+                onPress={() => handleUserSelect(user)}
+              >
+                <View style={styles.userInfo}>
+                  <View style={styles.userIcon}>
+                    <User size={20} color={TheatreColors.primary} />
+                  </View>
+                  <View style={styles.userDetails}>
+                    <Text style={styles.userName}>{user.name}</Text>
+                    <Text style={styles.userRole}>
+                      {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                    </Text>
+                  </View>
                 </View>
-              ))}
+                {selectedUser?.id === user.id && (
+                  <View style={styles.selectedIndicator}>
+                    <Text style={styles.selectedText}>Selected</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {selectedUser && (
+            <View style={styles.passwordSection}>
+              <Text style={styles.passwordLabel}>
+                Enter password for {selectedUser.name}
+              </Text>
+              <View style={styles.passwordInputContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Enter password"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff size={20} color={TheatreColors.textSecondary} />
+                  ) : (
+                    <Eye size={20} color={TheatreColors.textSecondary} />
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
+          )}
+
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[
+                styles.submitButton,
+                (!selectedUser || !password.trim() || isVerifying) && styles.submitButtonDisabled
+              ]}
+              onPress={handlePasswordSubmit}
+              disabled={!selectedUser || !password.trim() || isVerifying}
+            >
+              {isVerifying ? (
+                <ActivityIndicator size="small" color={TheatreColors.background} />
+              ) : (
+                <Text style={styles.submitButtonText}>Access Report</Text>
+              )}
+            </TouchableOpacity>
           </View>
         </ScrollView>
-
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[
-              styles.accessButton,
-              (!selectedUser || !password.trim() || isVerifying) && styles.accessButtonDisabled
-            ]}
-            onPress={handlePasswordSubmit}
-            disabled={!selectedUser || !password.trim() || isVerifying}
-          >
-            <Text style={[
-              styles.accessButtonText,
-              (!selectedUser || !password.trim() || isVerifying) && styles.accessButtonTextDisabled
-            ]}>
-              {isVerifying ? 'Verifying...' : 'Access Reports'}
-            </Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </Modal>
   );
@@ -192,23 +185,22 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: TheatreColors.surfaceLight,
-    backgroundColor: TheatreColors.surface,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
   },
   title: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '600',
     color: TheatreColors.text,
+    marginLeft: 8,
   },
   closeButton: {
     padding: 4,
@@ -217,115 +209,118 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
-  section: {
-    marginTop: 24,
-  },
-  sectionTitle: {
+  description: {
     fontSize: 16,
-    fontWeight: '600',
-    color: TheatreColors.text,
-    marginBottom: 8,
-  },
-  sectionDescription: {
-    fontSize: 14,
     color: TheatreColors.textSecondary,
-    marginBottom: 16,
-    lineHeight: 20,
+    textAlign: 'center',
+    marginTop: 20,
+    marginBottom: 24,
+    lineHeight: 22,
   },
   userList: {
-    gap: 12,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: TheatreColors.text,
+    marginBottom: 16,
   },
   userCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
     backgroundColor: TheatreColors.surface,
     borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  userCardSelected: {
+  selectedUserCard: {
     borderColor: TheatreColors.primary,
     backgroundColor: TheatreColors.surfaceLight,
   },
   userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  userIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: TheatreColors.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  userDetails: {
     flex: 1,
   },
   userName: {
     fontSize: 16,
     fontWeight: '600',
     color: TheatreColors.text,
-    marginBottom: 4,
-  },
-  userNameSelected: {
-    color: TheatreColors.primary,
+    marginBottom: 2,
   },
   userRole: {
     fontSize: 14,
     color: TheatreColors.textSecondary,
   },
-  userRoleSelected: {
-    color: TheatreColors.primary,
+  selectedIndicator: {
+    backgroundColor: TheatreColors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  selectedText: {
+    color: TheatreColors.background,
+    fontSize: 12,
+    fontWeight: '600',
   },
   passwordSection: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: TheatreColors.surfaceLight,
+    marginBottom: 24,
   },
   passwordLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '500',
     color: TheatreColors.text,
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  passwordContainer: {
-    position: 'relative',
-  },
-  passwordInput: {
+  passwordInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: TheatreColors.surface,
     borderRadius: 12,
-    padding: 16,
-    paddingRight: 50,
-    fontSize: 16,
-    color: TheatreColors.text,
     borderWidth: 1,
     borderColor: TheatreColors.surfaceLight,
   },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: TheatreColors.text,
+  },
   eyeButton: {
-    position: 'absolute',
-    right: 16,
-    top: 16,
-    padding: 4,
+    padding: 12,
   },
-  errorText: {
-    color: TheatreColors.error || '#ff4444',
-    fontSize: 14,
-    marginTop: 8,
-    textAlign: 'center',
+  buttonContainer: {
+    marginBottom: 32,
   },
-  footer: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: TheatreColors.surfaceLight,
-    backgroundColor: TheatreColors.surface,
-  },
-  accessButton: {
+  submitButton: {
     backgroundColor: TheatreColors.primary,
     borderRadius: 12,
-    padding: 16,
+    paddingVertical: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 52,
   },
-  accessButtonDisabled: {
+  submitButtonDisabled: {
     backgroundColor: TheatreColors.surfaceLight,
   },
-  accessButtonText: {
+  submitButtonText: {
+    color: TheatreColors.background,
     fontSize: 16,
     fontWeight: '600',
-    color: TheatreColors.background,
-  },
-  accessButtonTextDisabled: {
-    color: TheatreColors.textSecondary,
   },
 });

@@ -30,13 +30,13 @@ export function CategoryFilter({ selected, onSelect, selectedDepartment }: Categ
     console.log('CategoryFilter: Rebuilding categories list. Available categories:', availableCategories);
     const categoryOptions: { value: Category | 'all' | 'candy-counter-sales' | 'after-closing-tickets'; label: string }[] = [];
     
-    // For box office: only show "All" and "Tickets"
+    // For box office: only show "All" and "Box Office Tickets"
     if (selectedDepartment === 'box-office') {
       categoryOptions.push(
         { value: 'all', label: 'All' },
-        { value: 'tickets', label: 'Tickets' }
+        { value: 'box-office-tickets', label: 'Box Office Tickets' }
       );
-      console.log('CategoryFilter: Box office mode - showing only All and Tickets');
+      console.log('CategoryFilter: Box office mode - showing only All and Box Office Tickets');
       return categoryOptions;
     }
     
@@ -46,7 +46,7 @@ export function CategoryFilter({ selected, onSelect, selectedDepartment }: Categ
     // Always use availableCategories from the store - this ensures real-time updates
     const categoriesToShow = availableCategories && availableCategories.length > 0 
       ? availableCategories 
-      : ['tickets', 'concessions', 'beverages', 'merchandise'] as Category[];
+      : ['after-closing-tickets', 'concessions', 'beverages', 'merchandise'] as Category[];
     
     console.log('CategoryFilter: Categories to show:', categoriesToShow);
     
@@ -154,8 +154,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: TheatreColors.text,
     textAlign: 'center',
-    // Prevent text wrapping
-    numberOfLines: 1,
   },
   chipTextSelected: {
     color: TheatreColors.background,

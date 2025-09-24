@@ -31,7 +31,15 @@ export interface Order {
   showType?: '1st-show' | '2nd-show' | 'nightly-show' | 'matinee';
 }
 
-export type Category = 'tickets' | 'concessions' | 'merchandise' | 'beverages';
+export type Category = 'tickets' | 'box-office-tickets' | 'after-closing-tickets' | 'concessions' | 'merchandise' | 'beverages';
+
+export interface CategoryMetadata {
+  id: string;
+  name: string;
+  isBoxOfficeTicket: boolean;
+  isAfterClosingTicket: boolean;
+  isTicket: boolean;
+}
 
 export interface POSStats {
   totalSales: number;
@@ -42,6 +50,7 @@ export interface POSStats {
 export interface POSSettings {
   creditCardFeePercent: number;
   categories: Category[];
+  categoryMetadata?: CategoryMetadata[];
   businessId?: string;
   version?: string;
   trainingMode?: boolean;

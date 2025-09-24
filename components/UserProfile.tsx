@@ -80,6 +80,7 @@ export function UserProfile({ showLogout = true, compact = false }: UserProfileP
             testID="logout-button"
           >
             <LogOut size={20} color={TheatreColors.textSecondary} />
+            <Text style={styles.logoutText}>Sign Out</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -107,6 +108,7 @@ export function UserProfile({ showLogout = true, compact = false }: UserProfileP
           testID="logout-button"
         >
           <LogOut size={24} color={TheatreColors.textSecondary} />
+          <Text style={styles.logoutText}>Sign Out</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -151,6 +153,8 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     padding: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   compactContainer: {
     flexDirection: 'row',
@@ -178,5 +182,13 @@ const styles = StyleSheet.create({
   compactLogoutButton: {
     padding: 8,
     marginLeft: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logoutText: {
+    color: TheatreColors.textSecondary,
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 6,
   },
 });

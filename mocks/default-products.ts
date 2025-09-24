@@ -1,12 +1,12 @@
 import { Product } from '@/types/pos';
 
 export const defaultProducts: Product[] = [
-  // Tickets
+  // Box Office Tickets
   {
     id: '1',
     name: 'Adult Ticket',
     price: 12.50,
-    category: 'tickets',
+    category: 'box-office-tickets',
     description: 'General admission',
 
   },
@@ -14,22 +14,52 @@ export const defaultProducts: Product[] = [
     id: '2',
     name: 'Child Ticket',
     price: 8.50,
-    category: 'tickets',
+    category: 'box-office-tickets',
     description: 'Ages 12 and under',
   },
   {
     id: '3',
     name: 'Senior Ticket',
     price: 10.00,
-    category: 'tickets',
+    category: 'box-office-tickets',
     description: 'Ages 65+',
   },
   {
     id: '4',
     name: 'Matinee Ticket',
     price: 9.00,
-    category: 'tickets',
+    category: 'box-office-tickets',
     description: 'Before 5pm',
+  },
+  
+  // After Closing Tickets (for candy counter)
+  {
+    id: '25',
+    name: 'Adult Ticket (After Closing)',
+    price: 12.50,
+    category: 'after-closing-tickets',
+    description: 'General admission - after closing',
+  },
+  {
+    id: '26',
+    name: 'Child Ticket (After Closing)',
+    price: 8.50,
+    category: 'after-closing-tickets',
+    description: 'Ages 12 and under - after closing',
+  },
+  {
+    id: '27',
+    name: 'Senior Ticket (After Closing)',
+    price: 10.00,
+    category: 'after-closing-tickets',
+    description: 'Ages 65+ - after closing',
+  },
+  {
+    id: '28',
+    name: 'Matinee Ticket (After Closing)',
+    price: 9.00,
+    category: 'after-closing-tickets',
+    description: 'Before 5pm - after closing',
   },
   
   // Concessions

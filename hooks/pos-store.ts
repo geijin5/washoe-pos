@@ -2,7 +2,7 @@ import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 
-import { Product, CartItem, Order, Category, POSStats, POSSettings, NightlyReport, SettingsExport } from '@/types/pos';
+import { Product, CartItem, Order, Category, CategoryMetadata, POSStats, POSSettings, NightlyReport, SettingsExport } from '@/types/pos';
 import { defaultProducts } from '@/mocks/default-products';
 // Removed sync service import as it's not used
 
@@ -10,7 +10,7 @@ const PRODUCTS_KEY = 'theatre_products';
 const ORDERS_KEY = 'theatre_orders';
 const SETTINGS_KEY = 'theatre_settings';
 
-const DEFAULT_CATEGORIES: Category[] = ['tickets', 'concessions', 'merchandise', 'beverages'];
+const DEFAULT_CATEGORIES: Category[] = ['box-office-tickets', 'after-closing-tickets', 'concessions', 'merchandise', 'beverages'];
 
 const DEFAULT_SETTINGS: POSSettings = {
   creditCardFeePercent: 5.0, // Exactly 5.0% credit card fee
@@ -309,14 +309,40 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     return categories;
   }, [settings.categories]);
 
+  const getCategoryMetadata = useCallback((categoryId: string): CategoryMetadata | undefined => {
+    return settings.categoryMetadata?.find(m => m.id === categoryId);
+  }, [settings.categoryMetadata]);
+
+  // Helper function to check if a category is a ticket (including custom categories)
+  const isTicketCategory = useCallback((categoryId: string) => {
+    // Check hardcoded ticket categories
+    if (categoryId === 'tickets' || categoryId === 'box-office-tickets' || categoryId === 'after-closing-tickets') {
+      return true;
+    }
+    
+    // Check custom category metadata
+    const metadata = getCategoryMetadata(categoryId);
+    return metadata?.isTicket === true;
+  }, [getCategoryMetadata]);
+
   // Category management
-  const addCategory = useCallback(async (category: Category) => {
+  const addCategory = useCallback(async (category: Category, metadata?: CategoryMetadata) => {
     try {
       const currentCategories = settings.categories || DEFAULT_CATEGORIES;
       if (!currentCategories.includes(category)) {
         const updatedCategories = [...currentCategories, category];
         console.log(`Adding category: ${category}. Updated categories:`, updatedCategories);
-        await updateSettings({ categories: updatedCategories });
+        
+        // Update category metadata if provided
+        let updatedMetadata = settings.categoryMetadata || [];
+        if (metadata) {
+          updatedMetadata = [...updatedMetadata, metadata];
+        }
+        
+        await updateSettings({ 
+          categories: updatedCategories,
+          categoryMetadata: updatedMetadata
+        });
         console.log(`Category ${category} added successfully. Available categories updated.`);
       } else {
         console.log(`Category ${category} already exists in:`, currentCategories);
@@ -325,7 +351,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       console.error('Error adding category:', error);
       throw error;
     }
-  }, [settings.categories, updateSettings]);
+  }, [settings.categories, settings.categoryMetadata, updateSettings]);
 
   const removeCategory = useCallback(async (category: Category) => {
     try {
@@ -333,7 +359,13 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       if (currentCategories.includes(category) && currentCategories.length > 1) {
         const updatedCategories = currentCategories.filter(c => c !== category);
         console.log(`Removing category: ${category}. Updated categories:`, updatedCategories);
-        await updateSettings({ categories: updatedCategories });
+        // Remove category metadata if it exists
+        const updatedMetadata = (settings.categoryMetadata || []).filter(m => m.id !== category);
+        
+        await updateSettings({ 
+          categories: updatedCategories,
+          categoryMetadata: updatedMetadata
+        });
         
         // Update products that use this category to use the first available category
         const productsWithCategory = products.filter(p => p.category === category);
@@ -353,7 +385,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       console.error('Error removing category:', error);
       throw error;
     }
-  }, [settings.categories, updateSettings, products, saveProducts]);
+  }, [settings.categories, settings.categoryMetadata, updateSettings, products, saveProducts]);
 
   // Settings export/import
   const exportSettings = useCallback((): SettingsExport => {
@@ -424,6 +456,14 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       throw error; // Re-throw to show specific error message
     }
   }, [updateSettings, products, saveProducts]);
+
+  // Helper function to determine if a role should be updated (higher priority roles take precedence)
+  const shouldUpdateRole = useCallback((existingRole: string, newRole: string): boolean => {
+    const rolePriority = { 'admin': 4, 'manager': 3, 'staff': 2, 'usher': 1 };
+    const existingPriority = rolePriority[existingRole as keyof typeof rolePriority] || 0;
+    const newPriority = rolePriority[newRole as keyof typeof rolePriority] || 0;
+    return newPriority > existingPriority;
+  }, []);
 
   // Helper function to validate real users (not test/demo/default accounts)
   const isValidRealUser = useCallback((userName: string): boolean => {
@@ -541,31 +581,54 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     
     const boxOfficeOrders = dayOrders.filter(o => o.department === 'box-office');
     
-    // For candy counter orders, we need to analyze the items to separate tickets from other items
-    const candyCounterOrders = dayOrders.filter(o => o.department === 'candy-counter' && !o.isAfterClosing);
-    const afterClosingOrders = dayOrders.filter(o => o.department === 'candy-counter' && o.isAfterClosing);
+    // Categorize orders based on department where tickets are sold
+    // Box office department tickets go to box office section
+    // Candy counter department tickets go to after-closing section
+    // Candy counter orders without tickets go to candy counter section
+    
+    // Get all candy counter orders (regardless of isAfterClosing flag)
+    const allCandyCounterOrders = dayOrders.filter(o => o.department === 'candy-counter');
+    
+    // Separate candy counter orders: tickets go to after-closing, other items stay in candy counter
+    const candyCounterTicketOrders = allCandyCounterOrders.filter(order => 
+      order.items.some(item => isTicketCategory(item.product.category))
+    );
+    
+    const pureCandyCounterOrders = allCandyCounterOrders.filter(order => 
+      !order.items.some(item => isTicketCategory(item.product.category))
+    );
+    
+    // Box office orders are only from box office department
+    const allBoxOfficeOrders = boxOfficeOrders;
+    
+    // After-closing orders are candy counter orders with tickets
+    const allAfterClosingOrders = candyCounterTicketOrders;
     
     console.log(`=== MIXED ORDER FILTERING DEBUG ===`);
     console.log(`Total day orders: ${dayOrders.length}`);
-    console.log(`Candy counter orders (non-after-closing): ${candyCounterOrders.length}`);
-    console.log(`After closing orders: ${afterClosingOrders.length}`);
+    console.log(`All candy counter orders: ${allCandyCounterOrders.length}`);
+    console.log(`Candy counter ticket orders (go to after-closing): ${candyCounterTicketOrders.length}`);
+    console.log(`Pure candy counter orders (no tickets): ${pureCandyCounterOrders.length}`);
+    console.log(`All box office orders (box office department only): ${allBoxOfficeOrders.length}`);
+    console.log(`All after-closing orders (candy counter tickets): ${allAfterClosingOrders.length}`);
     
-    // Log each candy counter order to see if it has mixed items
-    candyCounterOrders.forEach(order => {
-      const ticketItems = order.items.filter(item => item.product.category === 'tickets');
-      const nonTicketItems = order.items.filter(item => item.product.category !== 'tickets');
+    // Log each pure candy counter order to see if it has mixed items
+    pureCandyCounterOrders.forEach(order => {
+      const ticketItems = order.items.filter(item => isTicketCategory(item.product.category));
+      const nonTicketItems = order.items.filter(item => !isTicketCategory(item.product.category));
       const orderType = ticketItems.length > 0 && nonTicketItems.length > 0 ? 'MIXED' : 
                        ticketItems.length > 0 ? 'TICKETS_ONLY' : 'CONCESSIONS_ONLY';
-      console.log(`  Order ${order.id} (${order.userName}): ${orderType} - ${ticketItems.length} tickets, ${nonTicketItems.length} concessions`);
+      console.log(`  Order ${order.id} (${order.userName}): ${orderType} - ${ticketItems.length} tickets, ${nonTicketItems.length} other items`);
       if (orderType === 'MIXED') {
         console.log(`    🔄 MIXED ORDER DETECTED: This should be split between departments`);
         console.log(`    Ticket items: ${ticketItems.map(i => i.product.name).join(', ')}`);
-        console.log(`    Concession items: ${nonTicketItems.map(i => i.product.name).join(', ')}`);
+        console.log(`    Other items: ${nonTicketItems.map(i => i.product.name).join(', ')}`);
       }
     });
     console.log(`=== END MIXED ORDER FILTERING DEBUG ===`);
     
-    console.log(`Found ${candyCounterOrders.length} candy counter orders to analyze for mixed content`);
+    console.log(`Found ${pureCandyCounterOrders.length} pure candy counter orders to analyze for mixed content`);
+    console.log(`Found ${allAfterClosingOrders.length} after-closing orders`);
     
     // Process mixed candy counter orders - split by item type
     let candyCounterSalesFromMixed = 0;
@@ -579,12 +642,13 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     let afterClosingCashFromMixed = 0;
     let afterClosingCardFromMixed = 0;
     
-    candyCounterOrders.forEach(order => {
+    // Process candy counter ticket orders (these should be split if they have mixed content)
+    candyCounterTicketOrders.forEach(order => {
       // Check if this order has both tickets and other items
-      const ticketItems = order.items.filter(item => item.product.category === 'tickets');
-      const nonTicketItems = order.items.filter(item => item.product.category !== 'tickets');
+      const ticketItems = order.items.filter(item => isTicketCategory(item.product.category));
+      const nonTicketItems = order.items.filter(item => !isTicketCategory(item.product.category));
       
-      console.log(`Analyzing order ${order.id}: ${ticketItems.length} ticket items, ${nonTicketItems.length} non-ticket items`);
+        console.log(`Analyzing order ${order.id}: ${ticketItems.length} after-closing ticket items, ${nonTicketItems.length} non-ticket items`);
       
       if (ticketItems.length > 0 && nonTicketItems.length > 0) {
         // Mixed order - split it
@@ -637,6 +701,8 @@ export const [POSProvider, usePOS] = createContextHook(() => {
         } else if (order.paymentMethod === 'card') {
           afterClosingCardFromMixed = Math.round((afterClosingCardFromMixed + order.total) * 100) / 100;
         }
+        
+        console.log(`  ✅ Pure ticket order: After-closing +${order.total.toFixed(2)}`);
       } else {
         // Pure candy counter order (no tickets) - stays in candy counter
         console.log(`🍿 Pure candy counter order: Order ${order.id} by ${order.userName} - stays in candy counter`);
@@ -650,14 +716,19 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     
     console.log(`=== CANDY COUNTER DEBUG FOR REPORT ${dateStr} ===`);
     console.log(`Total orders for date: ${dayOrders.length}`);
-    console.log(`Candy counter orders (non-after-closing): ${candyCounterOrders.length}`);
-    candyCounterOrders.forEach(order => {
+    console.log(`Pure candy counter orders (no tickets): ${pureCandyCounterOrders.length}`);
+    pureCandyCounterOrders.forEach(order => {
       console.log(`  - Order ${order.id}: ${order.total.toFixed(2)} by ${order.userName} (${order.userRole || 'unknown'})`);
     });
-    console.log(`After closing orders: ${afterClosingOrders.length}`);
-    afterClosingOrders.forEach(order => {
+    console.log(`All box office orders (box office department only): ${allBoxOfficeOrders.length}`);
+    allBoxOfficeOrders.forEach(order => {
       console.log(`  - Order ${order.id}: ${order.total.toFixed(2)} by ${order.userName} (${order.userRole || 'unknown'})`);
     });
+    console.log(`All after-closing orders (candy counter tickets): ${allAfterClosingOrders.length}`);
+    allAfterClosingOrders.forEach(order => {
+      console.log(`  - Order ${order.id}: ${order.total.toFixed(2)} by ${order.userName} (${order.userRole || 'unknown'})`);
+    });
+    console.log(`After-closing order portions from mixed processing: ${afterClosingOrdersFromMixed}`);
     console.log('===============================================');
     
     console.log(`=== DEPARTMENT BREAKDOWN DEBUG FOR ${dateStr} ===`);
@@ -667,84 +738,35 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       console.log(`  Order ${order.id}: dept=${order.department}, afterClosing=${order.isAfterClosing}, total=${order.total.toFixed(2)}, user=${order.userName}`);
     });
     console.log(`Filtered results:`);
-    console.log(`  - Box Office orders: ${boxOfficeOrders.length}`);
-    console.log(`  - Candy Counter orders (concessions): ${candyCounterOrders.length}`);
-    console.log(`  - After Closing orders (tickets): ${afterClosingOrders.length}`);
+    console.log(`  - Box Office orders (box office department only): ${allBoxOfficeOrders.length}`);
+    console.log(`  - Pure Candy Counter orders (no tickets): ${pureCandyCounterOrders.length}`);
+    console.log(`  - All After Closing orders (candy counter tickets): ${allAfterClosingOrders.length}`);
+    console.log(`  - After Closing order portions (from mixed processing): ${afterClosingOrdersFromMixed}`);
     console.log('===============================================');
     
     // Calculate department sales with enhanced precision - include mixed order handling
-    const boxOfficeSales = Math.round(boxOfficeOrders.reduce((sum, order) => sum + order.total, 0) * 100) / 100;
+    const boxOfficeSales = Math.round(allBoxOfficeOrders.reduce((sum, order) => sum + order.total, 0) * 100) / 100;
     
-    // Calculate candy counter sales - only non-ticket items from candy counter orders
-    let candyCounterSalesRaw = Math.round(candyCounterOrders.reduce((sum, order) => {
-      // Only count non-ticket items from candy counter orders
-      const ticketItems = order.items.filter(item => item.product.category === 'tickets');
-      const nonTicketItems = order.items.filter(item => item.product.category !== 'tickets');
-      
-      if (ticketItems.length > 0 && nonTicketItems.length > 0) {
-        // Mixed order - only count non-ticket portion for candy counter
-        const nonTicketSubtotal = nonTicketItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-        const totalSubtotal = order.items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-        const nonTicketProportion = nonTicketSubtotal / totalSubtotal;
-        const nonTicketFee = Math.round((order.creditCardFee || 0) * nonTicketProportion * 100) / 100;
-        const nonTicketTotal = Math.round((nonTicketSubtotal + nonTicketFee) * 100) / 100;
-        console.log(`  Mixed order ${order.id}: Candy counter portion = ${nonTicketTotal.toFixed(2)}`);
-        return sum + nonTicketTotal;
-      } else if (ticketItems.length > 0) {
-        // Pure ticket order - don't count for candy counter (goes to after-closing)
-        console.log(`  Pure ticket order ${order.id}: Excluded from candy counter (${order.total.toFixed(2)} goes to after-closing)`);
-        return sum;
-      } else {
-        // Pure candy counter order (no tickets) - count full amount
-        console.log(`  Pure candy counter order ${order.id}: Full amount = ${order.total.toFixed(2)}`);
-        return sum + order.total;
-      }
-    }, 0) * 100) / 100;
-    const candyCounterSales = candyCounterSalesRaw;
+    // Calculate candy counter sales - use the consolidated mixed order processing results
+    const candyCounterSales = Math.round((candyCounterSalesFromMixed + pureCandyCounterOrders.reduce((sum, order) => sum + order.total, 0)) * 100) / 100;
     
-    // Calculate after-closing sales - pure after-closing orders + ticket portions from candy counter
-    let afterClosingSalesRaw = Math.round(afterClosingOrders.reduce((sum, order) => sum + order.total, 0) * 100) / 100;
-    console.log(`Pure after-closing orders total: ${afterClosingSalesRaw.toFixed(2)}`);
-    
-    // Add ticket sales from candy counter orders (both mixed and pure ticket orders)
-    let ticketSalesFromCandyCounter = Math.round(candyCounterOrders.reduce((sum, order) => {
-      const ticketItems = order.items.filter(item => item.product.category === 'tickets');
-      const nonTicketItems = order.items.filter(item => item.product.category !== 'tickets');
-      
-      if (ticketItems.length > 0 && nonTicketItems.length > 0) {
-        // Mixed order - only count ticket portion for after-closing
-        const ticketSubtotal = ticketItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-        const totalSubtotal = order.items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-        const ticketProportion = ticketSubtotal / totalSubtotal;
-        const ticketFee = Math.round((order.creditCardFee || 0) * ticketProportion * 100) / 100;
-        const ticketTotal = Math.round((ticketSubtotal + ticketFee) * 100) / 100;
-        console.log(`  Mixed order ${order.id}: After-closing portion = ${ticketTotal.toFixed(2)}`);
-        return sum + ticketTotal;
-      } else if (ticketItems.length > 0) {
-        // Pure ticket order in candy counter - count full amount for after-closing
-        console.log(`  Pure ticket order ${order.id}: Full amount to after-closing = ${order.total.toFixed(2)}`);
-        return sum + order.total;
-      } else {
-        // Pure candy counter order (no tickets) - don't count for after-closing
-        return sum;
-      }
-    }, 0) * 100) / 100;
-    
-    console.log(`Ticket sales from candy counter orders: ${ticketSalesFromCandyCounter.toFixed(2)}`);
-    const afterClosingSales = Math.round((afterClosingSalesRaw + ticketSalesFromCandyCounter) * 100) / 100;
-    console.log(`Total after-closing sales: ${afterClosingSales.toFixed(2)}`);
+    // Calculate after-closing sales - use the mixed order processing results
+    const afterClosingSalesRaw = Math.round(allAfterClosingOrders.reduce((sum, order) => sum + order.total, 0) * 100) / 100;
+    const afterClosingSales = Math.round(afterClosingSalesFromMixed * 100) / 100;
+    console.log(`Total after-closing sales (from mixed order processing): ${afterClosingSales.toFixed(2)}`);
     
     console.log(`=== MIXED ORDER ADJUSTMENT SUMMARY ===`);
     console.log(`Candy Counter Sales (non-tickets only): ${candyCounterSales.toFixed(2)}`);
+    console.log(`Box Office Raw: ${boxOfficeSales.toFixed(2)}`);
     console.log(`After Closing Raw: ${afterClosingSalesRaw.toFixed(2)}`);
-    console.log(`Ticket Sales from Candy Counter: +${ticketSalesFromCandyCounter.toFixed(2)}`);
+    console.log(`After Closing Mixed Adjustments: +${afterClosingSalesFromMixed.toFixed(2)}`);
     console.log(`After Closing Final: ${afterClosingSales.toFixed(2)}`);
     console.log('===============================================');
     
     console.log(`=== DEPARTMENT SALES CALCULATION VERIFICATION ===`);
-    console.log(`Box Office Sales: ${boxOfficeSales.toFixed(2)} from ${boxOfficeOrders.length} orders`);
-    console.log(`Candy Counter Sales: ${candyCounterSales.toFixed(2)} from ${candyCounterOrders.length} orders`);
-    console.log(`After Closing Sales: ${afterClosingSales.toFixed(2)} from ${afterClosingOrders.length} orders`);
+    console.log(`Box Office Sales: ${boxOfficeSales.toFixed(2)} from ${allBoxOfficeOrders.length} orders`);
+    console.log(`Candy Counter Sales: ${candyCounterSales.toFixed(2)} from ${pureCandyCounterOrders.length} orders`);
+    console.log(`After Closing Sales: ${afterClosingSales.toFixed(2)} from ${afterClosingOrdersFromMixed} order portions`);
     
     const departmentTotal = Math.round((boxOfficeSales + candyCounterSales + afterClosingSales) * 100) / 100;
     console.log(`Total Department Sales: ${departmentTotal.toFixed(2)}`);
@@ -761,9 +783,9 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       // Additional debugging for department mismatch
       console.error(`=== DEPARTMENT MISMATCH DEBUG ===`);
       console.error(`Individual department calculations:`);
-      console.error(`  Box Office: ${boxOfficeSales} (${boxOfficeOrders.length} orders)`);
-      console.error(`  Candy Counter: ${candyCounterSales} (${candyCounterOrders.length} orders)`);
-      console.error(`  After Closing: ${afterClosingSales} (${afterClosingOrders.length} orders)`);
+      console.error(`  Box Office: ${boxOfficeSales} (${allBoxOfficeOrders.length} orders)`);
+      console.error(`  Candy Counter: ${candyCounterSales} (${pureCandyCounterOrders.length} orders)`);
+      console.error(`  After Closing: ${afterClosingSales} (${afterClosingOrdersFromMixed} order portions)`);
       console.error(`  Sum: ${boxOfficeSales} + ${candyCounterSales} + ${afterClosingSales} = ${departmentTotal}`);
       console.error(`  Expected Total: ${totalSales}`);
       console.error(`=== END DEBUG ===`);
@@ -774,8 +796,11 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     console.log('===============================================');
     
     console.log(`=== ENHANCED SALES CALCULATION ===`);
-    console.log(`Pure candy counter orders: ${candyCounterOrders.length}`);
-    console.log(`Mixed after-closing orders: ${afterClosingOrders.length}`);
+    console.log(`Pure candy counter orders: ${pureCandyCounterOrders.length}`);
+    console.log(`All box office orders (box office department only): ${allBoxOfficeOrders.length}`);
+    console.log(`All after-closing orders (candy counter tickets): ${allAfterClosingOrders.length}`);
+    console.log(`After-closing order portions (from mixed processing): ${afterClosingOrdersFromMixed}`);
+    console.log(`Total box office sales: ${boxOfficeSales.toFixed(2)}`);
     console.log(`Total candy counter sales: ${candyCounterSales.toFixed(2)}`);
     console.log(`Total after-closing sales: ${afterClosingSales.toFixed(2)}`);
     console.log('=======================================');
@@ -783,29 +808,22 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     const departmentBreakdown = {
       'box-office': {
         sales: Math.round(boxOfficeSales * 100) / 100,
-        orders: boxOfficeOrders.length,
+        orders: allBoxOfficeOrders.length,
       },
       'candy-counter': {
         sales: Math.round(candyCounterSales * 100) / 100,
-        orders: candyCounterOrders.filter(order => {
-          const ticketItems = order.items.filter(item => item.product.category === 'tickets');
-          const nonTicketItems = order.items.filter(item => item.product.category !== 'tickets');
-          return nonTicketItems.length > 0; // Only count orders with non-ticket items
-        }).length,
+        orders: pureCandyCounterOrders.length,
       },
       'after-closing': {
         sales: Math.round(afterClosingSales * 100) / 100,
-        orders: afterClosingOrders.length + candyCounterOrders.filter(order => {
-          const ticketItems = order.items.filter(item => item.product.category === 'tickets');
-          return ticketItems.length > 0; // Count orders with ticket items
-        }).length,
+        orders: afterClosingOrdersFromMixed,
       },
     };
     
     console.log(`=== FINAL DEPARTMENT BREAKDOWN FOR ${dateStr} ===`);
     console.log(`Box Office: ${departmentBreakdown['box-office'].sales.toFixed(2)} (${departmentBreakdown['box-office'].orders} orders)`);
     console.log(`Candy Counter: ${departmentBreakdown['candy-counter'].sales.toFixed(2)} (${departmentBreakdown['candy-counter'].orders} orders)`);
-    console.log(`After Closing: ${departmentBreakdown['after-closing'].sales.toFixed(2)} (${departmentBreakdown['after-closing'].orders} orders)`);
+    console.log(`After Closing: ${departmentBreakdown['after-closing'].sales.toFixed(2)} (${departmentBreakdown['after-closing'].orders} order portions)`);
     const finalDepartmentTotal = Math.round((departmentBreakdown['box-office'].sales + departmentBreakdown['candy-counter'].sales + departmentBreakdown['after-closing'].sales) * 100) / 100;
     console.log(`Total Department Sales: ${finalDepartmentTotal.toFixed(2)}`);
     console.log(`Total Sales from Orders: ${totalSales.toFixed(2)}`);
@@ -821,17 +839,22 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     }
     console.log('===============================================');
 
-    // Calculate payment breakdown by department - enhanced to handle mixed orders
+    // Calculate payment breakdown by department - use consolidated mixed order processing results
     let boxOfficeCashSales = 0;
     let boxOfficeCardSales = 0;
-    let candyCounterCashSales = 0;
-    let candyCounterCardSales = 0;
-    let afterClosingCashSales = 0;
-    let afterClosingCardSales = 0;
+    let candyCounterCashSales = candyCounterCashFromMixed;
+    let candyCounterCardSales = candyCounterCardFromMixed;
+    let afterClosingCashSales = afterClosingCashFromMixed;
+    let afterClosingCardSales = afterClosingCardFromMixed;
+    
+    console.log(`Initial payment breakdown from mixed order processing:`);
+    console.log(`  Box Office: Cash=${boxOfficeCashSales.toFixed(2)}, Card=${boxOfficeCardSales.toFixed(2)}`);
+    console.log(`  Candy Counter: Cash=${candyCounterCashSales.toFixed(2)}, Card=${candyCounterCardSales.toFixed(2)}`);
+    console.log(`  After Closing: Cash=${afterClosingCashSales.toFixed(2)}, Card=${afterClosingCardSales.toFixed(2)}`);
     
     console.log(`=== CALCULATING PAYMENT BREAKDOWN BY DEPARTMENT WITH MIXED ORDER HANDLING ===`);
     
-    // Box Office orders with proper rounding
+    // Box Office orders with proper rounding (box office department only)
     boxOfficeOrders.forEach(order => {
       const orderTotal = Math.round(order.total * 100) / 100;
       if (order.paymentMethod === 'cash') {
@@ -841,95 +864,25 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       }
     });
     
-    // Candy Counter orders with proper rounding - need to handle mixed orders
-    candyCounterOrders.forEach(order => {
-      // Check if this is a mixed order
-      const ticketItems = order.items.filter(item => item.product.category === 'tickets');
-      const nonTicketItems = order.items.filter(item => item.product.category !== 'tickets');
-      
-      if (ticketItems.length > 0 && nonTicketItems.length > 0) {
-        // Mixed order - only count the non-ticket portion for candy counter
-        const ticketSubtotal = ticketItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-        const nonTicketSubtotal = nonTicketItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-        const totalSubtotal = ticketSubtotal + nonTicketSubtotal;
-        
-        const nonTicketProportion = nonTicketSubtotal / totalSubtotal;
-        const nonTicketFee = Math.round((order.creditCardFee || 0) * nonTicketProportion * 100) / 100;
-        const nonTicketTotal = Math.round((nonTicketSubtotal + nonTicketFee) * 100) / 100;
-        
-        if (order.paymentMethod === 'cash') {
-          candyCounterCashSales = Math.round((candyCounterCashSales + nonTicketTotal) * 100) / 100;
-        } else if (order.paymentMethod === 'card') {
-          candyCounterCardSales = Math.round((candyCounterCardSales + nonTicketTotal) * 100) / 100;
-        }
-        
-        console.log(`Mixed order ${order.id}: Candy counter portion = ${nonTicketTotal.toFixed(2)} (${order.paymentMethod})`);
-      } else if (ticketItems.length > 0) {
-        // Pure ticket order in candy counter - don't count for candy counter payment breakdown
-        console.log(`Pure ticket order ${order.id}: Skipping for candy counter payment breakdown`);
-      } else {
-        // Pure candy counter order (no tickets)
-        const orderTotal = Math.round(order.total * 100) / 100;
-        if (order.paymentMethod === 'cash') {
-          candyCounterCashSales = Math.round((candyCounterCashSales + orderTotal) * 100) / 100;
-        } else if (order.paymentMethod === 'card') {
-          candyCounterCardSales = Math.round((candyCounterCardSales + orderTotal) * 100) / 100;
-        }
-      }
-    });
-    
-    // After Closing orders with proper rounding and enhanced logging
-    console.log(`=== PROCESSING AFTER CLOSING ORDERS ===`);
-    console.log(`Found ${afterClosingOrders.length} pure after closing orders`);
-    afterClosingOrders.forEach((order, index) => {
+    // Add pure candy counter orders (no after-closing tickets) to the consolidated results
+    pureCandyCounterOrders.filter(order => {
+      const ticketItems = order.items.filter(item => item.product.category === 'after-closing-tickets');
+      const nonTicketItems = order.items.filter(item => item.product.category !== 'after-closing-tickets');
+      return ticketItems.length === 0 && nonTicketItems.length > 0;
+    }).forEach(order => {
       const orderTotal = Math.round(order.total * 100) / 100;
-      console.log(`After Closing Order ${index + 1}: ID=${order.id}, Total=${orderTotal.toFixed(2)}, Payment=${order.paymentMethod}, User=${order.userName}`);
       if (order.paymentMethod === 'cash') {
-        afterClosingCashSales = Math.round((afterClosingCashSales + orderTotal) * 100) / 100;
-        console.log(`  Added ${orderTotal.toFixed(2)} to after closing cash (running total: ${(afterClosingCashSales).toFixed(2)})`);
+        candyCounterCashSales = Math.round((candyCounterCashSales + orderTotal) * 100) / 100;
       } else if (order.paymentMethod === 'card') {
-        afterClosingCardSales = Math.round((afterClosingCardSales + orderTotal) * 100) / 100;
-        console.log(`  Added ${orderTotal.toFixed(2)} to after closing card (running total: ${(afterClosingCardSales).toFixed(2)})`);
+        candyCounterCardSales = Math.round((candyCounterCardSales + orderTotal) * 100) / 100;
       }
     });
     
-    // Add ticket portions from mixed orders and pure ticket orders to after-closing
-    candyCounterOrders.forEach(order => {
-      const ticketItems = order.items.filter(item => item.product.category === 'tickets');
-      const nonTicketItems = order.items.filter(item => item.product.category !== 'tickets');
-      
-      if (ticketItems.length > 0 && nonTicketItems.length > 0) {
-        // Mixed order - add ticket portion to after-closing
-        const ticketSubtotal = ticketItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-        const nonTicketSubtotal = nonTicketItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-        const totalSubtotal = ticketSubtotal + nonTicketSubtotal;
-        
-        const ticketProportion = ticketSubtotal / totalSubtotal;
-        const ticketFee = Math.round((order.creditCardFee || 0) * ticketProportion * 100) / 100;
-        const ticketTotal = Math.round((ticketSubtotal + ticketFee) * 100) / 100;
-        
-        if (order.paymentMethod === 'cash') {
-          afterClosingCashSales = Math.round((afterClosingCashSales + ticketTotal) * 100) / 100;
-        } else if (order.paymentMethod === 'card') {
-          afterClosingCardSales = Math.round((afterClosingCardSales + ticketTotal) * 100) / 100;
-        }
-        
-        console.log(`Mixed order ${order.id}: After closing portion = ${ticketTotal.toFixed(2)} (${order.paymentMethod})`);
-      } else if (ticketItems.length > 0) {
-        // Pure ticket order in candy counter - add full amount to after-closing
-        const orderTotal = Math.round(order.total * 100) / 100;
-        if (order.paymentMethod === 'cash') {
-          afterClosingCashSales = Math.round((afterClosingCashSales + orderTotal) * 100) / 100;
-        } else if (order.paymentMethod === 'card') {
-          afterClosingCardSales = Math.round((afterClosingCardSales + orderTotal) * 100) / 100;
-        }
-        
-        console.log(`Pure ticket order ${order.id}: After closing full amount = ${orderTotal.toFixed(2)} (${order.paymentMethod})`);
-      }
-    });
-    
-    console.log(`After Closing Cash Total: ${afterClosingCashSales.toFixed(2)}`);
-    console.log(`After Closing Card Total: ${afterClosingCardSales.toFixed(2)}`);
+    // After Closing orders - use the split amounts from mixed order processing
+    console.log(`=== PROCESSING AFTER CLOSING ORDERS ===`);
+    console.log(`Using split amounts from mixed order processing:`);
+    console.log(`After Closing Cash Total: ${afterClosingCashSales.toFixed(2)} (from mixed processing)`);
+    console.log(`After Closing Card Total: ${afterClosingCardSales.toFixed(2)} (from mixed processing)`);
     console.log(`After Closing Combined Total: ${(afterClosingCashSales + afterClosingCardSales).toFixed(2)}`);
     console.log(`Expected After Closing Total: ${afterClosingSales.toFixed(2)}`);
     const afterClosingPaymentDiff = Math.abs((afterClosingCashSales + afterClosingCardSales) - afterClosingSales);
@@ -1011,6 +964,11 @@ export const [POSProvider, usePOS] = createContextHook(() => {
         const orderType = order.isAfterClosing ? 'after-closing' : (order.department || 'regular');
         console.log(`Processing order from user: ${order.userName} (${order.userRole || 'unknown role'}) - ${order.total.toFixed(2)} [${orderType}]`);
         
+        // Enhanced logging for manager/admin sales
+        if (order.userRole === 'manager' || order.userRole === 'admin') {
+          console.log(`🎯 MANAGER/ADMIN SALE: ${order.userName} (${order.userRole}) - ${order.total.toFixed(2)} in ${orderType}`);
+        }
+        
         // Use userId as the key to combine multiple sessions from same user
         const existing = userMap.get(order.userId) || {
           userId: order.userId,
@@ -1021,8 +979,8 @@ export const [POSProvider, usePOS] = createContextHook(() => {
         };
         existing.sales += order.total;
         existing.orders += 1;
-        // Update role if not set or if current order has role info
-        if (order.userRole && (!existing.userRole || existing.userRole === 'usher')) {
+        // Update role if not set or if current order has a higher priority role
+        if (order.userRole && (!existing.userRole || shouldUpdateRole(existing.userRole, order.userRole))) {
           existing.userRole = order.userRole;
         }
         userMap.set(order.userId, existing);
@@ -1043,7 +1001,8 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       const isValid = isValidName && hasSales;
       
       if (isValid) {
-        console.log(`✓ Valid user: ${user.userName} (${user.userRole || 'unknown'}) - ${user.sales.toFixed(2)} (${user.orders} orders)`);
+        const roleIndicator = (user.userRole === 'manager' || user.userRole === 'admin') ? ' 🎯' : '';
+        console.log(`✓ Valid user: ${user.userName} (${user.userRole || 'unknown'}) - ${user.sales.toFixed(2)} (${user.orders} orders)${roleIndicator}`);
       } else {
         const reason = !isValidName ? 'invalid name pattern' : !hasSales ? 'no sales' : 'unknown';
         console.log(`✗ Filtered out: ${user.userName} - ${user.sales.toFixed(2)} (reason: ${reason})`);
@@ -1256,7 +1215,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       userBreakdown,
       topProducts,
     };
-  }, [orders, isValidRealUser]);
+  }, [orders, isValidRealUser, shouldUpdateRole]);
 
   // Save nightly report and prepare for new day
   const saveNightlyReportAndReset = useCallback(async () => {
@@ -1871,6 +1830,8 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     generateAggregatedReport,
     addCategory,
     removeCategory,
+    getCategoryMetadata,
+    isTicketCategory,
     exportSettings,
     importSettings,
     saveNightlyReportAndReset,

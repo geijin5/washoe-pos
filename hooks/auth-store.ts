@@ -520,6 +520,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   return {
     ...authState,
     users,
+    passwords,
     isDeviceSetup,
     isCheckingSetup,
     dailyLogins,

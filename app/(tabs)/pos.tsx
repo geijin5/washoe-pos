@@ -52,6 +52,8 @@ export default function POSScreen() {
     checkout,
     calculateTotalsWithFee,
     settings,
+    getCategoryMetadata,
+    isTicketCategory,
   } = usePOS();
 
   const [showCart, setShowCart] = useState(false);
@@ -70,14 +72,34 @@ export default function POSScreen() {
     if (!selectedDepartment) return filteredProducts;
     
     if (selectedDepartment === 'box-office') {
-      return filteredProducts.filter(product => product.category === 'tickets');
+      return filteredProducts.filter(product => {
+        // Check if it's a hardcoded box office ticket category
+        if (product.category === 'box-office-tickets') return true;
+        
+        // Check if it's a custom category marked as box office ticket
+        const categoryMetadata = getCategoryMetadata(product.category);
+        return categoryMetadata?.isBoxOfficeTicket === true;
+      });
     } else if (selectedDepartment === 'candy-counter') {
-      // Candy counter includes all products (concessions, beverages, merchandise, and tickets for after-closing)
-      return filteredProducts;
+      // Candy counter includes all products except box office tickets
+      // But includes after-closing tickets (which will be processed as tickets in reports)
+      return filteredProducts.filter(product => {
+        // Exclude hardcoded box office ticket category
+        if (product.category === 'box-office-tickets') return false;
+        
+        // Check custom category metadata
+        const categoryMetadata = getCategoryMetadata(product.category);
+        
+        // Exclude custom categories marked as box office ticket only
+        if (categoryMetadata?.isBoxOfficeTicket === true) return false;
+        
+        // Include everything else (including after-closing tickets)
+        return true;
+      });
     }
     
     return filteredProducts;
-  }, [filteredProducts, selectedDepartment]);
+  }, [filteredProducts, selectedDepartment, getCategoryMetadata]);
 
   const handleAddToCart = async (product: any) => {
     if (Platform.OS !== 'web') {
@@ -92,14 +114,18 @@ export default function POSScreen() {
   };
 
   const handlePayment = async (method: 'cash' | 'card', cashAmount?: string) => {
-    // Check if candy counter is selling tickets (after closing scenario)
-    const hasTickets = cart.some(item => item.product.category === 'tickets');
-    const isAfterClosing = selectedDepartment === 'candy-counter' && hasTickets;
+    // Determine if this order contains tickets (which go to after-closing when sold in candy counter)
+    const hasTickets = cart.some(item => isTicketCategory(item.product.category));
+    
+    // For mixed orders (tickets + other items), we need to handle them specially
+    // The order will be processed as a candy counter order, but the report generation will split it
+    const hasOtherItems = cart.some(item => !isTicketCategory(item.product.category));
+    const isMixedOrder = hasTickets && hasOtherItems;
     
     // Pass show information for box office orders
     const showType = selectedDepartment === 'box-office' && selectedShow ? selectedShow as '1st-show' | '2nd-show' | 'nightly-show' | 'matinee' : undefined;
     
-    const order = checkout(method, user?.id, user?.name, selectedDepartment || undefined, isAfterClosing, user?.role, showType);
+    const order = checkout(method, user?.id, user?.name, selectedDepartment || undefined, hasTickets, user?.role, showType);
     if (order) {
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -135,7 +161,7 @@ export default function POSScreen() {
             styles.departmentOptions,
             { 
               flexDirection: 'column',
-              maxWidth: showLayout.maxWidth,
+              maxWidth: showLayout.maxWidth as any,
               gap: showLayout.gap
             }
           ]}>
@@ -224,7 +250,7 @@ export default function POSScreen() {
             styles.departmentOptions,
             { 
               flexDirection: departmentLayout.direction,
-              maxWidth: departmentLayout.maxWidth,
+              maxWidth: departmentLayout.maxWidth as any,
               gap: departmentLayout.gap
             }
           ]}>
@@ -892,7 +918,6 @@ const styles = StyleSheet.create({
   },
   tabletRightSideContent: {
     flex: 1,
-    order: 2,
   },
   tabletCartContainer: {
     position: 'relative',
@@ -907,7 +932,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 2, height: 0 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
-    order: 1,
   },
   phoneCartContainer: {
     position: 'absolute',

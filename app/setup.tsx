@@ -273,7 +273,7 @@ export default function SetupScreen() {
       <Text style={styles.formSubtitle}>
         Paste the device configuration data from another device. This should contain user accounts and passwords, not POS settings.
       </Text>
-      
+
       <View style={styles.infoBox}>
         <Text style={styles.infoTitle}>What to Import</Text>
         <Text style={styles.infoText}>
@@ -283,7 +283,7 @@ export default function SetupScreen() {
           • Make sure to copy the complete JSON data without modifications
         </Text>
       </View>
-      
+
       <View style={styles.warningBox}>
         <Text style={styles.warningTitle}>⚠️ Important</Text>
         <Text style={styles.warningText}>
