@@ -30,11 +30,10 @@ export function CategoryFilter({ selected, onSelect, selectedDepartment }: Categ
     console.log('CategoryFilter: Rebuilding categories list. Available categories:', availableCategories);
     const categoryOptions: { value: Category | 'all' | 'candy-counter-sales' | 'after-closing-tickets'; label: string }[] = [];
     
-    // For box office: show "All", "Box Office Tickets", and custom categories marked as box office tickets
+    // For box office: show "All" and custom categories marked as box office tickets
     if (selectedDepartment === 'box-office') {
       categoryOptions.push(
-        { value: 'all', label: 'All' },
-        { value: 'box-office-tickets', label: 'Box Office Tickets' }
+        { value: 'all', label: 'All' }
       );
       
       // Add custom categories that are marked as box office tickets
@@ -50,7 +49,7 @@ export function CategoryFilter({ selected, onSelect, selectedDepartment }: Categ
         }
       });
       
-      console.log('CategoryFilter: Box office mode - showing All, Box Office Tickets, and custom box office categories:', categoryOptions);
+      console.log('CategoryFilter: Box office mode - showing All and custom box office categories:', categoryOptions);
       return categoryOptions;
     }
     

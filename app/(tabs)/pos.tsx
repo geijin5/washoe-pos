@@ -73,12 +73,6 @@ export default function POSScreen() {
     
     if (selectedDepartment === 'box-office') {
       const boxOfficeProducts = filteredProducts.filter(product => {
-        // Check if it's a hardcoded box office ticket category
-        if (product.category === 'box-office-tickets') {
-          console.log(`✅ Box Office Product (hardcoded): ${product.name} - ${product.category}`);
-          return true;
-        }
-        
         // Check if it's a custom category marked as box office ticket
         const categoryMetadata = getCategoryMetadata(product.category);
         const isBoxOffice = categoryMetadata?.isBoxOfficeTicket === true;
@@ -91,9 +85,6 @@ export default function POSScreen() {
       // Candy counter includes all products except box office tickets
       // But includes after-closing tickets (which will be processed as tickets in reports)
       return filteredProducts.filter(product => {
-        // Exclude hardcoded box office ticket category
-        if (product.category === 'box-office-tickets') return false;
-        
         // Check custom category metadata
         const categoryMetadata = getCategoryMetadata(product.category);
         
