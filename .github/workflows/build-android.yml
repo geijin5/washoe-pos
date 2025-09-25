@@ -1,4 +1,4 @@
-name: Build Instructions
+name: Build Android APK
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  instructions:
+  build:
     runs-on: ubuntu-latest
     
     steps:
@@ -20,23 +20,57 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
+        
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        api-level: 34
+        build-tools: 34.0.0
+        ndk-version: 25.1.8937393
       
     - name: Install dependencies
-      run: npm install
+      run: npm ci --legacy-peer-deps
+      
+    - name: Install Expo CLI
+      run: npm install -g @expo/cli
       
     - name: Verify project setup
       run: |
-        echo "✅ Project setup verified"
-        echo "📱 To build Android APK manually:"
-        echo "1. Run: npx expo prebuild --platform android --clean"
-        echo "2. Run: cd android && ./gradlew assembleRelease"
-        echo "3. APK will be in: android/app/build/outputs/apk/release/"
-        echo ""
-        echo "🌐 Or use EAS Build (recommended):"
-        echo "1. Run: npm install -g @expo/eas-cli"
-        echo "2. Run: eas build --platform android --profile preview"
-        echo ""
-        echo "📋 Current project status:"
-        npx expo --version
-        node --version
-        npm --version
+        echo "Node version: $(node --version)"
+        echo "NPM version: $(npm --version)"
+        echo "Expo version: $(npx expo --version)"
+        echo "Java version: $(java -version 2>&1 | head -n 1)"
+        echo "Android SDK: $ANDROID_HOME"
+        
+    - name: Prebuild Android
+      run: npx expo prebuild --platform android --clean
+      
+    - name: Set up Gradle environment
+      run: |
+        echo "GRADLE_OPTS=-Xmx6g -XX:MaxMetaspaceSize=1g" >> $GITHUB_ENV
+        echo "GRADLE_USER_HOME=$HOME/.gradle" >> $GITHUB_ENV
+        echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+        echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+        
+    - name: Build APK
+      run: |
+        cd android
+        ./gradlew clean
+        ./gradlew assembleRelease --stacktrace --info --no-daemon --max-workers=2
+      env:
+        GRADLE_OPTS: "-Xmx6g -XX:MaxMetaspaceSize=1g"
+        ANDROID_HOME: ${{ env.ANDROID_HOME }}
+        ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+        
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release
+        path: android/app/build/outputs/apk/release/app-release.apk
+        retention-days: 30
