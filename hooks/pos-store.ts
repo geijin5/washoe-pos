@@ -1340,6 +1340,34 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     }
   }, [generateNightlyReport]);
 
+  // Get historical reports for weekly totals
+  const getHistoricalReports = useCallback(async (): Promise<NightlyReport[]> => {
+    try {
+      const allKeys = await AsyncStorage.getAllKeys();
+      const reportKeys = allKeys.filter(key => key.startsWith('nightly_report_'));
+      
+      const reports: NightlyReport[] = [];
+      for (const key of reportKeys) {
+        try {
+          const reportData = await AsyncStorage.getItem(key);
+          if (reportData) {
+            const report = JSON.parse(reportData);
+            reports.push(report);
+          }
+        } catch (error) {
+          console.error(`Error loading report ${key}:`, error);
+        }
+      }
+      
+      // Sort by date
+      reports.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      return reports;
+    } catch (error) {
+      console.error('Error getting historical reports:', error);
+      return [];
+    }
+  }, []);
+
   // Auto-clear nightly reports after 14 days and save daily reports
   const autoCleanOldReports = useCallback(async () => {
     try {
@@ -1876,6 +1904,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     importSettings,
     saveNightlyReportAndReset,
     autoCleanOldReports,
+    getHistoricalReports,
     
     // Get saved nightly reports
     getSavedNightlyReports: useCallback(async (): Promise<string[]> => {

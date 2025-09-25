@@ -1,26 +1,13 @@
 import { Tabs } from "expo-router";
-import { ShoppingCart, Package, Receipt, Settings, BarChart3, GraduationCap } from "lucide-react-native";
+import { ShoppingCart, Package, Receipt, Settings, BarChart3 } from "lucide-react-native";
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View } from "react-native";
 import { TheatreColors } from "@/constants/theatre-colors";
 import { TabletUtils } from "@/constants/tablet-utils";
-import { POSProvider, usePOS } from "@/hooks/pos-store";
+import { POSProvider } from "@/hooks/pos-store";
 import { useAuth } from "@/hooks/auth-store";
 import { UserProfile } from "@/components/UserProfile";
-
-function TrainingModeIndicator() {
-  const { settings } = usePOS();
-  const { isTrainingMode } = useAuth();
-  
-  if (!isTrainingMode && !settings.trainingMode) return null;
-  
-  return (
-    <View style={styles.trainingIndicator}>
-      <GraduationCap size={16} color={TheatreColors.background} />
-      <Text style={styles.trainingText}>TRAINING MODE</Text>
-    </View>
-  );
-}
+import { TrainingModeIndicator } from "@/components/TrainingModeIndicator";
 
 export default function TabsLayout() {
   const { hasPermission } = useAuth();
@@ -55,7 +42,7 @@ export default function TabsLayout() {
           },
           headerTintColor: TheatreColors.text,
           headerRight: () => (
-            <View style={styles.headerRight}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <TrainingModeIndicator />
               <UserProfile compact showLogout />
             </View>
@@ -114,25 +101,3 @@ export default function TabsLayout() {
     </POSProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  trainingIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: TheatreColors.warning,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
-  },
-  trainingText: {
-    color: TheatreColors.background,
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-});
