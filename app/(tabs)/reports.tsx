@@ -103,7 +103,7 @@ export default function ReportsScreen() {
     setSelectedDate(newDate);
   }, [selectedDate]);
 
-  const generateReportText = useCallback((report: NightlyReport) => {
+  const generateReportText = useCallback(async (report: NightlyReport) => {
     const reportDate = new Date(report.date);
     const dailyLogins = getDailyLogins(reportDate);
     const loginsText = dailyLogins.length > 0 
@@ -364,7 +364,7 @@ ${cardFeeCalculation}`;
     
     try {
       setIsGenerating(true);
-      const reportText = generateReportText(currentReport);
+      const reportText = await generateReportText(currentReport);
       
       if (Platform.OS === 'web') {
         // For web, create a downloadable text file
@@ -396,7 +396,7 @@ ${cardFeeCalculation}`;
       if (Platform.OS === 'web') {
         // Fallback for web - copy to clipboard
         try {
-          const reportText = generateReportText(currentReport);
+          const reportText = await generateReportText(currentReport);
           await navigator.clipboard.writeText(reportText);
           Alert.alert('Copied to Clipboard', 'Report has been copied to your clipboard.');
         } catch (clipboardError) {
