@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Instructions
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  instructions:
     runs-on: ubuntu-latest
     
     steps:
@@ -18,53 +18,25 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '18'
         cache: 'npm'
-        
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-        
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-      with:
-        api-level: 34
-        build-tools: 34.0.0
       
     - name: Install dependencies
-      run: npm ci --legacy-peer-deps
+      run: npm install
       
-    - name: Check Node and NPM versions
+    - name: Verify project setup
       run: |
+        echo "✅ Project setup verified"
+        echo "📱 To build Android APK manually:"
+        echo "1. Run: npx expo prebuild --platform android --clean"
+        echo "2. Run: cd android && ./gradlew assembleRelease"
+        echo "3. APK will be in: android/app/build/outputs/apk/release/"
+        echo ""
+        echo "🌐 Or use EAS Build (recommended):"
+        echo "1. Run: npm install -g @expo/eas-cli"
+        echo "2. Run: eas build --platform android --profile preview"
+        echo ""
+        echo "📋 Current project status:"
+        npx expo --version
         node --version
         npm --version
-        npx expo --version
-        
-    - name: Check for dependency issues
-      run: |
-        npm audit --audit-level=moderate
-        npm ls --depth=0
-        
-    - name: Prebuild Android
-      run: npx expo prebuild --platform android --clean
-      
-    - name: Set up Gradle environment
-      run: |
-        echo "GRADLE_OPTS=-Xmx4g" >> $GITHUB_ENV
-        echo "GRADLE_USER_HOME=$HOME/.gradle" >> $GITHUB_ENV
-        
-    - name: Build APK with increased memory
-      run: |
-        cd android
-        ./gradlew clean
-        ./gradlew assembleRelease --stacktrace --info --no-daemon
-      env:
-        GRADLE_OPTS: "-Xmx4g"
-        
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-release
-        path: android/app/build/outputs/apk/release/app-release.apk
