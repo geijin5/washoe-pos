@@ -29,6 +29,9 @@ jobs:
         
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
+      with:
+        api-level: 34
+        build-tools: 34.0.0
       
     - name: Install dependencies
       run: npm ci --legacy-peer-deps
@@ -39,28 +42,29 @@ jobs:
         npm --version
         npx expo --version
         
+    - name: Check for dependency issues
+      run: |
+        npm audit --audit-level=moderate
+        npm ls --depth=0
+        
     - name: Prebuild Android
       run: npx expo prebuild --platform android --clean
       
-    - name: Check Android directory
+    - name: Set up Gradle environment
       run: |
-        ls -la android/
-        ls -la android/app/
-      
-    - name: Clean and Build APK
+        echo "GRADLE_OPTS=-Xmx4g" >> $GITHUB_ENV
+        echo "GRADLE_USER_HOME=$HOME/.gradle" >> $GITHUB_ENV
+        
+    - name: Build APK with increased memory
       run: |
         cd android
         ./gradlew clean
-        ./gradlew assembleRelease --stacktrace --info
+        ./gradlew assembleRelease --stacktrace --info --no-daemon
+      env:
+        GRADLE_OPTS: "-Xmx4g"
         
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: app-release
         path: android/app/build/outputs/apk/release/app-release.apk
-        
-    - name: Upload AAB (for Play Store)
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-bundle
-        path: android/app/build/outputs/bundle/release/app-release.aab
