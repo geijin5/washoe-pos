@@ -183,34 +183,36 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          {/* Training Mode Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <GraduationCap size={24} color={TheatreColors.accent} />
-              <Text style={styles.sectionTitle}>Training Mode</Text>
-            </View>
-            <Text style={styles.sectionDescription}>
-              Enable training mode to allow staff to practice using the POS system without affecting real sales data or reports
-            </Text>
-            
-            <View style={styles.toggleContainer}>
-              <Text style={styles.toggleLabel}>Training Mode</Text>
-              <TouchableOpacity
-                style={[styles.toggle, trainingModeEnabled && styles.toggleActive]}
-                onPress={() => setTrainingModeEnabled(!trainingModeEnabled)}
-              >
-                <View style={[styles.toggleThumb, trainingModeEnabled && styles.toggleThumbActive]} />
-              </TouchableOpacity>
-            </View>
-            
-            {trainingModeEnabled && (
-              <View style={styles.trainingModeWarning}>
-                <Text style={styles.warningText}>
-                  ⚠️ Training Mode is ENABLED. All transactions will be processed but not saved to permanent records or included in reports.
-                </Text>
+          {/* Training Mode Section - Only for managers and admins */}
+          {(user?.role === 'manager' || user?.role === 'admin') && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <GraduationCap size={24} color={TheatreColors.accent} />
+                <Text style={styles.sectionTitle}>Training Mode</Text>
               </View>
-            )}
-          </View>
+              <Text style={styles.sectionDescription}>
+                Enable training mode to allow staff to practice using the POS system without affecting real sales data or reports
+              </Text>
+              
+              <View style={styles.toggleContainer}>
+                <Text style={styles.toggleLabel}>Training Mode</Text>
+                <TouchableOpacity
+                  style={[styles.toggle, trainingModeEnabled && styles.toggleActive]}
+                  onPress={() => setTrainingModeEnabled(!trainingModeEnabled)}
+                >
+                  <View style={[styles.toggleThumb, trainingModeEnabled && styles.toggleThumbActive]} />
+                </TouchableOpacity>
+              </View>
+              
+              {trainingModeEnabled && (
+                <View style={styles.trainingModeWarning}>
+                  <Text style={styles.warningText}>
+                    ⚠️ Training Mode is ENABLED. All transactions will be processed but not saved to permanent records or included in reports.
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
 
           <TouchableOpacity
             style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}

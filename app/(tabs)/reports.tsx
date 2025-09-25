@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { usePOS } from '@/hooks/pos-store';
 import { TheatreColors } from '@/constants/theatre-colors';
-import { UsherReportAccess } from '@/components/UsherReportAccess';
 import {
   filterOrdersByDate,
   calculateUserSalesByDepartment,
@@ -53,8 +52,6 @@ export default function ReportsScreen() {
   const [isClearingReport, setIsClearingReport] = useState(false);
   const [aggregatedReport, setAggregatedReport] = useState<NightlyReport | null>(null);
   const [isLoadingAggregated, setIsLoadingAggregated] = useState(false);
-  const [showUsherAccess, setShowUsherAccess] = useState(false);
-  const [temporaryUser, setTemporaryUser] = useState<any>(null);
 
   const report = useMemo(() => {
     if (reportMode === 'aggregated') {
@@ -113,8 +110,8 @@ export default function ReportsScreen() {
     // Check if this is a training mode report
     const isTrainingReport = isTrainingMode || settings.trainingMode;
 
-    // Use temporary user if available, otherwise use current user
-    const currentUser = temporaryUser || user;
+    // Use current user
+    const currentUser = user;
 
     // Use helper function to calculate payment breakdown
     const paymentBreakdown = calculatePaymentBreakdown(report);
@@ -332,7 +329,7 @@ ${departmentBreakdown}`;
     reportText += `\n\nUSERS LOGGED IN\n${loginsText}\n\nReport generated on ${new Date().toLocaleString()}${isTrainingReport ? ' (TRAINING MODE)' : ''}`;
     
     return reportText;
-  }, [user, temporaryUser, getDailyLogins, formatDate, formatCurrency, orders, isTrainingMode, settings.trainingMode]);
+  }, [user, getDailyLogins, formatDate, formatCurrency, orders, isTrainingMode, settings.trainingMode]);
 
 
 
@@ -390,22 +387,9 @@ ${departmentBreakdown}`;
     }
   }, [currentReport, generateReportText]);
 
-  const handleUsherAccess = useCallback(() => {
-    setShowUsherAccess(true);
-  }, []);
-
-  const handleUsherAccessGranted = useCallback((selectedUser: any) => {
-    setTemporaryUser(selectedUser);
-    setShowUsherAccess(false);
-  }, []);
-
-  const handleUsherAccessClose = useCallback(() => {
-    setShowUsherAccess(false);
-  }, []);
 
   const handleClearNightlyReport = useCallback(async () => {
-    const currentUser = temporaryUser || user;
-    if (currentUser?.role !== 'admin') {
+    if (user?.role !== 'admin') {
       Alert.alert('Access Denied', 'Only admin users can clear nightly reports.');
       return;
     }
@@ -448,28 +432,23 @@ ${departmentBreakdown}`;
     );
   }, [user?.role, clearNightlyReport, selectedDate, formatDate]);
 
-  // Check if user has access (either through role or temporary access)
-  const hasAccess = user?.role === 'manager' || user?.role === 'admin' || temporaryUser;
+  // Check if user has access (managers and admins only - no usher access)
+  const hasAccess = user?.role === 'manager' || user?.role === 'admin';
   const isUsher = user?.role === 'usher';
 
   if (reportMode === 'aggregated' && isLoadingAggregated) {
     if (!hasAccess) {
     return (
         <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-          {isUsher ? (
-            <View style={styles.usherAccessContainer}>
-              <Text style={styles.title}>Report Access Required</Text>
-              <Text style={styles.subtitle}>Click the button below to access reports</Text>
-              <TouchableOpacity style={styles.accessButton} onPress={handleUsherAccess}>
-                <Text style={styles.accessButtonText}>Access Reports</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.noAccessContainer}>
-              <Text style={styles.title}>Access Restricted</Text>
-              <Text style={styles.subtitle}>Manager or admin access required</Text>
-            </View>
-          )}
+          <View style={styles.noAccessContainer}>
+            <Text style={styles.title}>Access Denied</Text>
+            <Text style={styles.subtitle}>
+              {isUsher 
+                ? 'Usher accounts cannot access nightly reports' 
+                : 'Manager or admin access required'
+              }
+            </Text>
+          </View>
         </View>
       );
     }
@@ -486,20 +465,15 @@ ${departmentBreakdown}`;
     if (!hasAccess) {
     return (
         <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-          {isUsher ? (
-            <View style={styles.usherAccessContainer}>
-              <Text style={styles.title}>Report Access Required</Text>
-              <Text style={styles.subtitle}>Click the button below to access reports</Text>
-              <TouchableOpacity style={styles.accessButton} onPress={handleUsherAccess}>
-                <Text style={styles.accessButtonText}>Access Reports</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.noAccessContainer}>
-          <Text style={styles.title}>No Report Available</Text>
-          <Text style={styles.subtitle}>Unable to generate report for selected date</Text>
-        </View>
-          )}
+          <View style={styles.noAccessContainer}>
+            <Text style={styles.title}>Access Denied</Text>
+            <Text style={styles.subtitle}>
+              {isUsher 
+                ? 'Usher accounts cannot access nightly reports' 
+                : 'Manager or admin access required'
+              }
+            </Text>
+          </View>
         </View>
       );
     }
@@ -607,6 +581,9 @@ ${departmentBreakdown}`;
                     <Text style={styles.departmentPerformanceFees}>
                       Card Fees: ${formatCurrency(boxOfficeCardFees)}
                     </Text>
+                    <Text style={styles.departmentPerformanceNet}>
+                      Net Sales: ${formatCurrency(currentReport.departmentBreakdown['box-office'].sales - boxOfficeCardFees)}
+                    </Text>
                   </View>
                   
                   {/* Box Office Staff Breakdown */}
@@ -659,9 +636,12 @@ ${departmentBreakdown}`;
                   <Text style={styles.departmentPerformanceOrders}>
                     {currentReport.departmentBreakdown['candy-counter'].orders} orders
                   </Text>
-                  <Text style={styles.departmentPerformanceFees}>
-                    Card Fees: ${formatCurrency(candyCounterCardFees)}
-                  </Text>
+                    <Text style={styles.departmentPerformanceFees}>
+                      Card Fees: ${formatCurrency(candyCounterCardFees)}
+                    </Text>
+                    <Text style={styles.departmentPerformanceNet}>
+                      Net Sales: ${formatCurrency(currentReport.departmentBreakdown['candy-counter'].sales - candyCounterCardFees)}
+                    </Text>
                 </View>
                 
                 {/* Candy Counter Staff Breakdown */}
@@ -717,6 +697,9 @@ ${departmentBreakdown}`;
                     </Text>
                     <Text style={styles.departmentPerformanceFees}>
                       Card Fees: ${formatCurrency(afterClosingCardFees)}
+                    </Text>
+                    <Text style={styles.departmentPerformanceNet}>
+                      Net Sales: ${formatCurrency(currentReport.departmentBreakdown['after-closing'].sales - afterClosingCardFees)}
                     </Text>
                   </View>
                   
@@ -965,6 +948,15 @@ ${departmentBreakdown}`;
                   )}
                 </Text>
               </View>
+              <View style={styles.paymentRow}>
+                <Text style={[styles.paymentLabel, { fontWeight: 'bold' }]}>Net Sales (Minus Fees):</Text>
+                <Text style={[styles.paymentValue, { fontWeight: 'bold', color: TheatreColors.success }]}>
+                  ${formatCurrency(currentReport.totalSales - currentReport.creditCardFees)}
+                  {(isTrainingMode || settings.trainingMode) && (
+                    <Text style={styles.trainingIndicator}> 🎓</Text>
+                  )}
+                </Text>
+              </View>
             </View>
             
             {/* Show Payment Breakdown if shows exist */}
@@ -1081,7 +1073,128 @@ ${departmentBreakdown}`;
             })()}
           </View>
 
+          {/* Card Fee Calculation */}
+          <View style={[styles.section, (isTrainingMode || settings.trainingMode) && styles.trainingSection]}>
+            <Text style={styles.sectionTitle}>
+              💳 Card Fee Calculation{(isTrainingMode || settings.trainingMode) ? ' 🎓 (Training)' : ''}
+            </Text>
+            <Text style={styles.sectionDescription}>
+              Verification of card fee calculations using the formula: S = CT ÷ 1.05, CF = CT - S
+            </Text>
+            
+            <View style={styles.calculationCard}>
+              <View style={styles.calculationRow}>
+                <Text style={styles.calculationLabel}>Total Card Sales (CT):</Text>
+                <Text style={styles.calculationValue}>${formatCurrency(currentReport.cardSales)}</Text>
+              </View>
+              <View style={styles.calculationRow}>
+                <Text style={styles.calculationLabel}>Subtotal (S = CT ÷ 1.05):</Text>
+                <Text style={styles.calculationValue}>${formatCurrency(currentReport.cardSales / 1.05)}</Text>
+              </View>
+              <View style={styles.calculationRow}>
+                <Text style={styles.calculationLabel}>Card Fees (CF = CT - S):</Text>
+                <Text style={[styles.calculationValue, { color: TheatreColors.error }]}>${formatCurrency(currentReport.cardSales - (currentReport.cardSales / 1.05))}</Text>
+              </View>
+              <View style={styles.calculationRow}>
+                <Text style={styles.calculationLabel}>Actual Card Fees:</Text>
+                <Text style={[styles.calculationValue, { color: TheatreColors.error }]}>${formatCurrency(currentReport.creditCardFees)}</Text>
+              </View>
+              <View style={[styles.calculationRow, { borderTopWidth: 1, borderTopColor: TheatreColors.surfaceLight, paddingTop: 8, marginTop: 8 }]}>
+                <Text style={[styles.calculationLabel, { fontWeight: 'bold' }]}>Difference:</Text>
+                <Text style={[styles.calculationValue, { 
+                  color: Math.abs((currentReport.cardSales - (currentReport.cardSales / 1.05)) - currentReport.creditCardFees) < 0.01 ? TheatreColors.success : TheatreColors.warning,
+                  fontWeight: 'bold' 
+                }]}>
+                  ${formatCurrency(Math.abs((currentReport.cardSales - (currentReport.cardSales / 1.05)) - currentReport.creditCardFees))}
+                </Text>
+              </View>
+            </View>
+          </View>
 
+          {/* Weekly Fees Summary - Only show on Thursday */}
+          {selectedDate.getDay() === 4 && (() => { // Thursday is day 4
+            const startOfWeek = new Date(selectedDate);
+            startOfWeek.setDate(selectedDate.getDate() - 3); // Go back to Friday (3 days before Thursday)
+            
+            const endOfWeek = new Date(selectedDate);
+            
+            // Get all orders from Friday to Thursday
+            const weeklyOrders = orders.filter(order => {
+              const orderDate = new Date(order.timestamp);
+              return orderDate >= startOfWeek && orderDate <= endOfWeek;
+            });
+            
+            // Calculate weekly fees by department
+            const weeklyBoxOfficeFees = weeklyOrders
+              .filter(order => order.department === 'box-office')
+              .reduce((sum, order) => sum + (order.creditCardFee || 0), 0);
+            
+            const weeklyCandyCounterFees = weeklyOrders
+              .filter(order => order.department === 'candy-counter')
+              .reduce((sum, order) => sum + (order.creditCardFee || 0), 0);
+            
+            const weeklyAfterClosingFees = weeklyOrders
+              .filter(order => {
+                // After closing orders are those with after-closing tickets or sold in candy counter with tickets
+                return order.isAfterClosing || 
+                       (order.department === 'candy-counter' && 
+                        order.items.some(item => 
+                          item.product.category === 'tickets' || 
+                          item.product.category === 'after-closing-tickets' ||
+                          item.product.category === 'box-office-tickets'
+                        ));
+              })
+              .reduce((sum, order) => sum + (order.creditCardFee || 0), 0);
+            
+            const totalWeeklyFees = weeklyBoxOfficeFees + weeklyCandyCounterFees + weeklyAfterClosingFees;
+            
+            return (
+              <View style={[styles.section, (isTrainingMode || settings.trainingMode) && styles.trainingSection]}>
+                <Text style={styles.sectionTitle}>
+                  📅 Weekly Fees Summary (Fri-Thu){(isTrainingMode || settings.trainingMode) ? ' 🎓 (Training)' : ''}
+                </Text>
+                <Text style={styles.sectionDescription}>
+                  Total card fees for the week: {startOfWeek.toLocaleDateString()} - {endOfWeek.toLocaleDateString()}
+                </Text>
+                
+                <View style={styles.weeklyFeesCard}>
+                  <View style={styles.weeklyFeesRow}>
+                    <Text style={styles.weeklyFeesLabel}>Box Office Fees:</Text>
+                    <Text style={[styles.weeklyFeesValue, { color: TheatreColors.primary }]}>
+                      ${formatCurrency(weeklyBoxOfficeFees)}
+                    </Text>
+                  </View>
+                  <View style={styles.weeklyFeesRow}>
+                    <Text style={styles.weeklyFeesLabel}>Candy Counter Fees:</Text>
+                    <Text style={[styles.weeklyFeesValue, { color: TheatreColors.secondary }]}>
+                      ${formatCurrency(weeklyCandyCounterFees)}
+                    </Text>
+                  </View>
+                  <View style={styles.weeklyFeesRow}>
+                    <Text style={styles.weeklyFeesLabel}>After Closing Fees:</Text>
+                    <Text style={[styles.weeklyFeesValue, { color: TheatreColors.accent }]}>
+                      ${formatCurrency(weeklyAfterClosingFees)}
+                    </Text>
+                  </View>
+                  <View style={[styles.weeklyFeesRow, { 
+                    borderTopWidth: 2, 
+                    borderTopColor: TheatreColors.surfaceLight, 
+                    paddingTop: 12, 
+                    marginTop: 8 
+                  }]}>
+                    <Text style={[styles.weeklyFeesLabel, { fontWeight: 'bold', fontSize: 16 }]}>Total Weekly Fees:</Text>
+                    <Text style={[styles.weeklyFeesValue, { 
+                      color: TheatreColors.accent, 
+                      fontWeight: 'bold', 
+                      fontSize: 16 
+                    }]}>
+                      ${formatCurrency(totalWeeklyFees)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            );
+          })()}
 
           {/* Box Office Payment Breakdown */}
           {currentReport.departmentBreakdown['box-office'] && currentReport.departmentBreakdown['box-office'].sales > 0 && (() => {
@@ -1690,12 +1803,6 @@ ${departmentBreakdown}`;
         </View>
       </ScrollView>
 
-      {/* Usher Report Access Modal */}
-      <UsherReportAccess
-        visible={showUsherAccess}
-        onClose={handleUsherAccessClose}
-        onAccessGranted={handleUsherAccessGranted}
-      />
     </>
   );
 }
@@ -2320,6 +2427,61 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
+  departmentPerformanceNet: {
+    fontSize: 12,
+    color: TheatreColors.success,
+    textAlign: 'center',
+    marginTop: 4,
+    fontWeight: 'bold',
+  },
+  calculationCard: {
+    backgroundColor: TheatreColors.background,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: TheatreColors.surfaceLight,
+  },
+  calculationRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  calculationLabel: {
+    fontSize: 14,
+    color: TheatreColors.text,
+    flex: 1,
+  },
+  calculationValue: {
+    fontSize: 14,
+    color: TheatreColors.text,
+    fontWeight: '600',
+    textAlign: 'right',
+  },
+  weeklyFeesCard: {
+    backgroundColor: TheatreColors.background,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: TheatreColors.surfaceLight,
+  },
+  weeklyFeesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  weeklyFeesLabel: {
+    fontSize: 14,
+    color: TheatreColors.text,
+    flex: 1,
+  },
+  weeklyFeesValue: {
+    fontSize: 14,
+    color: TheatreColors.text,
+    fontWeight: '600',
+    textAlign: 'right',
+  },
   departmentStaffList: {
     gap: 6,
   },
@@ -2389,10 +2551,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: TheatreColors.accent,
     textAlign: 'center',
-  },
-  usherAccessContainer: {
-    alignItems: 'center',
-    paddingHorizontal: 32,
   },
   noAccessContainer: {
     alignItems: 'center',
