@@ -40,6 +40,9 @@ jobs:
     - name: Install Expo CLI
       run: npm install -g @expo/cli
       
+    - name: Fix dependencies
+      run: npx expo install --fix
+      
     - name: Verify project setup
       run: |
         echo "Node version: $(node --version)"
@@ -50,6 +53,15 @@ jobs:
         
     - name: Prebuild Android
       run: npx expo prebuild --platform android --clean
+      
+    - name: Make Gradlew executable
+      run: chmod +x android/gradlew
+      
+    - name: Check Android directory
+      run: |
+        ls -la android/
+        ls -la android/app/
+        ls -la android/app/src/main/
       
     - name: Set up Gradle environment
       run: |
