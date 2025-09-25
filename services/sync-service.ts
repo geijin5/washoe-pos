@@ -179,12 +179,13 @@ class SyncService {
     }
   }
   
-  // Merge sync data from multiple sources
+    // Merge sync data from multiple sources
   mergeSyncData(localData: SyncData, remoteDataList: SyncData[]): SyncData {
     console.log('Merging sync data from multiple sources');
     
     let mergedProducts = [...localData.products];
     let mergedCategories = [...localData.categories];
+    let mergedCategoryMetadata = [...(localData.settings.categoryMetadata || [])];
     let latestSettings = localData.settings;
     let latestTimestamp = localData.timestamp;
     
@@ -208,6 +209,20 @@ class SyncService {
         }
       });
       
+      // Merge category metadata (newer versions win, but preserve all unique metadata)
+      if (remoteData.settings.categoryMetadata) {
+        remoteData.settings.categoryMetadata.forEach(remoteMetadata => {
+          const existingIndex = mergedCategoryMetadata.findIndex(m => m.id === remoteMetadata.id);
+          if (existingIndex >= 0) {
+            // Replace if remote is newer or if it's the same timestamp but different content
+            mergedCategoryMetadata[existingIndex] = remoteMetadata;
+          } else {
+            // Add new metadata
+            mergedCategoryMetadata.push(remoteMetadata);
+          }
+        });
+      }
+      
       // Use latest settings
       if (remoteData.timestamp > latestTimestamp) {
         latestSettings = remoteData.settings;
@@ -215,8 +230,9 @@ class SyncService {
       }
     });
     
-    // Update categories in settings
+    // Update categories and metadata in settings
     latestSettings.categories = mergedCategories;
+    latestSettings.categoryMetadata = mergedCategoryMetadata;
     
     const mergedData: SyncData = {
       products: mergedProducts,
@@ -227,7 +243,7 @@ class SyncService {
       version: '1.0.0'
     };
     
-    console.log(`Merged data: ${mergedProducts.length} products, ${mergedCategories.length} categories`);
+    console.log(`Merged data: ${mergedProducts.length} products, ${mergedCategories.length} categories, ${mergedCategoryMetadata.length} category metadata entries`);
     return mergedData;
   }
   
