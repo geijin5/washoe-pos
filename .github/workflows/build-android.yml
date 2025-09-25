@@ -43,6 +43,9 @@ jobs:
     - name: Fix dependencies
       run: npx expo install --fix
       
+    - name: Clear npm cache
+      run: npm cache clean --force
+      
     - name: Verify project setup
       run: |
         echo "Node version: $(node --version)"
@@ -69,16 +72,33 @@ jobs:
         echo "GRADLE_USER_HOME=$HOME/.gradle" >> $GITHUB_ENV
         echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
         echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+        echo "PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools" >> $GITHUB_ENV
+        
+    - name: Accept Android SDK licenses
+      run: |
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
         
     - name: Build APK
       run: |
         cd android
         ./gradlew clean
-        ./gradlew assembleRelease --stacktrace --info --no-daemon --max-workers=2
+        ./gradlew assembleRelease --stacktrace --info --no-daemon --max-workers=2 --continue
       env:
         GRADLE_OPTS: "-Xmx6g -XX:MaxMetaspaceSize=1g"
         ANDROID_HOME: ${{ env.ANDROID_HOME }}
         ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+        JAVA_HOME: ${{ env.JAVA_HOME }}
+        
+    - name: Verify APK was created
+      run: |
+        if [ -f "android/app/build/outputs/apk/release/app-release.apk" ]; then
+          echo "✅ APK successfully created!"
+          ls -la android/app/build/outputs/apk/release/
+        else
+          echo "❌ APK not found!"
+          ls -la android/app/build/outputs/
+          exit 1
+        fi
         
     - name: Upload APK
       uses: actions/upload-artifact@v4
