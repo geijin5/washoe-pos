@@ -581,9 +581,6 @@ ${departmentBreakdown}`;
                     <Text style={styles.departmentPerformanceFees}>
                       Card Fees: ${formatCurrency(boxOfficeCardFees)}
                     </Text>
-                    <Text style={styles.departmentPerformanceNet}>
-                      Net Sales: ${formatCurrency(currentReport.departmentBreakdown['box-office'].sales - boxOfficeCardFees)}
-                    </Text>
                   </View>
                   
                   {/* Box Office Staff Breakdown */}
@@ -638,9 +635,6 @@ ${departmentBreakdown}`;
                   </Text>
                     <Text style={styles.departmentPerformanceFees}>
                       Card Fees: ${formatCurrency(candyCounterCardFees)}
-                    </Text>
-                    <Text style={styles.departmentPerformanceNet}>
-                      Net Sales: ${formatCurrency(currentReport.departmentBreakdown['candy-counter'].sales - candyCounterCardFees)}
                     </Text>
                 </View>
                 
@@ -697,9 +691,6 @@ ${departmentBreakdown}`;
                     </Text>
                     <Text style={styles.departmentPerformanceFees}>
                       Card Fees: ${formatCurrency(afterClosingCardFees)}
-                    </Text>
-                    <Text style={styles.departmentPerformanceNet}>
-                      Net Sales: ${formatCurrency(currentReport.departmentBreakdown['after-closing'].sales - afterClosingCardFees)}
                     </Text>
                   </View>
                   
@@ -943,15 +934,6 @@ ${departmentBreakdown}`;
                 <Text style={[styles.paymentLabel, { fontWeight: 'bold' }]}>Total Sales:</Text>
                 <Text style={[styles.paymentValue, { fontWeight: 'bold', color: TheatreColors.accent }]}>
                   ${formatCurrency(currentReport.totalSales)}
-                  {(isTrainingMode || settings.trainingMode) && (
-                    <Text style={styles.trainingIndicator}> 🎓</Text>
-                  )}
-                </Text>
-              </View>
-              <View style={styles.paymentRow}>
-                <Text style={[styles.paymentLabel, { fontWeight: 'bold' }]}>Net Sales (Minus Fees):</Text>
-                <Text style={[styles.paymentValue, { fontWeight: 'bold', color: TheatreColors.success }]}>
-                  ${formatCurrency(currentReport.totalSales - currentReport.creditCardFees)}
                   {(isTrainingMode || settings.trainingMode) && (
                     <Text style={styles.trainingIndicator}> 🎓</Text>
                   )}
@@ -2426,13 +2408,6 @@ const styles = StyleSheet.create({
     color: TheatreColors.error,
     textAlign: 'center',
     fontWeight: '600',
-  },
-  departmentPerformanceNet: {
-    fontSize: 12,
-    color: TheatreColors.success,
-    textAlign: 'center',
-    marginTop: 4,
-    fontWeight: 'bold',
   },
   calculationCard: {
     backgroundColor: TheatreColors.background,
