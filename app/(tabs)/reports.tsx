@@ -915,6 +915,95 @@ ${departmentBreakdown}`;
             </View>
           </View>
 
+          {/* Weekly Fees Summary - Only show on Thursday */}
+          {selectedDate.getDay() === 4 && (() => { // Thursday is day 4
+            // Calculate the past Friday (start of week) and current Thursday (end of week)
+            const currentDay = selectedDate.getDay(); // Thursday is day 4
+            const daysSinceFriday = currentDay === 4 ? 3 : (currentDay + 3) % 7; // Days since past Friday
+            
+            const startOfWeek = new Date(selectedDate);
+            startOfWeek.setDate(selectedDate.getDate() - daysSinceFriday);
+            
+            const endOfWeek = new Date(selectedDate);
+            
+            // Get all orders from Friday to Thursday
+            const weeklyOrders = orders.filter(order => {
+              const orderDate = new Date(order.timestamp);
+              return orderDate >= startOfWeek && orderDate <= endOfWeek;
+            });
+            
+            // Calculate weekly fees by department
+            const weeklyBoxOfficeFees = weeklyOrders
+              .filter(order => order.department === 'box-office')
+              .reduce((sum, order) => sum + (order.creditCardFee || 0), 0);
+            
+            const weeklyCandyCounterFees = weeklyOrders
+              .filter(order => order.department === 'candy-counter')
+              .reduce((sum, order) => sum + (order.creditCardFee || 0), 0);
+            
+            const weeklyAfterClosingFees = weeklyOrders
+              .filter(order => {
+                // After closing orders are those with after-closing tickets or sold in candy counter with tickets
+                return order.isAfterClosing || 
+                       (order.department === 'candy-counter' && 
+                        order.items.some(item => 
+                          item.product.category === 'tickets' || 
+                          item.product.category === 'after-closing-tickets' ||
+                          item.product.category === 'box-office-tickets'
+                        ));
+              })
+              .reduce((sum, order) => sum + (order.creditCardFee || 0), 0);
+            
+            const totalWeeklyFees = weeklyBoxOfficeFees + weeklyCandyCounterFees + weeklyAfterClosingFees;
+            
+            return (
+              <View style={[styles.section, (isTrainingMode || settings.trainingMode) && styles.trainingSection]}>
+                <Text style={styles.sectionTitle}>
+                  📅 Weekly Fees Summary (Fri-Thu){(isTrainingMode || settings.trainingMode) ? ' 🎓 (Training)' : ''}
+                </Text>
+                <Text style={styles.sectionDescription}>
+                  Total card fees for the week: {startOfWeek.toLocaleDateString()} - {endOfWeek.toLocaleDateString()}
+                </Text>
+                
+                <View style={styles.weeklyFeesCard}>
+                  <View style={styles.weeklyFeesRow}>
+                    <Text style={styles.weeklyFeesLabel}>Box Office Fees:</Text>
+                    <Text style={[styles.weeklyFeesValue, { color: TheatreColors.primary }]}>
+                      ${formatCurrency(weeklyBoxOfficeFees)}
+                    </Text>
+                  </View>
+                  <View style={styles.weeklyFeesRow}>
+                    <Text style={styles.weeklyFeesLabel}>Candy Counter Fees:</Text>
+                    <Text style={[styles.weeklyFeesValue, { color: TheatreColors.secondary }]}>
+                      ${formatCurrency(weeklyCandyCounterFees)}
+                    </Text>
+                  </View>
+                  <View style={styles.weeklyFeesRow}>
+                    <Text style={styles.weeklyFeesLabel}>After Closing Fees:</Text>
+                    <Text style={[styles.weeklyFeesValue, { color: TheatreColors.accent }]}>
+                      ${formatCurrency(weeklyAfterClosingFees)}
+                    </Text>
+                  </View>
+                  <View style={[styles.weeklyFeesRow, { 
+                    borderTopWidth: 2, 
+                    borderTopColor: TheatreColors.surfaceLight, 
+                    paddingTop: 12, 
+                    marginTop: 8 
+                  }]}>
+                    <Text style={[styles.weeklyFeesLabel, { fontWeight: 'bold', fontSize: 16 }]}>Total Weekly Fees:</Text>
+                    <Text style={[styles.weeklyFeesValue, { 
+                      color: TheatreColors.accent, 
+                      fontWeight: 'bold', 
+                      fontSize: 16 
+                    }]}>
+                      ${formatCurrency(totalWeeklyFees)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            );
+          })()}
+
           {/* Payment Breakdown */}
           <View style={[styles.section, (isTrainingMode || settings.trainingMode) && styles.trainingSection]}>
             <Text style={styles.sectionTitle}>
@@ -1111,90 +1200,6 @@ ${departmentBreakdown}`;
             </View>
           </View>
 
-          {/* Weekly Fees Summary - Only show on Thursday */}
-          {selectedDate.getDay() === 4 && (() => { // Thursday is day 4
-            const startOfWeek = new Date(selectedDate);
-            startOfWeek.setDate(selectedDate.getDate() - 3); // Go back to Friday (3 days before Thursday)
-            
-            const endOfWeek = new Date(selectedDate);
-            
-            // Get all orders from Friday to Thursday
-            const weeklyOrders = orders.filter(order => {
-              const orderDate = new Date(order.timestamp);
-              return orderDate >= startOfWeek && orderDate <= endOfWeek;
-            });
-            
-            // Calculate weekly fees by department
-            const weeklyBoxOfficeFees = weeklyOrders
-              .filter(order => order.department === 'box-office')
-              .reduce((sum, order) => sum + (order.creditCardFee || 0), 0);
-            
-            const weeklyCandyCounterFees = weeklyOrders
-              .filter(order => order.department === 'candy-counter')
-              .reduce((sum, order) => sum + (order.creditCardFee || 0), 0);
-            
-            const weeklyAfterClosingFees = weeklyOrders
-              .filter(order => {
-                // After closing orders are those with after-closing tickets or sold in candy counter with tickets
-                return order.isAfterClosing || 
-                       (order.department === 'candy-counter' && 
-                        order.items.some(item => 
-                          item.product.category === 'tickets' || 
-                          item.product.category === 'after-closing-tickets' ||
-                          item.product.category === 'box-office-tickets'
-                        ));
-              })
-              .reduce((sum, order) => sum + (order.creditCardFee || 0), 0);
-            
-            const totalWeeklyFees = weeklyBoxOfficeFees + weeklyCandyCounterFees + weeklyAfterClosingFees;
-            
-            return (
-              <View style={[styles.section, (isTrainingMode || settings.trainingMode) && styles.trainingSection]}>
-                <Text style={styles.sectionTitle}>
-                  📅 Weekly Fees Summary (Fri-Thu){(isTrainingMode || settings.trainingMode) ? ' 🎓 (Training)' : ''}
-                </Text>
-                <Text style={styles.sectionDescription}>
-                  Total card fees for the week: {startOfWeek.toLocaleDateString()} - {endOfWeek.toLocaleDateString()}
-                </Text>
-                
-                <View style={styles.weeklyFeesCard}>
-                  <View style={styles.weeklyFeesRow}>
-                    <Text style={styles.weeklyFeesLabel}>Box Office Fees:</Text>
-                    <Text style={[styles.weeklyFeesValue, { color: TheatreColors.primary }]}>
-                      ${formatCurrency(weeklyBoxOfficeFees)}
-                    </Text>
-                  </View>
-                  <View style={styles.weeklyFeesRow}>
-                    <Text style={styles.weeklyFeesLabel}>Candy Counter Fees:</Text>
-                    <Text style={[styles.weeklyFeesValue, { color: TheatreColors.secondary }]}>
-                      ${formatCurrency(weeklyCandyCounterFees)}
-                    </Text>
-                  </View>
-                  <View style={styles.weeklyFeesRow}>
-                    <Text style={styles.weeklyFeesLabel}>After Closing Fees:</Text>
-                    <Text style={[styles.weeklyFeesValue, { color: TheatreColors.accent }]}>
-                      ${formatCurrency(weeklyAfterClosingFees)}
-                    </Text>
-                  </View>
-                  <View style={[styles.weeklyFeesRow, { 
-                    borderTopWidth: 2, 
-                    borderTopColor: TheatreColors.surfaceLight, 
-                    paddingTop: 12, 
-                    marginTop: 8 
-                  }]}>
-                    <Text style={[styles.weeklyFeesLabel, { fontWeight: 'bold', fontSize: 16 }]}>Total Weekly Fees:</Text>
-                    <Text style={[styles.weeklyFeesValue, { 
-                      color: TheatreColors.accent, 
-                      fontWeight: 'bold', 
-                      fontSize: 16 
-                    }]}>
-                      ${formatCurrency(totalWeeklyFees)}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            );
-          })()}
 
           {/* Box Office Payment Breakdown */}
           {currentReport.departmentBreakdown['box-office'] && currentReport.departmentBreakdown['box-office'].sales > 0 && (() => {
