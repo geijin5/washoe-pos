@@ -63,6 +63,8 @@ export default function POSScreen() {
   const [completedOrder, setCompletedOrder] = useState<any>(null);
   const [selectedShow, setSelectedShow] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showChangeDisplay, setShowChangeDisplay] = useState(false);
+  const [changeAmount, setChangeAmount] = useState<number | null>(null);
 
   // All hooks must be called before any conditional returns
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -142,6 +144,20 @@ export default function POSScreen() {
 
   const handleOrderSummaryClose = () => {
     setShowOrderSummary(false);
+    
+    // Show change display if it was a cash payment with change
+    if (completedOrder?.paymentMethod === 'cash' && completedOrder?.cashAmountTendered && completedOrder.cashAmountTendered > completedOrder.total) {
+      const change = completedOrder.cashAmountTendered - completedOrder.total;
+      setChangeAmount(change);
+      setShowChangeDisplay(true);
+      
+      // Auto-hide after 10 seconds
+      setTimeout(() => {
+        setShowChangeDisplay(false);
+        setChangeAmount(null);
+      }, 10000);
+    }
+    
     setCompletedOrder(null);
   };
 
@@ -296,6 +312,24 @@ export default function POSScreen() {
           <Text style={styles.trainingModeText}>
             🎓 TRAINING MODE - Transactions will not be saved to reports
           </Text>
+        </View>
+      )}
+      
+      {/* Change Display */}
+      {showChangeDisplay && changeAmount !== null && (
+        <View style={styles.changeDisplayBanner}>
+          <Text style={styles.changeDisplayText}>
+            💰 Change Due: ${changeAmount.toFixed(2)}
+          </Text>
+          <TouchableOpacity 
+            style={styles.changeDisplayCloseButton}
+            onPress={() => {
+              setShowChangeDisplay(false);
+              setChangeAmount(null);
+            }}
+          >
+            <X size={20} color={TheatreColors.background} />
+          </TouchableOpacity>
         </View>
       )}
       
@@ -1616,5 +1650,32 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#856404',
     textAlign: 'center',
+  },
+  changeDisplayBanner: {
+    backgroundColor: '#4CAF50',
+    borderBottomWidth: 2,
+    borderBottomColor: '#388E3C',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  changeDisplayText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: TheatreColors.background,
+    flex: 1,
+    textAlign: 'center',
+  },
+  changeDisplayCloseButton: {
+    padding: 4,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
 });
