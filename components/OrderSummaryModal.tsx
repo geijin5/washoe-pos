@@ -111,6 +111,21 @@ export function OrderSummaryModal({ visible, order, onClose }: OrderSummaryModal
                     {order.paymentMethod === 'cash' ? 'Cash' : 'Credit Card'}
                   </Text>
                 </View>
+                
+                {order.paymentMethod === 'cash' && order.cashAmountTendered && (
+                  <>
+                    <View style={styles.summaryRow}>
+                      <Text style={styles.summaryLabel}>Cash Tendered:</Text>
+                      <Text style={styles.summaryValue}>${order.cashAmountTendered.toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.summaryRow}>
+                      <Text style={styles.summaryLabel}>Change Due:</Text>
+                      <Text style={[styles.summaryValue, { color: '#4CAF50', fontWeight: 'bold' }]}>
+                        ${(order.cashAmountTendered - order.total).toFixed(2)}
+                      </Text>
+                    </View>
+                  </>
+                )}
               </View>
             </View>
 

@@ -23,6 +23,7 @@ export interface Order {
   creditCardFee?: number;
   timestamp: Date;
   paymentMethod?: 'cash' | 'card';
+  cashAmountTendered?: number;
   userId?: string;
   userName?: string;
   department?: 'box-office' | 'candy-counter';

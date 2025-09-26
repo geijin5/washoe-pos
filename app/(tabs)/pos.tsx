@@ -125,7 +125,8 @@ export default function POSScreen() {
     // Pass show information for box office orders
     const showType = selectedDepartment === 'box-office' && selectedShow ? selectedShow as '1st-show' | '2nd-show' | 'nightly-show' | 'matinee' : undefined;
     
-    const order = checkout(method, user?.id, user?.name, selectedDepartment || undefined, hasTickets, user?.role, showType);
+    const cashAmountTendered = method === 'cash' && cashAmount ? parseFloat(cashAmount) : undefined;
+    const order = checkout(method, user?.id, user?.name, selectedDepartment || undefined, hasTickets, user?.role, showType, cashAmountTendered);
     if (order) {
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

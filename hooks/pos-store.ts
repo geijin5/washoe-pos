@@ -248,7 +248,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
   }, [cart, settings.creditCardFeePercent]);
 
   // Checkout
-  const checkout = useCallback((paymentMethod: 'cash' | 'card' = 'cash', userId?: string, userName?: string, department?: 'box-office' | 'candy-counter', isAfterClosing?: boolean, userRole?: string, showType?: '1st-show' | '2nd-show' | 'nightly-show' | 'matinee') => {
+  const checkout = useCallback((paymentMethod: 'cash' | 'card' = 'cash', userId?: string, userName?: string, department?: 'box-office' | 'candy-counter', isAfterClosing?: boolean, userRole?: string, showType?: '1st-show' | '2nd-show' | 'nightly-show' | 'matinee', cashAmountTendered?: number) => {
     if (cart.length === 0) return null;
 
     const totals = calculateTotalsWithFee(paymentMethod);
@@ -260,6 +260,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       total: totals.total,
       timestamp: new Date(),
       paymentMethod,
+      cashAmountTendered: paymentMethod === 'cash' ? cashAmountTendered : undefined,
       userId,
       userName,
       department,
