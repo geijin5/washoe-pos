@@ -156,21 +156,30 @@ export default function LoginScreen() {
               </TouchableOpacity>
             )}
 
-            {/* Training Mode Toggle */}
-            <TouchableOpacity
-              style={[styles.trainingModeButton, isTrainingMode && styles.trainingModeButtonActive]}
-              onPress={toggleTrainingMode}
-              testID="training-mode-button"
-            >
+            {/* Training Mode Toggle - Only for managers and admins */}
+            {(() => {
+              const selectedUser = users.find(u => u.username === selectedUsername);
+              const canToggleTraining = selectedUser?.role === 'manager' || selectedUser?.role === 'admin';
+              
+              if (!canToggleTraining) return null;
+              
+              return (
+                <TouchableOpacity
+                  style={[styles.trainingModeButton, isTrainingMode && styles.trainingModeButtonActive]}
+                  onPress={toggleTrainingMode}
+                  testID="training-mode-button"
+                >
               <GraduationCap 
                 size={20} 
                 color={isTrainingMode ? TheatreColors.background : TheatreColors.accent} 
                 style={styles.trainingModeIcon}
               />
-              <Text style={[styles.trainingModeText, isTrainingMode && styles.trainingModeTextActive]}>
-                {isTrainingMode ? 'Training Mode: ON' : 'Training Mode: OFF'}
-              </Text>
-            </TouchableOpacity>
+                  <Text style={[styles.trainingModeText, isTrainingMode && styles.trainingModeTextActive]}>
+                    {isTrainingMode ? 'Training Mode: ON' : 'Training Mode: OFF'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })()}
 
           </View>
 
