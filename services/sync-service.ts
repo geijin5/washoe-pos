@@ -223,14 +223,19 @@ class SyncService {
         });
       }
       
-      // Use latest settings
+      // Use latest settings (but preserve merged category metadata)
       if (remoteData.timestamp > latestTimestamp) {
-        latestSettings = remoteData.settings;
+        latestSettings = {
+          ...remoteData.settings,
+          // Ensure we preserve the merged category metadata instead of overwriting it
+          categories: mergedCategories,
+          categoryMetadata: mergedCategoryMetadata
+        };
         latestTimestamp = remoteData.timestamp;
       }
     });
     
-    // Update categories and metadata in settings
+    // Update categories and metadata in settings (fallback for when no remote data is newer)
     latestSettings.categories = mergedCategories;
     latestSettings.categoryMetadata = mergedCategoryMetadata;
     
