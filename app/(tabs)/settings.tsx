@@ -24,7 +24,7 @@ import * as Clipboard from 'expo-clipboard';
 
 export default function SettingsScreen() {
   const { settings, updateSettings } = usePOS();
-  const { user } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const [creditCardFeePercent, setCreditCardFeePercent] = useState(settings.creditCardFeePercent.toString());
   const [isLoading, setIsLoading] = useState(false);
   const [showUserManagement, setShowUserManagement] = useState(false);
@@ -184,7 +184,7 @@ export default function SettingsScreen() {
           </View>
 
           {/* Training Mode Section - Only for managers and admins */}
-          {(user?.role === 'manager' || user?.role === 'admin') && (
+          {hasPermission('canManageTrainingMode') && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <GraduationCap size={24} color={TheatreColors.accent} />
@@ -209,6 +209,34 @@ export default function SettingsScreen() {
                   <Text style={styles.warningText}>
                     ⚠️ Training Mode is ENABLED. All transactions will be processed but not saved to permanent records or included in reports.
                   </Text>
+                  
+                  <TouchableOpacity
+                    style={styles.trainingSignOutButton}
+                    onPress={() => {
+                      Alert.alert(
+                        'Sign Out from Training Mode',
+                        'Are you sure you want to sign out from training mode? This will log you out of the current session.',
+                        [
+                          {
+                            text: 'Cancel',
+                            style: 'cancel',
+                          },
+                          {
+                            text: 'Sign Out',
+                            style: 'destructive',
+                            onPress: () => {
+                              // Sign out the user
+                              logout();
+                            },
+                          },
+                        ]
+                      );
+                    }}
+                  >
+                    <Text style={styles.trainingSignOutButtonText}>
+                      🚪 Sign Out from Training Mode
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               )}
             </View>
@@ -641,6 +669,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#856404',
     fontWeight: '500',
+    textAlign: 'center',
+  },
+  trainingSignOutButton: {
+    backgroundColor: '#DC3545',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  trainingSignOutButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
     textAlign: 'center',
   },
 });

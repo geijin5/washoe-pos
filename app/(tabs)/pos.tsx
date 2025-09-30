@@ -385,6 +385,25 @@ export default function POSScreen() {
                         {completedOrder.paymentMethod === 'cash' ? 'Cash' : 'Credit Card'}
                       </Text>
                     </View>
+                    
+                    {/* Cash Amount Tendered and Change Due */}
+                    {completedOrder.paymentMethod === 'cash' && completedOrder.cashAmountTendered && (
+                      <>
+                        <View style={styles.orderSummaryCashRow}>
+                          <Text style={styles.orderSummaryCashLabel}>Cash Tendered:</Text>
+                          <Text style={styles.orderSummaryCashValue}>
+                            ${completedOrder.cashAmountTendered.toFixed(2)}
+                          </Text>
+                        </View>
+                        <View style={styles.orderSummaryChangeRow}>
+                          <Text style={styles.orderSummaryChangeLabel}>Change Due:</Text>
+                          <Text style={styles.orderSummaryChangeValue}>
+                            ${(completedOrder.cashAmountTendered - completedOrder.total).toFixed(2)}
+                          </Text>
+                        </View>
+                      </>
+                    )}
+                    
                     {selectedShow && (
                       <View style={styles.orderSummaryShowRow}>
                         <Text style={styles.orderSummaryShowLabel}>Show:</Text>
@@ -1623,6 +1642,51 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
+  },
+  orderSummaryCashRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  orderSummaryCashLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2E7D32',
+  },
+  orderSummaryCashValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1B5E20',
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  orderSummaryChangeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  orderSummaryChangeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2E7D32',
+  },
+  orderSummaryChangeValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   orderSummaryCloseButton: {
     backgroundColor: '#4CAF50',

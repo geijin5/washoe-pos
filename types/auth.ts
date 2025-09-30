@@ -35,6 +35,7 @@ export const ROLE_PERMISSIONS = {
     canManageUsers: true,
     canManageSettings: true,
     canViewReports: true,
+    canManageTrainingMode: true,
   },
   manager: {
     canManageProducts: false,
@@ -44,6 +45,7 @@ export const ROLE_PERMISSIONS = {
     canManageUsers: false,
     canManageSettings: false,
     canViewReports: true,
+    canManageTrainingMode: true,
   },
   staff: {
     canManageProducts: false,
@@ -53,6 +55,7 @@ export const ROLE_PERMISSIONS = {
     canManageUsers: false,
     canManageSettings: false,
     canViewReports: false,
+    canManageTrainingMode: false,
   },
   usher: {
     canManageProducts: false,
@@ -62,6 +65,7 @@ export const ROLE_PERMISSIONS = {
     canManageUsers: false,
     canManageSettings: false,
     canViewReports: false,
+    canManageTrainingMode: false,
   },
 } as const;
 
