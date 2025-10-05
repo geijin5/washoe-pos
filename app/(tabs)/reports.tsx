@@ -432,56 +432,26 @@ ${departmentBreakdown}`;
     );
   }, [user?.role, clearNightlyReport, selectedDate, formatDate]);
 
-  // Check if user has access (managers and admins only - no usher access)
-  const hasAccess = user?.role === 'manager' || user?.role === 'admin';
-  const isUsher = user?.role === 'usher';
-
   if (reportMode === 'aggregated' && isLoadingAggregated) {
-    if (!hasAccess) {
     return (
-        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-          <View style={styles.noAccessContainer}>
-            <Text style={styles.title}>Access Denied</Text>
-            <Text style={styles.subtitle}>
-              {isUsher 
-                ? 'Usher accounts cannot access nightly reports' 
-                : 'Manager or admin access required'
-              }
-            </Text>
-          </View>
-        </View>
-      );
-    }
-    return (
+      <RoleGuard requiredPermission="canViewReports">
         <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
           <ActivityIndicator size="large" color={TheatreColors.accent} />
           <Text style={[styles.title, { marginTop: 16 }]}>Generating Report...</Text>
           <Text style={styles.subtitle}>Including box office data from all devices</Text>
         </View>
+      </RoleGuard>
     );
   }
 
   if (!currentReport) {
-    if (!hasAccess) {
     return (
+      <RoleGuard requiredPermission="canViewReports">
         <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-          <View style={styles.noAccessContainer}>
-            <Text style={styles.title}>Access Denied</Text>
-            <Text style={styles.subtitle}>
-              {isUsher 
-                ? 'Usher accounts cannot access nightly reports' 
-                : 'Manager or admin access required'
-              }
-            </Text>
-          </View>
+          <Text style={styles.title}>No Report Available</Text>
+          <Text style={styles.subtitle}>Unable to generate report for selected date</Text>
         </View>
-      );
-    }
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={styles.title}>No Report Available</Text>
-        <Text style={styles.subtitle}>Unable to generate report for selected date</Text>
-      </View>
+      </RoleGuard>
     );
   }
 
@@ -492,7 +462,7 @@ ${departmentBreakdown}`;
   const afterClosingCardFees = (currentReport.paymentBreakdown?.afterClosingCard || 0) * feeRate;
 
   return (
-    <>
+    <RoleGuard requiredPermission="canViewReports">
       <ScrollView style={styles.container}>
         <View style={styles.content}>
           {/* Training Mode Banner */}
@@ -1807,8 +1777,7 @@ ${departmentBreakdown}`;
           </View>
         </View>
       </ScrollView>
-
-    </>
+    </RoleGuard>
   );
 }
 
