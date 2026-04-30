@@ -58,6 +58,5 @@
     "@types/react": "~19.0.10",
     "typescript": "~5.8.3"
   },
-  "private": true,
-  "packageManager": "npm@10.0.0"
+  "private": true
 }
