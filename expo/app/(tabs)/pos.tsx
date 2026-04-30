@@ -115,20 +115,21 @@ export default function POSScreen() {
     setShowPayment(true);
   };
 
-  const handlePayment = async (method: 'cash' | 'card', cashAmount?: string) => {
+  const handlePayment = async (method: 'cash' | 'card' | 'split', cashAmount?: string) => {
     // Determine if this order contains tickets (which go to after-closing when sold in candy counter)
     const hasTickets = cart.some(item => isTicketCategory(item.product.category));
-    
+
     // For mixed orders (tickets + other items), we need to handle them specially
     // The order will be processed as a candy counter order, but the report generation will split it
     const hasOtherItems = cart.some(item => !isTicketCategory(item.product.category));
     const isMixedOrder = hasTickets && hasOtherItems;
-    
+
     // Pass show information for box office orders
     const showType = selectedDepartment === 'box-office' && selectedShow ? selectedShow as '1st-show' | '2nd-show' | 'nightly-show' | 'matinee' : undefined;
-    
+
     const cashAmountTendered = method === 'cash' && cashAmount ? parseFloat(cashAmount) : undefined;
-    const order = checkout(method, user?.id, user?.name, selectedDepartment || undefined, hasTickets, user?.role, showType, cashAmountTendered);
+    const splitCashAmount = method === 'split' && cashAmount ? parseFloat(cashAmount) : undefined;
+    const order = checkout(method, user?.id, user?.name, selectedDepartment || undefined, hasTickets, user?.role, showType, cashAmountTendered, splitCashAmount);
     if (order) {
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

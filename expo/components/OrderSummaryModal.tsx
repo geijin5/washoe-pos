@@ -108,10 +108,10 @@ export function OrderSummaryModal({ visible, order, onClose }: OrderSummaryModal
                 <View style={styles.paymentMethodRow}>
                   <Text style={styles.paymentMethodLabel}>Payment Method:</Text>
                   <Text style={styles.paymentMethodValue}>
-                    {order.paymentMethod === 'cash' ? 'Cash' : 'Credit Card'}
+                    {order.paymentMethod === 'cash' ? 'Cash' : order.paymentMethod === 'split' ? 'Split (Cash + Card)' : 'Credit Card'}
                   </Text>
                 </View>
-                
+
                 {order.paymentMethod === 'cash' && order.cashAmountTendered && (
                   <>
                     <View style={styles.summaryRow}>
@@ -124,6 +124,25 @@ export function OrderSummaryModal({ visible, order, onClose }: OrderSummaryModal
                         ${(order.cashAmountTendered - order.total).toFixed(2)}
                       </Text>
                     </View>
+                  </>
+                )}
+
+                {order.paymentMethod === 'split' && order.splitPayment && (
+                  <>
+                    <View style={styles.summaryRow}>
+                      <Text style={styles.summaryLabel}>Cash Paid:</Text>
+                      <Text style={styles.summaryValue}>${order.splitPayment.cashAmount.toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.summaryRow}>
+                      <Text style={styles.summaryLabel}>Card Charged:</Text>
+                      <Text style={styles.summaryValue}>${(order.splitPayment.cardAmount + order.splitPayment.cardFee).toFixed(2)}</Text>
+                    </View>
+                    {order.splitPayment.cardFee > 0 && (
+                      <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Card Fee:</Text>
+                        <Text style={styles.summaryValue}>${order.splitPayment.cardFee.toFixed(2)}</Text>
+                      </View>
+                    )}
                   </>
                 )}
               </View>

@@ -29,7 +29,7 @@ const getShowDisplayName = (show: string): string => {
 interface PaymentScreenProps {
   cart: CartItem[];
   onClose: () => void;
-  onPayment: (method: 'cash' | 'card', cashAmount?: string) => void;
+  onPayment: (method: 'cash' | 'card' | 'split', cashAmount?: string) => void;
   creditCardFeePercent: number;
   department?: 'box-office' | 'candy-counter';
   selectedShow?: string;
@@ -45,8 +45,9 @@ export function PaymentScreen({
 }: PaymentScreenProps) {
   const { isTablet } = useTabletLayout();
   const insets = useSafeAreaInsets();
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'split'>('cash');
   const [cashAmount, setCashAmount] = useState('');
+  const [splitCashAmount, setSplitCashAmount] = useState('');
   const [showCashInput, setShowCashInput] = useState(false);
 
   // Calculate totals based on selected payment method and department breakdown
@@ -59,7 +60,14 @@ export function PaymentScreen({
     const nonTicketSubtotal = nonTicketItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
     const subtotal = ticketSubtotal + nonTicketSubtotal;
     
-    const creditCardFee = paymentMethod === 'card' ? subtotal * (creditCardFeePercent / 100) : 0;
+    let creditCardFee = 0;
+    if (paymentMethod === 'card') {
+      creditCardFee = subtotal * (creditCardFeePercent / 100);
+    } else if (paymentMethod === 'split') {
+      const splitCash = parseFloat(splitCashAmount) || 0;
+      const cardPortion = Math.max(0, subtotal - splitCash);
+      creditCardFee = cardPortion * (creditCardFeePercent / 100);
+    }
     const total = subtotal + creditCardFee;
     
     // Determine if tickets are being sold through candy counter (after closing)
@@ -75,9 +83,9 @@ export function PaymentScreen({
       hasNonTicketItems: nonTicketItems.length > 0,
       isAfterClosing
     };
-  }, [cart, paymentMethod, creditCardFeePercent, department]);
+  }, [cart, paymentMethod, creditCardFeePercent, department, splitCashAmount]);
 
-  const handlePaymentMethodChange = async (method: 'cash' | 'card') => {
+  const handlePaymentMethodChange = async (method: 'cash' | 'card' | 'split') => {
     if (Platform.OS !== 'web') {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
@@ -102,11 +110,16 @@ export function PaymentScreen({
     if (Platform.OS !== 'web') {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
-    onPayment(paymentMethod, cashAmount);
+    if (paymentMethod === 'split') {
+      onPayment('split', splitCashAmount);
+    } else {
+      onPayment(paymentMethod, cashAmount);
+    }
   };
 
-  const canProceed = paymentMethod === 'card' || 
-    (paymentMethod === 'cash' && cashAmount && parseFloat(cashAmount) >= totals.total);
+  const canProceed = paymentMethod === 'card' ||
+    (paymentMethod === 'cash' && cashAmount && parseFloat(cashAmount) >= totals.total) ||
+    (paymentMethod === 'split' && splitCashAmount && parseFloat(splitCashAmount) > 0 && parseFloat(splitCashAmount) < totals.subtotal);
 
   const change = cashAmount && parseFloat(cashAmount) >= totals.total 
     ? parseFloat(cashAmount) - totals.total 
@@ -211,9 +224,11 @@ export function PaymentScreen({
                   <Text style={styles.tabletSummaryValueCompact}>${totals.subtotal.toFixed(2)}</Text>
                 </View>
                 
-                {paymentMethod === 'card' && totals.creditCardFee > 0 && (
+                {(paymentMethod === 'card' || paymentMethod === 'split') && totals.creditCardFee > 0 && (
                   <View style={styles.tabletSummaryRowCompact}>
-                    <Text style={styles.tabletSummaryLabelCompact}>Card Fee ({creditCardFeePercent}%):</Text>
+                    <Text style={styles.tabletSummaryLabelCompact}>
+                      {paymentMethod === 'split' ? `Card Fee (${creditCardFeePercent}% on card portion):` : `Card Fee (${creditCardFeePercent}%):`}
+                    </Text>
                     <Text style={styles.tabletSummaryValueCompact}>${totals.creditCardFee.toFixed(2)}</Text>
                   </View>
                 )}
@@ -267,16 +282,16 @@ export function PaymentScreen({
                       ]}
                       onPress={() => handlePaymentMethodChange('cash')}
                     >
-                      <DollarSign 
-                        size={24} 
-                        color={paymentMethod === 'cash' ? TheatreColors.background : TheatreColors.text} 
+                      <DollarSign
+                        size={24}
+                        color={paymentMethod === 'cash' ? TheatreColors.background : TheatreColors.text}
                       />
                       <Text style={[
                         styles.tabletPaymentMethodText,
                         paymentMethod === 'cash' && styles.tabletPaymentMethodTextActive
                       ]}>Cash</Text>
                     </TouchableOpacity>
-                    
+
                     <TouchableOpacity
                       style={[
                         styles.tabletPaymentMethodButton,
@@ -284,17 +299,95 @@ export function PaymentScreen({
                       ]}
                       onPress={() => handlePaymentMethodChange('card')}
                     >
-                      <CreditCard 
-                        size={24} 
-                        color={paymentMethod === 'card' ? TheatreColors.background : TheatreColors.text} 
+                      <CreditCard
+                        size={24}
+                        color={paymentMethod === 'card' ? TheatreColors.background : TheatreColors.text}
                       />
                       <Text style={[
                         styles.tabletPaymentMethodText,
                         paymentMethod === 'card' && styles.tabletPaymentMethodTextActive
                       ]}>Card</Text>
                     </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.tabletPaymentMethodButton,
+                        paymentMethod === 'split' && styles.tabletSplitMethodActive
+                      ]}
+                      onPress={() => handlePaymentMethodChange('split')}
+                    >
+                      <DollarSign
+                        size={14}
+                        color={paymentMethod === 'split' ? TheatreColors.background : TheatreColors.text}
+                      />
+                      <CreditCard
+                        size={14}
+                        color={paymentMethod === 'split' ? TheatreColors.background : TheatreColors.text}
+                      />
+                      <Text style={[
+                        styles.tabletPaymentMethodText,
+                        paymentMethod === 'split' && styles.tabletPaymentMethodTextActive
+                      ]}>Split</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
+
+                {/* Split Payment Options */}
+                {paymentMethod === 'split' && (
+                  <View style={styles.tabletCashSection}>
+                    <Text style={styles.tabletSectionTitle}>Cash Portion</Text>
+                    <View style={[styles.tabletCashInputContainerOptimized, {
+                      backgroundColor: TheatreColors.accent,
+                      borderColor: '#9C27B0',
+                      borderWidth: 3,
+                      elevation: 8,
+                      marginBottom: 12,
+                    }]}>
+                      <Text style={[styles.tabletCashInputLabelOptimized, { color: TheatreColors.background, fontWeight: 'bold' }]}>
+                        Cash Amount (max ${totals.subtotal.toFixed(2)}):
+                      </Text>
+                      <TextInput
+                        style={[styles.tabletCashInputOptimized, {
+                          backgroundColor: TheatreColors.background,
+                          borderColor: '#9C27B0',
+                          borderWidth: 2,
+                          fontSize: 18,
+                          fontWeight: 'bold',
+                          minHeight: 50,
+                        }]}
+                        placeholder="Enter cash amount"
+                        placeholderTextColor={TheatreColors.textSecondary}
+                        value={splitCashAmount}
+                        onChangeText={setSplitCashAmount}
+                        keyboardType="decimal-pad"
+                        autoFocus
+                        returnKeyType="done"
+                      />
+                    </View>
+                    {splitCashAmount && parseFloat(splitCashAmount) > 0 && parseFloat(splitCashAmount) < totals.subtotal && (
+                      <View style={styles.splitBreakdownContainer}>
+                        <View style={styles.splitBreakdownRow}>
+                          <Text style={styles.splitBreakdownLabel}>Cash:</Text>
+                          <Text style={styles.splitBreakdownValue}>${parseFloat(splitCashAmount).toFixed(2)}</Text>
+                        </View>
+                        <View style={styles.splitBreakdownRow}>
+                          <Text style={styles.splitBreakdownLabel}>Card ({creditCardFeePercent}% fee):</Text>
+                          <Text style={styles.splitBreakdownValue}>${(totals.subtotal - parseFloat(splitCashAmount)).toFixed(2)}</Text>
+                        </View>
+                        {totals.creditCardFee > 0 && (
+                          <View style={styles.splitBreakdownRow}>
+                            <Text style={styles.splitBreakdownLabel}>Card Fee:</Text>
+                            <Text style={styles.splitBreakdownValue}>${totals.creditCardFee.toFixed(2)}</Text>
+                          </View>
+                        )}
+                        <View style={[styles.splitBreakdownRow, styles.splitBreakdownTotalRow]}>
+                          <Text style={styles.splitBreakdownTotalLabel}>Grand Total:</Text>
+                          <Text style={styles.splitBreakdownTotalValue}>${totals.total.toFixed(2)}</Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                )}
 
                 {/* Cash Payment Options */}
                 {paymentMethod === 'cash' && (
@@ -410,10 +503,14 @@ export function PaymentScreen({
                     styles.tabletPayButtonText,
                     !canProceed && styles.tabletPayButtonTextDisabled
                   ]}>
-                    {paymentMethod === 'cash' 
-                      ? (!cashAmount ? 'Select Cash Amount' : 
-                         parseFloat(cashAmount) < totals.total ? 'Insufficient Cash' : 
+                    {paymentMethod === 'cash'
+                      ? (!cashAmount ? 'Select Cash Amount' :
+                         parseFloat(cashAmount) < totals.total ? 'Insufficient Cash' :
                          'Complete Cash Payment')
+                      : paymentMethod === 'split'
+                      ? (!splitCashAmount || parseFloat(splitCashAmount) <= 0 ? 'Enter Cash Portion' :
+                         parseFloat(splitCashAmount) >= totals.subtotal ? 'Cash must be less than subtotal' :
+                         'Complete Split Payment')
                       : 'Pay with Card'
                     }
                   </Text>
@@ -515,10 +612,10 @@ export function PaymentScreen({
               </View>
               
               {/* Credit Card Fee */}
-              {paymentMethod === 'card' && totals.creditCardFee > 0 && (
+              {(paymentMethod === 'card' || paymentMethod === 'split') && totals.creditCardFee > 0 && (
                 <View style={styles.mobileBreakdownRow}>
                   <Text style={styles.mobileBreakdownLabel}>
-                    Card Fee ({creditCardFeePercent}%):
+                    {paymentMethod === 'split' ? `Card Fee (${creditCardFeePercent}% on card portion):` : `Card Fee (${creditCardFeePercent}%):`}
                   </Text>
                   <Text style={styles.mobileBreakdownValue}>
                     ${totals.creditCardFee.toFixed(2)}
@@ -545,16 +642,16 @@ export function PaymentScreen({
                 ]}
                 onPress={() => handlePaymentMethodChange('cash')}
               >
-                <DollarSign 
-                  size={24} 
-                  color={paymentMethod === 'cash' ? TheatreColors.background : TheatreColors.text} 
+                <DollarSign
+                  size={24}
+                  color={paymentMethod === 'cash' ? TheatreColors.background : TheatreColors.text}
                 />
                 <Text style={[
                   styles.mobilePaymentMethodText,
                   paymentMethod === 'cash' && styles.mobilePaymentMethodTextActive
                 ]}>Cash</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[
                   styles.mobilePaymentMethodButton,
@@ -562,17 +659,84 @@ export function PaymentScreen({
                 ]}
                 onPress={() => handlePaymentMethodChange('card')}
               >
-                <CreditCard 
-                  size={24} 
-                  color={paymentMethod === 'card' ? TheatreColors.background : TheatreColors.text} 
+                <CreditCard
+                  size={24}
+                  color={paymentMethod === 'card' ? TheatreColors.background : TheatreColors.text}
                 />
                 <Text style={[
                   styles.mobilePaymentMethodText,
                   paymentMethod === 'card' && styles.mobilePaymentMethodTextActive
                 ]}>Card</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.mobilePaymentMethodButton,
+                  paymentMethod === 'split' && styles.mobileSplitMethodActive
+                ]}
+                onPress={() => handlePaymentMethodChange('split')}
+              >
+                <View style={{ flexDirection: 'row', gap: 2 }}>
+                  <DollarSign
+                    size={16}
+                    color={paymentMethod === 'split' ? TheatreColors.background : TheatreColors.text}
+                  />
+                  <CreditCard
+                    size={16}
+                    color={paymentMethod === 'split' ? TheatreColors.background : TheatreColors.text}
+                  />
+                </View>
+                <Text style={[
+                  styles.mobilePaymentMethodText,
+                  paymentMethod === 'split' && styles.mobilePaymentMethodTextActive
+                ]}>Split</Text>
+              </TouchableOpacity>
             </View>
           </View>
+
+          {/* Split Payment Options */}
+          {paymentMethod === 'split' && (
+            <View style={styles.mobileSection}>
+              <Text style={styles.mobileSectionTitle}>Cash Portion</Text>
+              <View style={[styles.mobileCashInputContainer, { borderColor: '#9C27B0' }]}>
+                <Text style={styles.mobileCashInputLabel}>
+                  Cash Amount (max ${totals.subtotal.toFixed(2)}):
+                </Text>
+                <TextInput
+                  style={[styles.mobileCashInput, { borderColor: '#9C27B0' }]}
+                  placeholder="Enter cash amount"
+                  placeholderTextColor={TheatreColors.textSecondary}
+                  value={splitCashAmount}
+                  onChangeText={setSplitCashAmount}
+                  keyboardType="decimal-pad"
+                  autoFocus
+                  returnKeyType="done"
+                />
+              </View>
+              {splitCashAmount && parseFloat(splitCashAmount) > 0 && parseFloat(splitCashAmount) < totals.subtotal && (
+                <View style={styles.splitBreakdownContainer}>
+                  <View style={styles.splitBreakdownRow}>
+                    <Text style={styles.splitBreakdownLabel}>Cash:</Text>
+                    <Text style={styles.splitBreakdownValue}>${parseFloat(splitCashAmount).toFixed(2)}</Text>
+                  </View>
+                  <View style={styles.splitBreakdownRow}>
+                    <Text style={styles.splitBreakdownLabel}>Card ({creditCardFeePercent}% fee):</Text>
+                    <Text style={styles.splitBreakdownValue}>${(totals.subtotal - parseFloat(splitCashAmount)).toFixed(2)}</Text>
+                  </View>
+                  {totals.creditCardFee > 0 && (
+                    <View style={styles.splitBreakdownRow}>
+                      <Text style={styles.splitBreakdownLabel}>Card Fee:</Text>
+                      <Text style={styles.splitBreakdownValue}>${totals.creditCardFee.toFixed(2)}</Text>
+                    </View>
+                  )}
+                  <View style={[styles.splitBreakdownRow, styles.splitBreakdownTotalRow]}>
+                    <Text style={styles.splitBreakdownTotalLabel}>Grand Total:</Text>
+                    <Text style={styles.splitBreakdownTotalValue}>${totals.total.toFixed(2)}</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Cash Payment Options - Optimized for mobile */}
           {paymentMethod === 'cash' && (
@@ -678,10 +842,14 @@ export function PaymentScreen({
               styles.mobilePayButtonText,
               !canProceed && styles.mobilePayButtonTextDisabled
             ]}>
-              {paymentMethod === 'cash' 
-                ? (!cashAmount ? 'Select Cash Amount' : 
-                   parseFloat(cashAmount) < totals.total ? 'Insufficient Cash' : 
+              {paymentMethod === 'cash'
+                ? (!cashAmount ? 'Select Cash Amount' :
+                   parseFloat(cashAmount) < totals.total ? 'Insufficient Cash' :
                    'Complete Cash Payment')
+                : paymentMethod === 'split'
+                ? (!splitCashAmount || parseFloat(splitCashAmount) <= 0 ? 'Enter Cash Portion' :
+                   parseFloat(splitCashAmount) >= totals.subtotal ? 'Cash must be less than subtotal' :
+                   'Complete Split Payment')
                 : 'Pay with Card'
               }
             </Text>
@@ -2123,5 +2291,54 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#0D47A1',
+  },
+  // Split payment styles
+  tabletSplitMethodActive: {
+    backgroundColor: '#9C27B0',
+    borderColor: '#9C27B0',
+  },
+  mobileSplitMethodActive: {
+    backgroundColor: '#9C27B0',
+    borderColor: '#9C27B0',
+  },
+  splitBreakdownContainer: {
+    backgroundColor: '#F3E5F5',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+    borderWidth: 2,
+    borderColor: '#9C27B0',
+  },
+  splitBreakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  splitBreakdownLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6A1B9A',
+  },
+  splitBreakdownValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6A1B9A',
+  },
+  splitBreakdownTotalRow: {
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#9C27B0',
+  },
+  splitBreakdownTotalLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4A148C',
+  },
+  splitBreakdownTotalValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4A148C',
   },
 });

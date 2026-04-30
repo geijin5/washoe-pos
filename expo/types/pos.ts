@@ -22,8 +22,13 @@ export interface Order {
   subtotal: number;
   creditCardFee?: number;
   timestamp: Date;
-  paymentMethod?: 'cash' | 'card';
+  paymentMethod?: 'cash' | 'card' | 'split';
   cashAmountTendered?: number;
+  splitPayment?: {
+    cashAmount: number;
+    cardAmount: number;
+    cardFee: number;
+  };
   userId?: string;
   userName?: string;
   department?: 'box-office' | 'candy-counter';
