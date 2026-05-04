@@ -115,7 +115,7 @@ export default function POSScreen() {
     setShowPayment(true);
   };
 
-  const handlePayment = async (method: 'cash' | 'card' | 'split', cashAmount?: string, waiveCardFee?: boolean) => {
+  const handlePayment = async (method: 'cash' | 'card' | 'split', cashAmount?: string) => {
     // Determine if this order contains tickets (which go to after-closing when sold in candy counter)
     const hasTickets = cart.some(item => isTicketCategory(item.product.category));
 
@@ -129,7 +129,7 @@ export default function POSScreen() {
 
     const cashAmountTendered = method === 'cash' && cashAmount ? parseFloat(cashAmount) : undefined;
     const splitCashAmount = method === 'split' && cashAmount ? parseFloat(cashAmount) : undefined;
-    const order = checkout(method, user?.id, user?.name, selectedDepartment || undefined, hasTickets, user?.role, showType, cashAmountTendered, splitCashAmount, waiveCardFee);
+    const order = checkout(method, user?.id, user?.name, selectedDepartment || undefined, hasTickets, user?.role, showType, cashAmountTendered, splitCashAmount);
     if (order) {
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
