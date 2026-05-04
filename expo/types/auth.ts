@@ -64,7 +64,7 @@ export const ROLE_PERMISSIONS = {
     canViewStats: false,
     canManageUsers: false,
     canManageSettings: false,
-    canViewReports: false,
+    canViewReports: true,
     canManageTrainingMode: false,
   },
 } as const;

@@ -1202,21 +1202,39 @@ ${departmentBreakdown}`;
             const { managerCash: managerBoxOfficeCash, managerCard: managerBoxOfficeCard } = 
               calculateManagerSalesByDepartment(dayOrders, 'box-office');
             
+            const boxOfficeCardNetRevenue = boxOfficeCardSales - boxOfficeCardFees;
+
             return (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Box Office Payment Breakdown</Text>
+
+                {/* Usher-focused net card revenue card */}
+                {user?.role === 'usher' && boxOfficeCardSales > 0 && (
+                  <View style={styles.netCardRevenueCard}>
+                    <Text style={styles.netCardRevenueLabel}>Card Revenue (excl. fees)</Text>
+                    <Text style={styles.netCardRevenueAmount}>${formatCurrency(boxOfficeCardNetRevenue)}</Text>
+                    <Text style={styles.netCardRevenueNote}>
+                      ${formatCurrency(boxOfficeCardSales)} collected − ${formatCurrency(boxOfficeCardFees)} CC fees
+                    </Text>
+                  </View>
+                )}
+
                 <View style={styles.paymentBreakdown}>
                   <View style={styles.paymentRow}>
                     <Text style={styles.paymentLabel}>Box Office Cash:</Text>
                     <Text style={[styles.paymentValue, { color: TheatreColors.success }]}>${formatCurrency(boxOfficeCashSales)}</Text>
                   </View>
                   <View style={styles.paymentRow}>
-                    <Text style={styles.paymentLabel}>Box Office Card:</Text>
+                    <Text style={styles.paymentLabel}>Box Office Card (total collected):</Text>
                     <Text style={styles.paymentValue}>${formatCurrency(boxOfficeCardSales)}</Text>
                   </View>
                   <View style={styles.paymentRow}>
-                    <Text style={styles.paymentLabel}>Box Office Card Fees:</Text>
-                    <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(boxOfficeCardFees)}</Text>
+                    <Text style={styles.paymentLabel}>Box Office Card Fees ({settings.creditCardFeePercent}%):</Text>
+                    <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>−${formatCurrency(boxOfficeCardFees)}</Text>
+                  </View>
+                  <View style={[styles.paymentRow, styles.netRevenueRow]}>
+                    <Text style={styles.netRevenueLabel}>Card Net Revenue (excl. fees):</Text>
+                    <Text style={styles.netRevenueValue}>${formatCurrency(boxOfficeCardNetRevenue)}</Text>
                   </View>
                 </View>
               </View>
@@ -1889,6 +1907,52 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: TheatreColors.text,
+  },
+  // Net card revenue row — separator + highlight
+  netRevenueRow: {
+    marginTop: 8,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: TheatreColors.accent,
+  },
+  netRevenueLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: TheatreColors.text,
+  },
+  netRevenueValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+  },
+  // Usher-focused net card revenue highlight card
+  netCardRevenueCard: {
+    backgroundColor: '#E8F5E9',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+  },
+  netCardRevenueLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2E7D32',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  netCardRevenueAmount: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#1B5E20',
+    marginBottom: 4,
+  },
+  netCardRevenueNote: {
+    fontSize: 12,
+    color: '#388E3C',
+    textAlign: 'center',
   },
   departmentGrid: {
     flexDirection: 'row',

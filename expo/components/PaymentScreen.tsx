@@ -29,7 +29,7 @@ const getShowDisplayName = (show: string): string => {
 interface PaymentScreenProps {
   cart: CartItem[];
   onClose: () => void;
-  onPayment: (method: 'cash' | 'card' | 'split', cashAmount?: string) => void;
+  onPayment: (method: 'cash' | 'card' | 'split', cashAmount?: string, waiveCardFee?: boolean) => void;
   creditCardFeePercent: number;
   department?: 'box-office' | 'candy-counter';
   selectedShow?: string;
@@ -49,6 +49,7 @@ export function PaymentScreen({
   const [cashAmount, setCashAmount] = useState('');
   const [splitCashAmount, setSplitCashAmount] = useState('');
   const [showCashInput, setShowCashInput] = useState(false);
+  const [waiveCardFee, setWaiveCardFee] = useState(false);
 
   // Calculate totals based on selected payment method and department breakdown
   const totals = React.useMemo(() => {
@@ -60,13 +61,14 @@ export function PaymentScreen({
     const nonTicketSubtotal = nonTicketItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
     const subtotal = ticketSubtotal + nonTicketSubtotal;
     
+    const effectiveFeePercent = waiveCardFee ? 0 : creditCardFeePercent;
     let creditCardFee = 0;
     if (paymentMethod === 'card') {
-      creditCardFee = subtotal * (creditCardFeePercent / 100);
+      creditCardFee = subtotal * (effectiveFeePercent / 100);
     } else if (paymentMethod === 'split') {
       const splitCash = parseFloat(splitCashAmount) || 0;
       const cardPortion = Math.max(0, subtotal - splitCash);
-      creditCardFee = cardPortion * (creditCardFeePercent / 100);
+      creditCardFee = cardPortion * (effectiveFeePercent / 100);
     }
     const total = subtotal + creditCardFee;
     
@@ -83,13 +85,21 @@ export function PaymentScreen({
       hasNonTicketItems: nonTicketItems.length > 0,
       isAfterClosing
     };
-  }, [cart, paymentMethod, creditCardFeePercent, department, splitCashAmount]);
+  }, [cart, paymentMethod, creditCardFeePercent, department, splitCashAmount, waiveCardFee]);
 
   const handlePaymentMethodChange = async (method: 'cash' | 'card' | 'split') => {
     if (Platform.OS !== 'web') {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     setPaymentMethod(method);
+    if (method === 'cash') setWaiveCardFee(false);
+  };
+
+  const handleToggleWaiveFee = async () => {
+    if (Platform.OS !== 'web') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    setWaiveCardFee(prev => !prev);
   };
 
   const handleQuickAmount = async (amount: number) => {
@@ -111,9 +121,9 @@ export function PaymentScreen({
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
     if (paymentMethod === 'split') {
-      onPayment('split', splitCashAmount);
+      onPayment('split', splitCashAmount, waiveCardFee);
     } else {
-      onPayment(paymentMethod, cashAmount);
+      onPayment(paymentMethod, cashAmount, waiveCardFee);
     }
   };
 
@@ -224,12 +234,16 @@ export function PaymentScreen({
                   <Text style={styles.tabletSummaryValueCompact}>${totals.subtotal.toFixed(2)}</Text>
                 </View>
                 
-                {(paymentMethod === 'card' || paymentMethod === 'split') && totals.creditCardFee > 0 && (
+                {(paymentMethod === 'card' || paymentMethod === 'split') && (
                   <View style={styles.tabletSummaryRowCompact}>
                     <Text style={styles.tabletSummaryLabelCompact}>
                       {paymentMethod === 'split' ? `Card Fee (${creditCardFeePercent}% on card portion):` : `Card Fee (${creditCardFeePercent}%):`}
                     </Text>
-                    <Text style={styles.tabletSummaryValueCompact}>${totals.creditCardFee.toFixed(2)}</Text>
+                    {waiveCardFee ? (
+                      <Text style={[styles.tabletSummaryValueCompact, styles.waiveFeeValueText]}>WAIVED</Text>
+                    ) : (
+                      <Text style={styles.tabletSummaryValueCompact}>${totals.creditCardFee.toFixed(2)}</Text>
+                    )}
                   </View>
                 )}
                 
@@ -330,6 +344,19 @@ export function PaymentScreen({
                       ]}>Split</Text>
                     </TouchableOpacity>
                   </View>
+
+                  {/* Waive CC Fee toggle — Box Office only, card/split only */}
+                  {department === 'box-office' && (paymentMethod === 'card' || paymentMethod === 'split') && (
+                    <TouchableOpacity
+                      style={[styles.waiveFeeButton, waiveCardFee && styles.waiveFeeButtonActive]}
+                      onPress={handleToggleWaiveFee}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.waiveFeeButtonText, waiveCardFee && styles.waiveFeeButtonTextActive]}>
+                        {waiveCardFee ? '✓ CC Fee Waived (Theatre absorbs fee)' : 'Waive CC Fee'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
 
                 {/* Split Payment Options */}
@@ -612,14 +639,16 @@ export function PaymentScreen({
               </View>
               
               {/* Credit Card Fee */}
-              {(paymentMethod === 'card' || paymentMethod === 'split') && totals.creditCardFee > 0 && (
+              {(paymentMethod === 'card' || paymentMethod === 'split') && (
                 <View style={styles.mobileBreakdownRow}>
                   <Text style={styles.mobileBreakdownLabel}>
                     {paymentMethod === 'split' ? `Card Fee (${creditCardFeePercent}% on card portion):` : `Card Fee (${creditCardFeePercent}%):`}
                   </Text>
-                  <Text style={styles.mobileBreakdownValue}>
-                    ${totals.creditCardFee.toFixed(2)}
-                  </Text>
+                  {waiveCardFee ? (
+                    <Text style={[styles.mobileBreakdownValue, styles.waiveFeeValueText]}>WAIVED</Text>
+                  ) : (
+                    <Text style={styles.mobileBreakdownValue}>${totals.creditCardFee.toFixed(2)}</Text>
+                  )}
                 </View>
               )}
               
@@ -692,6 +721,19 @@ export function PaymentScreen({
                 ]}>Split</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Waive CC Fee toggle — Box Office only, card/split only */}
+            {department === 'box-office' && (paymentMethod === 'card' || paymentMethod === 'split') && (
+              <TouchableOpacity
+                style={[styles.waiveFeeButton, waiveCardFee && styles.waiveFeeButtonActive]}
+                onPress={handleToggleWaiveFee}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.waiveFeeButtonText, waiveCardFee && styles.waiveFeeButtonTextActive]}>
+                  {waiveCardFee ? '✓ CC Fee Waived (Theatre absorbs fee)' : 'Waive CC Fee'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Split Payment Options */}
@@ -2340,5 +2382,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#4A148C',
+  },
+  // Waive CC Fee toggle styles
+  waiveFeeButton: {
+    marginTop: 10,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 2,
+    borderColor: '#FF9800',
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+  },
+  waiveFeeButtonActive: {
+    backgroundColor: '#FF9800',
+  },
+  waiveFeeButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FF9800',
+  },
+  waiveFeeButtonTextActive: {
+    color: '#fff',
+  },
+  waiveFeeValueText: {
+    color: '#FF9800',
+    fontWeight: 'bold',
   },
 });

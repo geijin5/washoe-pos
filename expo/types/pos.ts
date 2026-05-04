@@ -29,6 +29,7 @@ export interface Order {
     cardAmount: number;
     cardFee: number;
   };
+  cardFeeWaived?: boolean;
   userId?: string;
   userName?: string;
   department?: 'box-office' | 'candy-counter';

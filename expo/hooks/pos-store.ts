@@ -227,9 +227,9 @@ export const [POSProvider, usePOS] = createContextHook(() => {
   }, [cart]);
 
   // Calculate totals with credit card fee - Enhanced logging for verification
-  const calculateTotalsWithFee = useCallback((paymentMethod: 'cash' | 'card' | 'split', splitCashAmount?: number) => {
+  const calculateTotalsWithFee = useCallback((paymentMethod: 'cash' | 'card' | 'split', splitCashAmount?: number, waiveCardFee?: boolean) => {
     const subtotal = Math.round(cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0) * 100) / 100;
-    const feePercent = settings.creditCardFeePercent;
+    const feePercent = waiveCardFee ? 0 : settings.creditCardFeePercent;
     let creditCardFee = 0;
     if (paymentMethod === 'card') {
       creditCardFee = Math.round(subtotal * (feePercent / 100) * 100) / 100;
@@ -243,6 +243,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
     if ((paymentMethod === 'card' || paymentMethod === 'split') && creditCardFee > 0) {
       console.log(`=== CREDIT CARD FEE CALCULATION ===`);
       console.log(`Payment Method: ${paymentMethod}`);
+      console.log(`Fee Waived: ${waiveCardFee ? 'YES' : 'NO'}`);
       console.log(`Subtotal: ${subtotal.toFixed(2)}`);
       console.log(`Fee Percentage: ${feePercent}%`);
       console.log(`Fee Amount: ${creditCardFee.toFixed(2)}`);
@@ -254,10 +255,10 @@ export const [POSProvider, usePOS] = createContextHook(() => {
   }, [cart, settings.creditCardFeePercent]);
 
   // Checkout
-  const checkout = useCallback((paymentMethod: 'cash' | 'card' | 'split' = 'cash', userId?: string, userName?: string, department?: 'box-office' | 'candy-counter', isAfterClosing?: boolean, userRole?: string, showType?: '1st-show' | '2nd-show' | 'nightly-show' | 'matinee', cashAmountTendered?: number, splitCashAmount?: number) => {
+  const checkout = useCallback((paymentMethod: 'cash' | 'card' | 'split' = 'cash', userId?: string, userName?: string, department?: 'box-office' | 'candy-counter', isAfterClosing?: boolean, userRole?: string, showType?: '1st-show' | '2nd-show' | 'nightly-show' | 'matinee', cashAmountTendered?: number, splitCashAmount?: number, waiveCardFee?: boolean) => {
     if (cart.length === 0) return null;
 
-    const totals = calculateTotalsWithFee(paymentMethod, splitCashAmount);
+    const totals = calculateTotalsWithFee(paymentMethod, splitCashAmount, waiveCardFee);
     const newOrder: Order = {
       id: Date.now().toString(),
       items: [...cart],
@@ -272,6 +273,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
         cardAmount: Math.round((totals.subtotal - splitCashAmount) * 100) / 100,
         cardFee: totals.creditCardFee,
       } : undefined,
+      cardFeeWaived: waiveCardFee && (paymentMethod === 'card' || paymentMethod === 'split') ? true : undefined,
       userId,
       userName,
       department,
