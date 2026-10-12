@@ -1095,7 +1095,13 @@ Average Order: ${formatCurrency(report.totalOrders > 0 ? report.totalSales / rep
 PAYMENT BREAKDOWN
 Cash Sales: ${formatCurrency(report.cashSales)}
 Card Sales: ${formatCurrency(report.cardSales)}
-Credit Card Fees: ${formatCurrency(report.creditCardFees)}
+Credit Card Fees: ${formatCurrency(report.creditCardFees)}${report.splitPayments && report.splitPayments.orders > 0 ? `
+
+SPLIT PAYMENTS (INCLUDED ABOVE)
+Split Orders: ${report.splitPayments.orders}
+Split Cash Taken: ${formatCurrency(report.splitPayments.cashTaken)}
+Split Card Charged: ${formatCurrency(report.splitPayments.cardCharged)}
+Split Card Fees: ${formatCurrency(report.splitPayments.cardFees)}` : ''}
 
 ================================
 

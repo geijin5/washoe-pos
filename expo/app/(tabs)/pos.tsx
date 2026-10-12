@@ -128,7 +128,7 @@ export default function POSScreen() {
     const showType = selectedDepartment === 'box-office' && selectedShow ? selectedShow as '1st-show' | '2nd-show' | 'nightly-show' | 'matinee' : undefined;
 
     const cashAmountTendered = method === 'cash' && cashAmount ? parseFloat(cashAmount) : undefined;
-    const splitCashAmount = method === 'split' && cashAmount ? parseFloat(cashAmount) : undefined;
+    const splitCashAmount = method === 'split' && cashAmount ? Math.round(parseFloat(cashAmount) * 100) / 100 : undefined;
     const order = checkout(method, user?.id, user?.name, selectedDepartment || undefined, hasTickets, user?.role, showType, cashAmountTendered, splitCashAmount);
     if (order) {
       if (Platform.OS !== 'web') {
@@ -383,12 +383,36 @@ export default function POSScreen() {
                     <View style={styles.orderSummaryPaymentRow}>
                       <Text style={styles.orderSummaryPaymentLabel}>Payment:</Text>
                       <Text style={styles.orderSummaryPaymentValue}>
-                        {completedOrder.paymentMethod === 'cash' ? 'Cash' : 'Credit Card'}
+                        {completedOrder.paymentMethod === 'cash' ? 'Cash' : completedOrder.paymentMethod === 'split' ? 'Split (Cash + Card)' : 'Credit Card'}
                       </Text>
                     </View>
+
+                    {/* Split payment: cash taken, card charged and card fee */}
+                    {completedOrder.paymentMethod === 'split' && completedOrder.splitPayment && (
+                      <>
+                        <View style={styles.orderSummaryCashRow}>
+                          <Text style={styles.orderSummaryCashLabel}>Cash Taken:</Text>
+                          <Text style={styles.orderSummaryCashValue}>
+                            ${completedOrder.splitPayment.cashAmount.toFixed(2)}
+                          </Text>
+                        </View>
+                        <View style={styles.orderSummaryCashRow}>
+                          <Text style={styles.orderSummaryCashLabel}>Card Charged:</Text>
+                          <Text style={styles.orderSummaryCashValue}>
+                            ${(completedOrder.splitPayment.cardAmount + completedOrder.splitPayment.cardFee).toFixed(2)}
+                          </Text>
+                        </View>
+                        <View style={styles.orderSummaryCashRow}>
+                          <Text style={styles.orderSummaryCashLabel}>Card Fee:</Text>
+                          <Text style={styles.orderSummaryCashValue}>
+                            ${completedOrder.splitPayment.cardFee.toFixed(2)}
+                          </Text>
+                        </View>
+                      </>
+                    )}
                     
                     {/* Cash Amount Tendered and Change Due */}
-                    {completedOrder.paymentMethod === 'cash' && completedOrder.cashAmountTendered && (
+                    {completedOrder.paymentMethod === 'cash' && !!completedOrder.cashAmountTendered && (
                       <>
                         <View style={styles.orderSummaryCashRow}>
                           <Text style={styles.orderSummaryCashLabel}>Cash Tendered:</Text>

@@ -1017,7 +1017,30 @@ ${departmentBreakdown}`;
                 </Text>
               </View>
             </View>
-            
+
+            {/* Split Payments - already included in the cash and card sales above */}
+            {currentReport.splitPayments && currentReport.splitPayments.orders > 0 && (
+              <View style={{ marginTop: 16 }}>
+                <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12 }]}>
+                  Split Payments ({currentReport.splitPayments.orders} {currentReport.splitPayments.orders === 1 ? 'order' : 'orders'})
+                </Text>
+                <View style={styles.paymentBreakdown}>
+                  <View style={styles.paymentRow}>
+                    <Text style={styles.paymentLabel}>Cash Taken:</Text>
+                    <Text style={[styles.paymentValue, { color: TheatreColors.success }]}>${formatCurrency(currentReport.splitPayments.cashTaken)}</Text>
+                  </View>
+                  <View style={styles.paymentRow}>
+                    <Text style={styles.paymentLabel}>Card Charged:</Text>
+                    <Text style={styles.paymentValue}>${formatCurrency(currentReport.splitPayments.cardCharged)}</Text>
+                  </View>
+                  <View style={styles.paymentRow}>
+                    <Text style={styles.paymentLabel}>Card Fees:</Text>
+                    <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(currentReport.splitPayments.cardFees)}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
             {/* Show Payment Breakdown if shows exist */}
             {currentReport.showBreakdown && (() => {
               const hasShowSales = Object.values(currentReport.showBreakdown).some(show => show.sales > 0);
@@ -1378,6 +1401,9 @@ ${departmentBreakdown}`;
                 managerAfterClosingCash += order.total;
               } else if (order.paymentMethod === 'card') {
                 managerAfterClosingCard += order.total;
+              } else if (order.paymentMethod === 'split' && order.splitPayment) {
+                managerAfterClosingCash += order.splitPayment.cashAmount;
+                managerAfterClosingCard += order.total - order.splitPayment.cashAmount;
               }
             });
             

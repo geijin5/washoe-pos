@@ -146,7 +146,7 @@ export const generateSummarySection = (
   isTrainingReport: boolean,
   formatCurrency: (amount: number) => string
 ): string => {
-  return `SUMMARY
+  let section = `SUMMARY
 Total Sales: ${formatCurrency(report.totalSales)}${isTrainingReport ? ' (TRAINING)' : ''}
 Total Orders: ${report.totalOrders}${isTrainingReport ? ' (TRAINING)' : ''}
 Average Order: ${formatCurrency(report.totalOrders > 0 ? report.totalSales / report.totalOrders : 0)}${isTrainingReport ? ' (TRAINING)' : ''}
@@ -154,6 +154,19 @@ Average Order: ${formatCurrency(report.totalOrders > 0 ? report.totalSales / rep
 PAYMENT BREAKDOWN
 Cash Sales: ${formatCurrency(report.cashSales)}${isTrainingReport ? ' (TRAINING)' : ''}
 Card Sales: ${formatCurrency(report.cardSales)}${isTrainingReport ? ' (TRAINING)' : ''}`;
+
+  // Split payments are already included in the cash and card sales above
+  if (report.splitPayments && report.splitPayments.orders > 0) {
+    section += `
+
+SPLIT PAYMENTS (INCLUDED ABOVE)
+Split Orders: ${report.splitPayments.orders}${isTrainingReport ? ' (TRAINING)' : ''}
+Split Cash Taken: ${formatCurrency(report.splitPayments.cashTaken)}${isTrainingReport ? ' (TRAINING)' : ''}
+Split Card Charged: ${formatCurrency(report.splitPayments.cardCharged)}${isTrainingReport ? ' (TRAINING)' : ''}
+Split Card Fees: ${formatCurrency(report.splitPayments.cardFees)}${isTrainingReport ? ' (TRAINING)' : ''}`;
+  }
+
+  return section;
 };
 
 // Helper function to generate department breakdown section
@@ -224,6 +237,9 @@ export const calculateManagerSalesByDepartment = (
       managerCash += order.total;
     } else if (order.paymentMethod === 'card') {
       managerCard += order.total;
+    } else if (order.paymentMethod === 'split' && order.splitPayment) {
+      managerCash += order.splitPayment.cashAmount;
+      managerCard += order.total - order.splitPayment.cashAmount;
     }
   });
   
@@ -247,6 +263,9 @@ export const calculateUsherAfterClosingSales = (orders: Order[]): { usherCash: n
       usherCash += order.total;
     } else if (order.paymentMethod === 'card') {
       usherCard += order.total;
+    } else if (order.paymentMethod === 'split' && order.splitPayment) {
+      usherCash += order.splitPayment.cashAmount;
+      usherCard += order.total - order.splitPayment.cashAmount;
     }
   });
   

@@ -616,7 +616,16 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       return sum;
     }, 0) * 100) / 100;
     const creditCardFees = Math.round(dayOrders.reduce((sum, order) => sum + (order.creditCardFee || 0), 0) * 100) / 100;
-    
+
+    // Split payments - cash taken, amount charged to card (including fee), and the card fees
+    const splitOrders = dayOrders.filter(o => o.paymentMethod === 'split' && o.splitPayment);
+    const splitPayments = {
+      orders: splitOrders.length,
+      cashTaken: Math.round(splitOrders.reduce((sum, o) => sum + o.splitPayment!.cashAmount, 0) * 100) / 100,
+      cardCharged: Math.round(splitOrders.reduce((sum, o) => sum + (o.total - o.splitPayment!.cashAmount), 0) * 100) / 100,
+      cardFees: Math.round(splitOrders.reduce((sum, o) => sum + o.splitPayment!.cardFee, 0) * 100) / 100,
+    };
+
     // Verify cash + card = total (with enhanced precision)
     const calculatedTotal = Math.round((cashSales + cardSales) * 100) / 100;
     const totalDifference = Math.abs(calculatedTotal - totalSales);
@@ -1291,6 +1300,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       departmentBreakdown,
       showBreakdown,
       paymentBreakdown,
+      splitPayments,
       userBreakdown,
       topProducts,
     };
@@ -1740,6 +1750,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
             orders: aggregatedAfterClosingOrders,
           },
         },
+        splitPayments: localReport.splitPayments,
         userBreakdown: aggregatedUserBreakdown,
         topProducts: [] // Top products removed from aggregated reports
       };
