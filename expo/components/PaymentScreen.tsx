@@ -13,6 +13,7 @@ import { TheatreColors } from '@/constants/theatre-colors';
 import { useTabletLayout } from '@/hooks/use-tablet-layout';
 import { CartItem } from '@/types/pos';
 import { AmountKeypad } from '@/components/AmountKeypad';
+import { calculateCardFee, roundToCents } from '@/constants/money';
 import * as Haptics from 'expo-haptics';
 
 const getShowDisplayName = (show: string): string => {
@@ -56,17 +57,18 @@ export function PaymentScreen({
 
     const ticketSubtotal = ticketItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
     const nonTicketSubtotal = nonTicketItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-    const subtotal = ticketSubtotal + nonTicketSubtotal;
+    // Same rounding as checkout in pos-store, so the fee shown here is the fee charged
+    const subtotal = roundToCents(ticketSubtotal + nonTicketSubtotal);
 
     let creditCardFee = 0;
     if (paymentMethod === 'card') {
-      creditCardFee = subtotal * (creditCardFeePercent / 100);
+      creditCardFee = calculateCardFee(subtotal, creditCardFeePercent);
     } else if (paymentMethod === 'split') {
       const splitCash = parseFloat(splitCashAmount) || 0;
-      const cardPortion = Math.max(0, subtotal - splitCash);
-      creditCardFee = cardPortion * (creditCardFeePercent / 100);
+      const cardPortion = Math.max(0, roundToCents(subtotal - splitCash));
+      creditCardFee = calculateCardFee(cardPortion, creditCardFeePercent);
     }
-    const total = subtotal + creditCardFee;
+    const total = roundToCents(subtotal + creditCardFee);
 
     // Determine if tickets are being sold through candy counter (after closing)
     const isAfterClosing = department === 'candy-counter' && ticketItems.length > 0;
@@ -126,7 +128,7 @@ export function PaymentScreen({
   // Split payment amounts: cash taken at the register and what goes on the card (including fee)
   const splitCash = parseFloat(splitCashAmount) || 0;
   const isSplitValid = splitCash > 0 && splitCash < totals.subtotal;
-  const splitCardCharge = Math.max(0, totals.total - splitCash);
+  const splitCardCharge = Math.max(0, roundToCents(totals.total - splitCash));
   const splitQuickAmounts = [5, 10, 20, 50, 100].filter(amount => amount < totals.subtotal);
 
   const handleSplitQuickAmount = async (amount: number) => {
@@ -217,7 +219,7 @@ export function PaymentScreen({
                     {paymentMethod === 'card' && (
                       <View style={styles.tabletCalculationRowCompact}>
                         <Text style={styles.tabletCalculationLabelCompact}>Card Fees:</Text>
-                        <Text style={styles.tabletCalculationValueCompact}>${(totals.ticketSubtotal * (creditCardFeePercent / 100)).toFixed(2)}</Text>
+                        <Text style={styles.tabletCalculationValueCompact}>${calculateCardFee(totals.ticketSubtotal, creditCardFeePercent).toFixed(2)}</Text>
                       </View>
                     )}
                   </View>
@@ -617,7 +619,7 @@ export function PaymentScreen({
                   {paymentMethod === 'card' && (
                     <View style={styles.mobileBreakdownRow}>
                       <Text style={styles.mobileBreakdownLabel}>After Closing Card Fees:</Text>
-                      <Text style={styles.mobileBreakdownValue}>${(totals.ticketSubtotal * (creditCardFeePercent / 100)).toFixed(2)}</Text>
+                      <Text style={styles.mobileBreakdownValue}>${calculateCardFee(totals.ticketSubtotal, creditCardFeePercent).toFixed(2)}</Text>
                     </View>
                   )}
                 </>
