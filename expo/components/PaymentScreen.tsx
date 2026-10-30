@@ -1,19 +1,18 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   TouchableOpacity,
-  TextInput,
   ScrollView,
   Platform,
-  KeyboardAvoidingView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, DollarSign, CreditCard } from 'lucide-react-native';
 import { TheatreColors } from '@/constants/theatre-colors';
 import { useTabletLayout } from '@/hooks/use-tablet-layout';
 import { CartItem } from '@/types/pos';
+import { AmountKeypad } from '@/components/AmountKeypad';
 import * as Haptics from 'expo-haptics';
 
 const getShowDisplayName = (show: string): string => {
@@ -24,14 +23,6 @@ const getShowDisplayName = (show: string): string => {
     case 'matinee': return 'Matinee';
     default: return show;
   }
-};
-
-// Keep amount inputs numeric: digits and one decimal point, max two decimal places
-const sanitizeAmount = (text: string): string => {
-  const cleaned = text.replace(/,/g, '.').replace(/[^0-9.]/g, '');
-  const [whole, ...rest] = cleaned.split('.');
-  if (rest.length === 0) return whole;
-  return `${whole}.${rest.join('').slice(0, 2)}`;
 };
 
 interface PaymentScreenProps {
@@ -56,15 +47,6 @@ export function PaymentScreen({
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'split'>('cash');
   const [cashAmount, setCashAmount] = useState('');
   const [splitCashAmount, setSplitCashAmount] = useState('');
-
-  // Phone layout: keep the cash input on screen when the keyboard opens
-  const mobileScrollRef = useRef<ScrollView>(null);
-  const cashSectionY = useRef(0);
-  const scrollToCashSection = () => {
-    setTimeout(() => {
-      mobileScrollRef.current?.scrollTo({ y: Math.max(0, cashSectionY.current - 8), animated: true });
-    }, 300);
-  };
 
   // Calculate totals based on selected payment method and department breakdown
   const totals = React.useMemo(() => {
@@ -159,11 +141,7 @@ export function PaymentScreen({
   if (isTabletFullscreen) {
     return (
       <View style={[styles.overlay, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <KeyboardAvoidingView 
-          style={styles.tabletContainer}
-          behavior="padding"
-          keyboardVerticalOffset={0}
-        >
+        <View style={styles.tabletContainer}>
           {/* Header */}
           <View style={styles.tabletHeader}>
             <Text style={styles.tabletTitle}>Payment</Text>
@@ -385,25 +363,21 @@ export function PaymentScreen({
                       <Text style={[styles.tabletCashInputLabelOptimized, { color: TheatreColors.background, fontWeight: 'bold' }]}>
                         Cash Amount (max ${totals.subtotal.toFixed(2)}):
                       </Text>
-                      <TextInput
-                        style={[styles.tabletCashInputOptimized, {
+                      <Text
+                        style={[[styles.tabletCashInputOptimized, {
                           backgroundColor: TheatreColors.background,
                           borderColor: '#9C27B0',
                           borderWidth: 2,
                           fontSize: 18,
                           fontWeight: 'bold',
                           minHeight: 50,
-                        }]}
-                        placeholder="Enter cash amount"
-                        placeholderTextColor={TheatreColors.textSecondary}
-                        value={splitCashAmount}
-                        onChangeText={text => setSplitCashAmount(sanitizeAmount(text))}
-                        keyboardType="decimal-pad"
-                        inputMode="decimal"
-                        autoFocus
-                        returnKeyType="done"
-                      />
+                        }], styles.amountDisplay, !splitCashAmount && styles.amountDisplayPlaceholder]}
+                        numberOfLines={1}
+                      >
+                        {splitCashAmount ? `$${splitCashAmount}` : 'Enter cash amount'}
+                      </Text>
                     </View>
+                    <AmountKeypad value={splitCashAmount} onChange={setSplitCashAmount} compact />
                     <View style={styles.tabletQuickAmountsOptimized}>
                       <View style={styles.tabletQuickAmountButtonsOptimized}>
                         <TouchableOpacity
@@ -463,7 +437,7 @@ export function PaymentScreen({
                   <View style={styles.tabletCashSection}>
                     <Text style={styles.tabletSectionTitle}>Cash Amount</Text>
 
-                    {/* Cash Received Input - kept at the top so the keyboard never covers it */}
+                    {/* Cash Received display - entered with the on-screen keypad below */}
                     <View style={[
                       styles.tabletCashInputContainerOptimized,
                       {
@@ -477,8 +451,8 @@ export function PaymentScreen({
                         styles.tabletCashInputLabelOptimized,
                         { color: TheatreColors.background, fontWeight: 'bold' }
                       ]}>Cash Received:</Text>
-                      <TextInput
-                        style={[
+                      <Text
+                        style={[[
                           styles.tabletCashInputOptimized,
                           {
                             backgroundColor: TheatreColors.background,
@@ -488,17 +462,13 @@ export function PaymentScreen({
                             fontWeight: 'bold',
                             minHeight: 50,
                           }
-                        ]}
-                        placeholder="Enter amount"
-                        placeholderTextColor={TheatreColors.textSecondary}
-                        value={cashAmount}
-                        onChangeText={text => setCashAmount(sanitizeAmount(text))}
-                        keyboardType="decimal-pad"
-                        inputMode="decimal"
-                        returnKeyType="done"
-                        selectTextOnFocus
-                      />
+                        ], styles.amountDisplay, !cashAmount && styles.amountDisplayPlaceholder]}
+                        numberOfLines={1}
+                      >
+                        {cashAmount ? `$${cashAmount}` : 'Enter amount'}
+                      </Text>
                     </View>
+                    <AmountKeypad value={cashAmount} onChange={setCashAmount} compact />
 
                     {/* Quick Amount Buttons - Optimized for Samsung Tab A 9+ */}
                     <View style={styles.tabletQuickAmountsOptimized}>
@@ -569,7 +539,7 @@ export function PaymentScreen({
               </View>
             </View>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </View>
     );
   }
@@ -577,11 +547,7 @@ export function PaymentScreen({
   // Mobile/Portrait layout (improved for phone screens)
   return (
     <View style={[styles.overlay, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-      <KeyboardAvoidingView 
-        style={styles.mobileContainer}
-        behavior="padding"
-        keyboardVerticalOffset={0}
-      >
+      <View style={styles.mobileContainer}>
         {/* Header */}
         <View style={styles.mobileHeader}>
           <Text style={styles.mobileTitle}>Payment</Text>
@@ -592,7 +558,6 @@ export function PaymentScreen({
 
         {/* Scrollable Content */}
         <ScrollView 
-          ref={mobileScrollRef}
           style={styles.mobileScrollContent} 
           contentContainerStyle={styles.mobileScrollContainer}
           showsVerticalScrollIndicator={false}
@@ -761,28 +726,20 @@ export function PaymentScreen({
 
           {/* Split Payment Options */}
           {paymentMethod === 'split' && (
-            <View
-              style={styles.mobileSection}
-              onLayout={e => { cashSectionY.current = e.nativeEvent.layout.y; }}
-            >
+            <View style={styles.mobileSection}>
               <Text style={styles.mobileSectionTitle}>Cash Portion</Text>
               <View style={[styles.mobileCashInputContainer, { borderColor: '#9C27B0' }]}>
                 <Text style={styles.mobileCashInputLabel}>
                   Cash Amount (max ${totals.subtotal.toFixed(2)}):
                 </Text>
-                <TextInput
-                  style={[styles.mobileCashInput, { borderColor: '#9C27B0' }]}
-                  placeholder="Enter cash amount"
-                  placeholderTextColor={TheatreColors.textSecondary}
-                  value={splitCashAmount}
-                  onChangeText={text => setSplitCashAmount(sanitizeAmount(text))}
-                  keyboardType="decimal-pad"
-                  inputMode="decimal"
-                  autoFocus
-                  returnKeyType="done"
-                  onFocus={scrollToCashSection}
-                />
+                <Text
+                  style={[[styles.mobileCashInput, { borderColor: '#9C27B0' }], styles.amountDisplay, !splitCashAmount && styles.amountDisplayPlaceholder]}
+                  numberOfLines={1}
+                >
+                  {splitCashAmount ? `$${splitCashAmount}` : 'Enter cash amount'}
+                </Text>
               </View>
+              <AmountKeypad value={splitCashAmount} onChange={setSplitCashAmount} />
               <View style={styles.mobileQuickAmounts}>
                 <View style={styles.mobileQuickAmountButtons}>
                   <TouchableOpacity
@@ -837,28 +794,20 @@ export function PaymentScreen({
 
           {/* Cash Payment Options - Optimized for mobile */}
           {paymentMethod === 'cash' && (
-            <View
-              style={styles.mobileSection}
-              onLayout={e => { cashSectionY.current = e.nativeEvent.layout.y; }}
-            >
+            <View style={styles.mobileSection}>
               <Text style={styles.mobileSectionTitle}>Cash Amount</Text>
 
-              {/* Cash Received Input - kept at the top of the section and scrolled into view on focus */}
+              {/* Cash Received display - entered with the on-screen keypad below */}
               <View style={styles.mobileCashInputContainer}>
                 <Text style={styles.mobileCashInputLabel}>Cash Received:</Text>
-                <TextInput
-                  style={styles.mobileCashInput}
-                  placeholder="Enter amount"
-                  placeholderTextColor={TheatreColors.textSecondary}
-                  value={cashAmount}
-                  onChangeText={text => setCashAmount(sanitizeAmount(text))}
-                  keyboardType="decimal-pad"
-                  inputMode="decimal"
-                  returnKeyType="done"
-                  selectTextOnFocus
-                  onFocus={scrollToCashSection}
-                />
+                <Text
+                  style={[styles.mobileCashInput, styles.amountDisplay, !cashAmount && styles.amountDisplayPlaceholder]}
+                  numberOfLines={1}
+                >
+                  {cashAmount ? `$${cashAmount}` : 'Enter amount'}
+                </Text>
               </View>
+              <AmountKeypad value={cashAmount} onChange={setCashAmount} />
 
               {/* Quick Amount Buttons - Better mobile layout */}
               <View style={styles.mobileQuickAmounts}>
@@ -945,7 +894,7 @@ export function PaymentScreen({
             </Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }
@@ -2381,6 +2330,15 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#0D47A1',
+  },
+  // Read-only amount display shown above the on-screen keypad
+  amountDisplay: {
+    textAlignVertical: 'center',
+    overflow: 'hidden',
+  },
+  amountDisplayPlaceholder: {
+    color: TheatreColors.textSecondary,
+    fontWeight: '500',
   },
   // Split payment styles
   tabletSplitMethodActive: {
