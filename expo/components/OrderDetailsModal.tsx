@@ -85,7 +85,7 @@ export function OrderDetailsModal({ visible, order, onClose }: OrderDetailsModal
               <DollarSign size={20} color={TheatreColors.textSecondary} />
               <Text style={styles.infoLabel}>Payment Method</Text>
               <Text style={styles.infoValue}>
-                {order.paymentMethod === 'cash' ? '💵 Cash' : '💳 Card'}
+                {order.paymentMethod === 'cash' ? '💵 Cash' : order.paymentMethod === 'split' ? '💵💳 Split' : '💳 Card'}
               </Text>
             </View>
             
@@ -141,7 +141,7 @@ export function OrderDetailsModal({ visible, order, onClose }: OrderDetailsModal
               <Text style={styles.totalValue}>${order.subtotal.toFixed(2)}</Text>
             </View>
             
-            {order.creditCardFee && order.creditCardFee > 0 && (
+            {!!order.creditCardFee && order.creditCardFee > 0 && (
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Credit Card Fee</Text>
                 <Text style={styles.totalValue}>${order.creditCardFee.toFixed(2)}</Text>
@@ -152,6 +152,36 @@ export function OrderDetailsModal({ visible, order, onClose }: OrderDetailsModal
               <Text style={styles.finalTotalLabel}>Total</Text>
               <Text style={styles.finalTotalValue}>${order.total.toFixed(2)}</Text>
             </View>
+
+            {order.paymentMethod === 'cash' && !!order.cashAmountTendered && (
+              <>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Cash Tendered</Text>
+                  <Text style={styles.totalValue}>${order.cashAmountTendered.toFixed(2)}</Text>
+                </View>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Change Given</Text>
+                  <Text style={styles.totalValue}>${(order.cashAmountTendered - order.total).toFixed(2)}</Text>
+                </View>
+              </>
+            )}
+
+            {order.paymentMethod === 'split' && order.splitPayment && (
+              <>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Cash Taken</Text>
+                  <Text style={styles.totalValue}>${order.splitPayment.cashAmount.toFixed(2)}</Text>
+                </View>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Card Charged (incl. fee)</Text>
+                  <Text style={styles.totalValue}>${(order.splitPayment.cardAmount + order.splitPayment.cardFee).toFixed(2)}</Text>
+                </View>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Card Fee</Text>
+                  <Text style={styles.totalValue}>${order.splitPayment.cardFee.toFixed(2)}</Text>
+                </View>
+              </>
+            )}
           </View>
         </ScrollView>
       </View>

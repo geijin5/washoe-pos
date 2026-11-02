@@ -1017,7 +1017,30 @@ ${departmentBreakdown}`;
                 </Text>
               </View>
             </View>
-            
+
+            {/* Split Payments - already included in the cash and card sales above */}
+            {currentReport.splitPayments && currentReport.splitPayments.orders > 0 && (
+              <View style={{ marginTop: 16 }}>
+                <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12 }]}>
+                  Split Payments ({currentReport.splitPayments.orders} {currentReport.splitPayments.orders === 1 ? 'order' : 'orders'})
+                </Text>
+                <View style={styles.paymentBreakdown}>
+                  <View style={styles.paymentRow}>
+                    <Text style={styles.paymentLabel}>Cash Taken:</Text>
+                    <Text style={[styles.paymentValue, { color: TheatreColors.success }]}>${formatCurrency(currentReport.splitPayments.cashTaken)}</Text>
+                  </View>
+                  <View style={styles.paymentRow}>
+                    <Text style={styles.paymentLabel}>Card Charged:</Text>
+                    <Text style={styles.paymentValue}>${formatCurrency(currentReport.splitPayments.cardCharged)}</Text>
+                  </View>
+                  <View style={styles.paymentRow}>
+                    <Text style={styles.paymentLabel}>Card Fees:</Text>
+                    <Text style={[styles.paymentValue, { color: TheatreColors.error }]}>${formatCurrency(currentReport.splitPayments.cardFees)}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
             {/* Show Payment Breakdown if shows exist */}
             {currentReport.showBreakdown && (() => {
               const hasShowSales = Object.values(currentReport.showBreakdown).some(show => show.sales > 0);
@@ -1133,12 +1156,20 @@ ${departmentBreakdown}`;
           </View>
 
           {/* Card Fee Calculation */}
+          {(() => {
+            // Card sales include the fee, so subtotal = card sales / (1 + fee%).
+            // Each order's fee is rounded to the cent, so allow up to half a cent of drift per order.
+            const feeDivisor = 1 + settings.creditCardFeePercent / 100;
+            const expectedFees = currentReport.cardSales - currentReport.cardSales / feeDivisor;
+            const feeDifference = Math.abs(expectedFees - currentReport.creditCardFees);
+            const feeTolerance = Math.max(0.01, 0.005 * currentReport.totalOrders);
+            return (
           <View style={[styles.section, (isTrainingMode || settings.trainingMode) && styles.trainingSection]}>
             <Text style={styles.sectionTitle}>
               💳 Card Fee Calculation{(isTrainingMode || settings.trainingMode) ? ' 🎓 (Training)' : ''}
             </Text>
             <Text style={styles.sectionDescription}>
-              Verification of card fee calculations using the formula: S = CT ÷ 1.05, CF = CT - S
+              Verification of card fee calculations using the formula: S = CT ÷ {feeDivisor.toFixed(3)} ({settings.creditCardFeePercent}% fee), CF = CT - S
             </Text>
             
             <View style={styles.calculationCard}>
@@ -1147,12 +1178,12 @@ ${departmentBreakdown}`;
                 <Text style={styles.calculationValue}>${formatCurrency(currentReport.cardSales)}</Text>
               </View>
               <View style={styles.calculationRow}>
-                <Text style={styles.calculationLabel}>Subtotal (S = CT ÷ 1.05):</Text>
-                <Text style={styles.calculationValue}>${formatCurrency(currentReport.cardSales / 1.05)}</Text>
+                <Text style={styles.calculationLabel}>Subtotal (S = CT ÷ {feeDivisor.toFixed(3)}):</Text>
+                <Text style={styles.calculationValue}>${formatCurrency(currentReport.cardSales / feeDivisor)}</Text>
               </View>
               <View style={styles.calculationRow}>
                 <Text style={styles.calculationLabel}>Card Fees (CF = CT - S):</Text>
-                <Text style={[styles.calculationValue, { color: TheatreColors.error }]}>${formatCurrency(currentReport.cardSales - (currentReport.cardSales / 1.05))}</Text>
+                <Text style={[styles.calculationValue, { color: TheatreColors.error }]}>${formatCurrency(expectedFees)}</Text>
               </View>
               <View style={styles.calculationRow}>
                 <Text style={styles.calculationLabel}>Actual Card Fees:</Text>
@@ -1161,14 +1192,16 @@ ${departmentBreakdown}`;
               <View style={[styles.calculationRow, { borderTopWidth: 1, borderTopColor: TheatreColors.surfaceLight, paddingTop: 8, marginTop: 8 }]}>
                 <Text style={[styles.calculationLabel, { fontWeight: 'bold' }]}>Difference:</Text>
                 <Text style={[styles.calculationValue, { 
-                  color: Math.abs((currentReport.cardSales - (currentReport.cardSales / 1.05)) - currentReport.creditCardFees) < 0.01 ? TheatreColors.success : TheatreColors.warning,
+                  color: feeDifference <= feeTolerance ? TheatreColors.success : TheatreColors.warning,
                   fontWeight: 'bold' 
                 }]}>
-                  ${formatCurrency(Math.abs((currentReport.cardSales - (currentReport.cardSales / 1.05)) - currentReport.creditCardFees))}
+                  ${formatCurrency(feeDifference)}
                 </Text>
               </View>
             </View>
           </View>
+            );
+          })()}
 
 
           {/* Box Office Payment Breakdown */}
@@ -1192,7 +1225,7 @@ ${departmentBreakdown}`;
             const boxOfficeCardFees = boxOfficeCardSales * feeRate;
             
             // Verify the fee rate is correct (should be 5%)
-            const expectedFeeRate = settings.creditCardFeePercent / 100;
+            const expectedFeeRate = settings.creditCardFeePercent / (100 + settings.creditCardFeePercent);
             if (Math.abs(feeRate - expectedFeeRate) > 0.001) {
               console.warn(`⚠️ BOX OFFICE FEE RATE MISMATCH: Calculated ${(feeRate * 100).toFixed(4)}% vs Expected ${settings.creditCardFeePercent}%`);
             }
@@ -1262,7 +1295,7 @@ ${departmentBreakdown}`;
             const candyCounterCardFees = candyCounterCardSales * feeRate;
             
             // Verify the fee rate is correct (should be 5%)
-            const expectedFeeRate = settings.creditCardFeePercent / 100;
+            const expectedFeeRate = settings.creditCardFeePercent / (100 + settings.creditCardFeePercent);
             if (Math.abs(feeRate - expectedFeeRate) > 0.001) {
               console.warn(`⚠️ CANDY COUNTER FEE RATE MISMATCH: Calculated ${(feeRate * 100).toFixed(4)}% vs Expected ${settings.creditCardFeePercent}%`);
             }
@@ -1334,7 +1367,7 @@ ${departmentBreakdown}`;
             console.log(`After closing card fees: ${afterClosingCardFees.toFixed(2)}`);
             
             // Verify the 5% fee rate is correct
-            const expectedFeeRate = settings.creditCardFeePercent / 100;
+            const expectedFeeRate = settings.creditCardFeePercent / (100 + settings.creditCardFeePercent);
             const feeRateDifference = Math.abs(feeRate - expectedFeeRate);
             if (feeRateDifference > 0.001) {
               console.warn(`⚠️ AFTER CLOSING FEE RATE MISMATCH: Calculated ${(feeRate * 100).toFixed(4)}% vs Expected ${settings.creditCardFeePercent}%`);
@@ -1378,6 +1411,9 @@ ${departmentBreakdown}`;
                 managerAfterClosingCash += order.total;
               } else if (order.paymentMethod === 'card') {
                 managerAfterClosingCard += order.total;
+              } else if (order.paymentMethod === 'split' && order.splitPayment) {
+                managerAfterClosingCash += order.splitPayment.cashAmount;
+                managerAfterClosingCard += order.total - order.splitPayment.cashAmount;
               }
             });
             
@@ -1426,7 +1462,7 @@ ${departmentBreakdown}`;
                 const feeRate = currentReport.cardSales > 0 ? currentReport.creditCardFees / currentReport.cardSales : 0;
                 
                 // Verify the fee rate is exactly 5%
-                const expectedFeeRate = settings.creditCardFeePercent / 100;
+                const expectedFeeRate = settings.creditCardFeePercent / (100 + settings.creditCardFeePercent);
                 if (Math.abs(feeRate - expectedFeeRate) > 0.001) {
                   console.warn(`⚠️ FEES SECTION FEE RATE MISMATCH: Calculated ${(feeRate * 100).toFixed(4)}% vs Expected ${settings.creditCardFeePercent}%`);
                 } else {

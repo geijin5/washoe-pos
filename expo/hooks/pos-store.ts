@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 
 import { Product, CartItem, Order, Category, CategoryMetadata, POSStats, POSSettings, NightlyReport, SettingsExport } from '@/types/pos';
 import { defaultProducts } from '@/mocks/default-products';
+import { calculateCardFee, roundToCents } from '@/constants/money';
 // Removed sync service import as it's not used
 
 const PRODUCTS_KEY = 'theatre_products';
@@ -228,16 +229,16 @@ export const [POSProvider, usePOS] = createContextHook(() => {
 
   // Calculate totals with credit card fee - Enhanced logging for verification
   const calculateTotalsWithFee = useCallback((paymentMethod: 'cash' | 'card' | 'split', splitCashAmount?: number) => {
-    const subtotal = Math.round(cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0) * 100) / 100;
+    const subtotal = roundToCents(cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0));
     const feePercent = settings.creditCardFeePercent;
     let creditCardFee = 0;
     if (paymentMethod === 'card') {
-      creditCardFee = Math.round(subtotal * (feePercent / 100) * 100) / 100;
+      creditCardFee = calculateCardFee(subtotal, feePercent);
     } else if (paymentMethod === 'split' && splitCashAmount !== undefined) {
-      const cardPortion = Math.max(0, subtotal - splitCashAmount);
-      creditCardFee = Math.round(cardPortion * (feePercent / 100) * 100) / 100;
+      const cardPortion = Math.max(0, roundToCents(subtotal - splitCashAmount));
+      creditCardFee = calculateCardFee(cardPortion, feePercent);
     }
-    const total = Math.round((subtotal + creditCardFee) * 100) / 100;
+    const total = roundToCents(subtotal + creditCardFee);
 
     // Enhanced logging for fee calculation verification
     if ((paymentMethod === 'card' || paymentMethod === 'split') && creditCardFee > 0) {
@@ -269,7 +270,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       cashAmountTendered: paymentMethod === 'cash' ? cashAmountTendered : undefined,
       splitPayment: paymentMethod === 'split' && splitCashAmount !== undefined ? {
         cashAmount: splitCashAmount,
-        cardAmount: Math.round((totals.subtotal - splitCashAmount) * 100) / 100,
+        cardAmount: roundToCents(totals.subtotal - splitCashAmount),
         cardFee: totals.creditCardFee,
       } : undefined,
       userId,
@@ -616,7 +617,16 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       return sum;
     }, 0) * 100) / 100;
     const creditCardFees = Math.round(dayOrders.reduce((sum, order) => sum + (order.creditCardFee || 0), 0) * 100) / 100;
-    
+
+    // Split payments - cash taken, amount charged to card (including fee), and the card fees
+    const splitOrders = dayOrders.filter(o => o.paymentMethod === 'split' && o.splitPayment);
+    const splitPayments = {
+      orders: splitOrders.length,
+      cashTaken: Math.round(splitOrders.reduce((sum, o) => sum + o.splitPayment!.cashAmount, 0) * 100) / 100,
+      cardCharged: Math.round(splitOrders.reduce((sum, o) => sum + (o.total - o.splitPayment!.cashAmount), 0) * 100) / 100,
+      cardFees: Math.round(splitOrders.reduce((sum, o) => sum + o.splitPayment!.cardFee, 0) * 100) / 100,
+    };
+
     // Verify cash + card = total (with enhanced precision)
     const calculatedTotal = Math.round((cashSales + cardSales) * 100) / 100;
     const totalDifference = Math.abs(calculatedTotal - totalSales);
@@ -1291,6 +1301,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
       departmentBreakdown,
       showBreakdown,
       paymentBreakdown,
+      splitPayments,
       userBreakdown,
       topProducts,
     };
@@ -1740,6 +1751,7 @@ export const [POSProvider, usePOS] = createContextHook(() => {
             orders: aggregatedAfterClosingOrders,
           },
         },
+        splitPayments: localReport.splitPayments,
         userBreakdown: aggregatedUserBreakdown,
         topProducts: [] // Top products removed from aggregated reports
       };

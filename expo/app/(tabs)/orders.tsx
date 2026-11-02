@@ -1,18 +1,28 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   FlatList,
+  TextInput,
   TouchableOpacity,
 } from 'react-native';
 import { usePOS } from '@/hooks/pos-store';
 import { useAuth } from '@/hooks/auth-store';
 import { Order } from '@/types/pos';
 import { TheatreColors } from '@/constants/theatre-colors';
-import { Calendar, DollarSign, Package, TrendingUp } from 'lucide-react-native';
+import { Calendar, DollarSign, Package, Search, TrendingUp } from 'lucide-react-native';
 import { RoleGuard } from '@/components/RoleGuard';
 import { OrderDetailsModal } from '@/components/OrderDetailsModal';
+
+type PaymentFilter = 'all' | 'cash' | 'card' | 'split';
+
+const PAYMENT_FILTERS: { id: PaymentFilter; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'cash', label: '💵 Cash' },
+  { id: 'card', label: '💳 Card' },
+  { id: 'split', label: '💵💳 Split' },
+];
 
 export default function OrdersScreen() {
   return (
@@ -27,6 +37,22 @@ function OrdersContent() {
   const { canAccess } = useAuth();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter by payment method, then by order number, cashier or item name
+  const visibleOrders = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return orders.filter(order => {
+      if (paymentFilter !== 'all' && (order.paymentMethod || 'cash') !== paymentFilter) return false;
+      if (!query) return true;
+      return (
+        order.id.slice(-6).includes(query) ||
+        (order.userName || '').toLowerCase().includes(query) ||
+        order.items.some(i => i.product.name.toLowerCase().includes(query))
+      );
+    });
+  }, [orders, paymentFilter, searchQuery]);
 
   const handleOrderPress = (order: Order) => {
     // Input validation
@@ -75,8 +101,16 @@ function OrdersContent() {
         <View style={styles.orderFooter}>
           <View style={styles.paymentMethodContainer}>
             <Text style={styles.paymentMethod}>
-              {item.paymentMethod === 'cash' ? '💵 Cash' : '💳 Card'}
+              {item.paymentMethod === 'cash' ? '💵 Cash' : item.paymentMethod === 'split' ? '💵💳 Split' : '💳 Card'}
             </Text>
+            {item.paymentMethod === 'split' && item.splitPayment && (
+              <Text style={styles.splitDetail}>
+                Cash ${item.splitPayment.cashAmount.toFixed(2)} · Card ${(item.splitPayment.cardAmount + item.splitPayment.cardFee).toFixed(2)} (fee ${item.splitPayment.cardFee.toFixed(2)})
+              </Text>
+            )}
+            {item.paymentMethod === 'card' && !!item.creditCardFee && item.creditCardFee > 0 && (
+              <Text style={styles.splitDetail}>Card fee ${item.creditCardFee.toFixed(2)}</Text>
+            )}
             {item.userName && (
               <Text style={styles.cashierName}>by {item.userName}</Text>
             )}
@@ -110,17 +144,49 @@ function OrdersContent() {
         </View>
       </View>
 
+      {/* Search and payment filter */}
+      <View style={styles.filterContainer}>
+        <View style={styles.searchBar}>
+          <Search size={18} color={TheatreColors.textSecondary} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search order #, cashier or item"
+            placeholderTextColor={TheatreColors.textSecondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+        </View>
+        <View style={styles.filterChips}>
+          {PAYMENT_FILTERS.map(filter => (
+            <TouchableOpacity
+              key={filter.id}
+              style={[styles.filterChip, paymentFilter === filter.id && styles.filterChipActive]}
+              onPress={() => setPaymentFilter(filter.id)}
+            >
+              <Text style={[styles.filterChipText, paymentFilter === filter.id && styles.filterChipTextActive]}>
+                {filter.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
       {/* Orders List */}
       <FlatList
-        data={orders}
+        data={visibleOrders}
         keyExtractor={item => item.id}
         renderItem={renderOrder}
         contentContainerStyle={styles.ordersList}
+        keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Calendar size={48} color={TheatreColors.textSecondary} />
-            <Text style={styles.emptyText}>No orders yet</Text>
-            <Text style={styles.emptySubtext}>Complete your first sale to see it here</Text>
+            <Text style={styles.emptyText}>{orders.length === 0 ? 'No orders yet' : 'No matching orders'}</Text>
+            <Text style={styles.emptySubtext}>
+              {orders.length === 0 ? 'Complete your first sale to see it here' : 'Try a different search or payment filter'}
+            </Text>
           </View>
         }
       />
@@ -161,6 +227,49 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: TheatreColors.textSecondary,
     marginTop: 4,
+  },
+  filterContainer: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: TheatreColors.surface,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: TheatreColors.text,
+  },
+  filterChips: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  filterChip: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    backgroundColor: TheatreColors.surface,
+    borderWidth: 1,
+    borderColor: TheatreColors.surfaceLight,
+  },
+  filterChipActive: {
+    backgroundColor: TheatreColors.accent,
+    borderColor: TheatreColors.accent,
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: TheatreColors.text,
+  },
+  filterChipTextActive: {
+    color: TheatreColors.background,
   },
   ordersList: {
     padding: 16,
@@ -218,6 +327,11 @@ const styles = StyleSheet.create({
   paymentMethod: {
     fontSize: 14,
     color: TheatreColors.text,
+    marginBottom: 2,
+  },
+  splitDetail: {
+    fontSize: 12,
+    color: TheatreColors.textSecondary,
     marginBottom: 2,
   },
   cashierName: {

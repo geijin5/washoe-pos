@@ -1,19 +1,19 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   TouchableOpacity,
-  TextInput,
   ScrollView,
   Platform,
-  KeyboardAvoidingView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, DollarSign, CreditCard } from 'lucide-react-native';
 import { TheatreColors } from '@/constants/theatre-colors';
 import { useTabletLayout } from '@/hooks/use-tablet-layout';
 import { CartItem } from '@/types/pos';
+import { AmountKeypad } from '@/components/AmountKeypad';
+import { calculateCardFee, roundToCents } from '@/constants/money';
 import * as Haptics from 'expo-haptics';
 
 const getShowDisplayName = (show: string): string => {
@@ -48,31 +48,31 @@ export function PaymentScreen({
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'split'>('cash');
   const [cashAmount, setCashAmount] = useState('');
   const [splitCashAmount, setSplitCashAmount] = useState('');
-  const [showCashInput, setShowCashInput] = useState(false);
 
   // Calculate totals based on selected payment method and department breakdown
   const totals = React.useMemo(() => {
     // Separate items by category
     const ticketItems = cart.filter(item => item.product.category === 'tickets');
     const nonTicketItems = cart.filter(item => item.product.category !== 'tickets');
-    
+
     const ticketSubtotal = ticketItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
     const nonTicketSubtotal = nonTicketItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-    const subtotal = ticketSubtotal + nonTicketSubtotal;
-    
+    // Same rounding as checkout in pos-store, so the fee shown here is the fee charged
+    const subtotal = roundToCents(ticketSubtotal + nonTicketSubtotal);
+
     let creditCardFee = 0;
     if (paymentMethod === 'card') {
-      creditCardFee = subtotal * (creditCardFeePercent / 100);
+      creditCardFee = calculateCardFee(subtotal, creditCardFeePercent);
     } else if (paymentMethod === 'split') {
       const splitCash = parseFloat(splitCashAmount) || 0;
-      const cardPortion = Math.max(0, subtotal - splitCash);
-      creditCardFee = cardPortion * (creditCardFeePercent / 100);
+      const cardPortion = Math.max(0, roundToCents(subtotal - splitCash));
+      creditCardFee = calculateCardFee(cardPortion, creditCardFeePercent);
     }
-    const total = subtotal + creditCardFee;
-    
+    const total = roundToCents(subtotal + creditCardFee);
+
     // Determine if tickets are being sold through candy counter (after closing)
     const isAfterClosing = department === 'candy-counter' && ticketItems.length > 0;
-    
+
     return { 
       subtotal, 
       creditCardFee, 
@@ -106,10 +106,14 @@ export function PaymentScreen({
     setCashAmount(totals.total.toFixed(2));
   };
 
-  const handlePayment = async () => {
-    if (Platform.OS !== 'web') {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+  // Blocks a fast double-tap from recording the same sale twice
+  const isSubmittingRef = useRef(false);
+
+  const handlePayment = () => {
+    if (isSubmittingRef.current || !canProceed) return;
+    isSubmittingRef.current = true;
+    setTimeout(() => { isSubmittingRef.current = false; }, 1500);
+
     if (paymentMethod === 'split') {
       onPayment('split', splitCashAmount);
     } else {
@@ -125,16 +129,25 @@ export function PaymentScreen({
     ? parseFloat(cashAmount) - totals.total 
     : 0;
 
+  // Split payment amounts: cash taken at the register and what goes on the card (including fee)
+  const splitCash = parseFloat(splitCashAmount) || 0;
+  const isSplitValid = splitCash > 0 && splitCash < totals.subtotal;
+  const splitCardCharge = Math.max(0, roundToCents(totals.total - splitCash));
+  const splitQuickAmounts = [5, 10, 20, 50, 100].filter(amount => amount < totals.subtotal);
+
+  const handleSplitQuickAmount = async (amount: number) => {
+    if (Platform.OS !== 'web') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setSplitCashAmount(Number.isInteger(amount) ? amount.toString() : amount.toFixed(2));
+  };
+
   const isTabletFullscreen = isTablet;
 
   if (isTabletFullscreen) {
     return (
       <View style={[styles.overlay, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <KeyboardAvoidingView 
-          style={styles.tabletContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={0}
-        >
+        <View style={styles.tabletContainer}>
           {/* Header */}
           <View style={styles.tabletHeader}>
             <Text style={styles.tabletTitle}>Payment</Text>
@@ -167,7 +180,7 @@ export function PaymentScreen({
             {/* Middle Column - Calculations */}
             <View style={styles.tabletMiddleColumn}>
               <Text style={styles.tabletSectionTitle}>Payment Calculations</Text>
-              
+
               <ScrollView 
                 style={styles.tabletCalculationsScroll} 
                 showsVerticalScrollIndicator={false}
@@ -187,7 +200,7 @@ export function PaymentScreen({
                     </View>
                   </View>
                 )}
-                
+
                 {/* Candy Counter Section - Show concessions */}
                 {department === 'candy-counter' && totals.hasNonTicketItems && (
                   <View style={styles.tabletCalculationSectionCompact}>
@@ -198,7 +211,7 @@ export function PaymentScreen({
                     </View>
                   </View>
                 )}
-                
+
                 {/* After Closing Section - Show tickets sold through candy counter */}
                 {totals.isAfterClosing && (
                   <View style={styles.tabletCalculationSectionCompact}>
@@ -210,7 +223,7 @@ export function PaymentScreen({
                     {paymentMethod === 'card' && (
                       <View style={styles.tabletCalculationRowCompact}>
                         <Text style={styles.tabletCalculationLabelCompact}>Card Fees:</Text>
-                        <Text style={styles.tabletCalculationValueCompact}>${(totals.ticketSubtotal * (creditCardFeePercent / 100)).toFixed(2)}</Text>
+                        <Text style={styles.tabletCalculationValueCompact}>${calculateCardFee(totals.ticketSubtotal, creditCardFeePercent).toFixed(2)}</Text>
                       </View>
                     )}
                   </View>
@@ -223,7 +236,7 @@ export function PaymentScreen({
                   <Text style={styles.tabletSummaryLabelCompact}>Subtotal:</Text>
                   <Text style={styles.tabletSummaryValueCompact}>${totals.subtotal.toFixed(2)}</Text>
                 </View>
-                
+
                 {(paymentMethod === 'card' || paymentMethod === 'split') && (
                   <View style={styles.tabletSummaryRowCompact}>
                     <Text style={styles.tabletSummaryLabelCompact}>
@@ -232,11 +245,24 @@ export function PaymentScreen({
                     <Text style={styles.tabletSummaryValueCompact}>${totals.creditCardFee.toFixed(2)}</Text>
                   </View>
                 )}
-                
+
                 <View style={[styles.tabletSummaryRowCompact, styles.tabletTotalSummaryRowCompact]}>
                   <Text style={styles.tabletTotalSummaryLabelCompact}>TOTAL:</Text>
                   <Text style={styles.tabletTotalSummaryValueCompact}>${totals.total.toFixed(2)}</Text>
                 </View>
+
+                {paymentMethod === 'split' && isSplitValid && (
+                  <>
+                    <View style={styles.tabletSummaryRowCompact}>
+                      <Text style={styles.tabletSummaryLabelCompact}>Cash Taken:</Text>
+                      <Text style={styles.tabletSummaryValueCompact}>${splitCash.toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.tabletSummaryRowCompact}>
+                      <Text style={styles.tabletSummaryLabelCompact}>Card Charged (incl. fee):</Text>
+                      <Text style={styles.tabletSummaryValueCompact}>${splitCardCharge.toFixed(2)}</Text>
+                    </View>
+                  </>
+                )}
               </View>
 
                 {/* Cash Payment Details - Compact */}
@@ -263,13 +289,9 @@ export function PaymentScreen({
             <View style={styles.tabletRightColumn}>
               <ScrollView 
                 style={styles.tabletRightScrollView}
-                contentContainerStyle={[
-                  styles.tabletRightScrollContent,
-                  showCashInput && { paddingBottom: 300 } // Add extra padding when keyboard is shown
-                ]}
+                contentContainerStyle={styles.tabletRightScrollContent}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
-                automaticallyAdjustKeyboardInsets={true}
               >
                 {/* Payment Method Selection */}
                 <View style={styles.tabletPaymentMethodSection}>
@@ -347,40 +369,66 @@ export function PaymentScreen({
                       <Text style={[styles.tabletCashInputLabelOptimized, { color: TheatreColors.background, fontWeight: 'bold' }]}>
                         Cash Amount (max ${totals.subtotal.toFixed(2)}):
                       </Text>
-                      <TextInput
-                        style={[styles.tabletCashInputOptimized, {
+                      <Text
+                        style={[[styles.tabletCashInputOptimized, {
                           backgroundColor: TheatreColors.background,
                           borderColor: '#9C27B0',
                           borderWidth: 2,
                           fontSize: 18,
                           fontWeight: 'bold',
                           minHeight: 50,
-                        }]}
-                        placeholder="Enter cash amount"
-                        placeholderTextColor={TheatreColors.textSecondary}
-                        value={splitCashAmount}
-                        onChangeText={setSplitCashAmount}
-                        keyboardType="decimal-pad"
-                        autoFocus
-                        returnKeyType="done"
-                      />
+                        }], styles.amountDisplay, !splitCashAmount && styles.amountDisplayPlaceholder]}
+                        numberOfLines={1}
+                      >
+                        {splitCashAmount ? `$${splitCashAmount}` : 'Enter cash amount'}
+                      </Text>
                     </View>
-                    {splitCashAmount && parseFloat(splitCashAmount) > 0 && parseFloat(splitCashAmount) < totals.subtotal && (
+                    <AmountKeypad value={splitCashAmount} onChange={setSplitCashAmount} compact />
+                    <View style={styles.tabletQuickAmountsOptimized}>
+                      <View style={styles.tabletQuickAmountButtonsOptimized}>
+                        <TouchableOpacity
+                          style={styles.tabletQuickAmountButtonOptimized}
+                          onPress={() => handleSplitQuickAmount(Math.round(totals.subtotal * 50) / 100)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.tabletQuickAmountButtonTextOptimized}>Half</Text>
+                        </TouchableOpacity>
+                        {splitQuickAmounts.map(amount => (
+                          <TouchableOpacity
+                            key={amount}
+                            style={[
+                              styles.tabletQuickAmountButtonOptimized,
+                              splitCash === amount && styles.tabletQuickAmountButtonActive
+                            ]}
+                            onPress={() => handleSplitQuickAmount(amount)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={[
+                              styles.tabletQuickAmountButtonTextOptimized,
+                              splitCash === amount && styles.tabletQuickAmountButtonTextActive
+                            ]}>${amount}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                    {isSplitValid && (
                       <View style={styles.splitBreakdownContainer}>
                         <View style={styles.splitBreakdownRow}>
-                          <Text style={styles.splitBreakdownLabel}>Cash:</Text>
-                          <Text style={styles.splitBreakdownValue}>${parseFloat(splitCashAmount).toFixed(2)}</Text>
+                          <Text style={styles.splitBreakdownLabel}>Cash Taken:</Text>
+                          <Text style={styles.splitBreakdownValue}>${splitCash.toFixed(2)}</Text>
                         </View>
                         <View style={styles.splitBreakdownRow}>
-                          <Text style={styles.splitBreakdownLabel}>Card ({creditCardFeePercent}% fee):</Text>
-                          <Text style={styles.splitBreakdownValue}>${(totals.subtotal - parseFloat(splitCashAmount)).toFixed(2)}</Text>
+                          <Text style={styles.splitBreakdownLabel}>Card Portion:</Text>
+                          <Text style={styles.splitBreakdownValue}>${(totals.subtotal - splitCash).toFixed(2)}</Text>
                         </View>
-                        {totals.creditCardFee > 0 && (
-                          <View style={styles.splitBreakdownRow}>
-                            <Text style={styles.splitBreakdownLabel}>Card Fee:</Text>
-                            <Text style={styles.splitBreakdownValue}>${totals.creditCardFee.toFixed(2)}</Text>
-                          </View>
-                        )}
+                        <View style={styles.splitBreakdownRow}>
+                          <Text style={styles.splitBreakdownLabel}>Card Fee ({creditCardFeePercent}%):</Text>
+                          <Text style={styles.splitBreakdownValue}>${totals.creditCardFee.toFixed(2)}</Text>
+                        </View>
+                        <View style={styles.splitBreakdownRow}>
+                          <Text style={styles.splitBreakdownLabel}>Card Charged (incl. fee):</Text>
+                          <Text style={styles.splitBreakdownValue}>${splitCardCharge.toFixed(2)}</Text>
+                        </View>
                         <View style={[styles.splitBreakdownRow, styles.splitBreakdownTotalRow]}>
                           <Text style={styles.splitBreakdownTotalLabel}>Grand Total:</Text>
                           <Text style={styles.splitBreakdownTotalValue}>${totals.total.toFixed(2)}</Text>
@@ -394,7 +442,40 @@ export function PaymentScreen({
                 {paymentMethod === 'cash' && (
                   <View style={styles.tabletCashSection}>
                     <Text style={styles.tabletSectionTitle}>Cash Amount</Text>
-                    
+
+                    {/* Cash Received display - entered with the on-screen keypad below */}
+                    <View style={[
+                      styles.tabletCashInputContainerOptimized,
+                      {
+                        backgroundColor: TheatreColors.accent,
+                        borderColor: '#4CAF50',
+                        borderWidth: 3,
+                        marginBottom: 12,
+                      }
+                    ]}>
+                      <Text style={[
+                        styles.tabletCashInputLabelOptimized,
+                        { color: TheatreColors.background, fontWeight: 'bold' }
+                      ]}>Cash Received:</Text>
+                      <Text
+                        style={[[
+                          styles.tabletCashInputOptimized,
+                          {
+                            backgroundColor: TheatreColors.background,
+                            borderColor: '#4CAF50',
+                            borderWidth: 2,
+                            fontSize: 18,
+                            fontWeight: 'bold',
+                            minHeight: 50,
+                          }
+                        ], styles.amountDisplay, !cashAmount && styles.amountDisplayPlaceholder]}
+                        numberOfLines={1}
+                      >
+                        {cashAmount ? `$${cashAmount}` : 'Enter amount'}
+                      </Text>
+                    </View>
+                    <AmountKeypad value={cashAmount} onChange={setCashAmount} compact />
+
                     {/* Quick Amount Buttons - Optimized for Samsung Tab A 9+ */}
                     <View style={styles.tabletQuickAmountsOptimized}>
                       <Text style={styles.tabletQuickAmountLabelOptimized}>Quick Amount:</Text>
@@ -417,7 +498,7 @@ export function PaymentScreen({
                         ))}
                       </View>
                     </View>
-                    
+
                     {/* Exact Change Button */}
                     <TouchableOpacity 
                       style={[
@@ -431,61 +512,6 @@ export function PaymentScreen({
                         parseFloat(cashAmount) === totals.total && styles.tabletExactChangeButtonTextActive
                       ]}>Exact Change (${totals.total.toFixed(2)})</Text>
                     </TouchableOpacity>
-                    
-                    {/* Custom Amount Input */}
-                    <TouchableOpacity 
-                      style={styles.tabletCustomAmountButtonOptimized}
-                      onPress={() => setShowCashInput(!showCashInput)}
-                    >
-                      <Text style={styles.tabletCustomAmountButtonTextOptimized}>
-                        {showCashInput ? 'Hide Custom' : 'Custom Amount'}
-                      </Text>
-                    </TouchableOpacity>
-                    
-                    {showCashInput && (
-                      <View style={[
-                        styles.tabletCashInputContainerOptimized,
-                        { 
-                          backgroundColor: TheatreColors.accent,
-                          borderColor: '#4CAF50',
-                          borderWidth: 3,
-                          elevation: 8,
-                          shadowColor: '#000',
-                          shadowOffset: { width: 0, height: 4 },
-                          shadowOpacity: 0.3,
-                          shadowRadius: 8,
-                          marginBottom: 20,
-                          zIndex: 1000
-                        }
-                      ]}>
-                        <Text style={[
-                          styles.tabletCashInputLabelOptimized,
-                          { color: TheatreColors.background, fontWeight: 'bold' }
-                        ]}>Cash Received:</Text>
-                        <TextInput
-                          style={[
-                            styles.tabletCashInputOptimized,
-                            {
-                              backgroundColor: TheatreColors.background,
-                              borderColor: '#4CAF50',
-                              borderWidth: 2,
-                              fontSize: 18,
-                              fontWeight: 'bold',
-                              minHeight: 50,
-                              elevation: 2
-                            }
-                          ]}
-                          placeholder="Enter amount"
-                          placeholderTextColor={TheatreColors.textSecondary}
-                          value={cashAmount}
-                          onChangeText={setCashAmount}
-                          keyboardType="decimal-pad"
-                          autoFocus
-                          returnKeyType="done"
-                          onSubmitEditing={() => setShowCashInput(false)}
-                        />
-                      </View>
-                    )}
                   </View>
                 )}
               </ScrollView>
@@ -519,7 +545,7 @@ export function PaymentScreen({
               </View>
             </View>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </View>
     );
   }
@@ -527,11 +553,7 @@ export function PaymentScreen({
   // Mobile/Portrait layout (improved for phone screens)
   return (
     <View style={[styles.overlay, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-      <KeyboardAvoidingView 
-        style={styles.mobileContainer}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
-      >
+      <View style={styles.mobileContainer}>
         {/* Header */}
         <View style={styles.mobileHeader}>
           <Text style={styles.mobileTitle}>Payment</Text>
@@ -545,6 +567,7 @@ export function PaymentScreen({
           style={styles.mobileScrollContent} 
           contentContainerStyle={styles.mobileScrollContainer}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Order Summary - Compact */}
           <View style={styles.mobileSection}>
@@ -569,7 +592,7 @@ export function PaymentScreen({
           {/* Payment Calculations - Compact */}
           <View style={styles.mobileSection}>
             <Text style={styles.mobileSectionTitle}>Payment Breakdown</Text>
-            
+
             <View style={styles.mobileBreakdown}>
               {/* Department Breakdown - Simplified for mobile */}
               {/* Box Office - Only show if department is box-office */}
@@ -581,7 +604,7 @@ export function PaymentScreen({
                   <Text style={styles.mobileBreakdownValue}>${totals.ticketSubtotal.toFixed(2)}</Text>
                 </View>
               )}
-              
+
               {/* Candy Counter - Show concessions */}
               {department === 'candy-counter' && totals.hasNonTicketItems && (
                 <View style={styles.mobileBreakdownRow}>
@@ -589,7 +612,7 @@ export function PaymentScreen({
                   <Text style={styles.mobileBreakdownValue}>${totals.nonTicketSubtotal.toFixed(2)}</Text>
                 </View>
               )}
-              
+
               {/* After Closing - Show tickets sold through candy counter */}
               {totals.isAfterClosing && (
                 <>
@@ -600,18 +623,18 @@ export function PaymentScreen({
                   {paymentMethod === 'card' && (
                     <View style={styles.mobileBreakdownRow}>
                       <Text style={styles.mobileBreakdownLabel}>After Closing Card Fees:</Text>
-                      <Text style={styles.mobileBreakdownValue}>${(totals.ticketSubtotal * (creditCardFeePercent / 100)).toFixed(2)}</Text>
+                      <Text style={styles.mobileBreakdownValue}>${calculateCardFee(totals.ticketSubtotal, creditCardFeePercent).toFixed(2)}</Text>
                     </View>
                   )}
                 </>
               )}
-              
+
               {/* Subtotal */}
               <View style={[styles.mobileBreakdownRow, styles.mobileSubtotalRow]}>
                 <Text style={styles.mobileBreakdownLabel}>Subtotal:</Text>
                 <Text style={styles.mobileBreakdownValue}>${totals.subtotal.toFixed(2)}</Text>
               </View>
-              
+
               {/* Credit Card Fee */}
               {(paymentMethod === 'card' || paymentMethod === 'split') && (
                 <View style={styles.mobileBreakdownRow}>
@@ -621,12 +644,25 @@ export function PaymentScreen({
                   <Text style={styles.mobileBreakdownValue}>${totals.creditCardFee.toFixed(2)}</Text>
                 </View>
               )}
-              
+
               {/* Total */}
               <View style={[styles.mobileBreakdownRow, styles.mobileTotalRow]}>
                 <Text style={styles.mobileTotalLabel}>TOTAL:</Text>
                 <Text style={styles.mobileTotalValue}>${totals.total.toFixed(2)}</Text>
               </View>
+
+              {paymentMethod === 'split' && isSplitValid && (
+                <>
+                  <View style={[styles.mobileBreakdownRow, { marginTop: 8 }]}>
+                    <Text style={styles.mobileBreakdownLabel}>Cash Taken:</Text>
+                    <Text style={styles.mobileBreakdownValue}>${splitCash.toFixed(2)}</Text>
+                  </View>
+                  <View style={styles.mobileBreakdownRow}>
+                    <Text style={styles.mobileBreakdownLabel}>Card Charged (incl. fee):</Text>
+                    <Text style={styles.mobileBreakdownValue}>${splitCardCharge.toFixed(2)}</Text>
+                  </View>
+                </>
+              )}
             </View>
           </View>
 
@@ -702,33 +738,57 @@ export function PaymentScreen({
                 <Text style={styles.mobileCashInputLabel}>
                   Cash Amount (max ${totals.subtotal.toFixed(2)}):
                 </Text>
-                <TextInput
-                  style={[styles.mobileCashInput, { borderColor: '#9C27B0' }]}
-                  placeholder="Enter cash amount"
-                  placeholderTextColor={TheatreColors.textSecondary}
-                  value={splitCashAmount}
-                  onChangeText={setSplitCashAmount}
-                  keyboardType="decimal-pad"
-                  autoFocus
-                  returnKeyType="done"
-                />
+                <Text
+                  style={[[styles.mobileCashInput, { borderColor: '#9C27B0' }], styles.amountDisplay, !splitCashAmount && styles.amountDisplayPlaceholder]}
+                  numberOfLines={1}
+                >
+                  {splitCashAmount ? `$${splitCashAmount}` : 'Enter cash amount'}
+                </Text>
               </View>
-              {splitCashAmount && parseFloat(splitCashAmount) > 0 && parseFloat(splitCashAmount) < totals.subtotal && (
+              <AmountKeypad value={splitCashAmount} onChange={setSplitCashAmount} />
+              <View style={styles.mobileQuickAmounts}>
+                <View style={styles.mobileQuickAmountButtons}>
+                  <TouchableOpacity
+                    style={styles.mobileQuickAmountButton}
+                    onPress={() => handleSplitQuickAmount(Math.round(totals.subtotal * 50) / 100)}
+                  >
+                    <Text style={styles.mobileQuickAmountButtonText}>Half</Text>
+                  </TouchableOpacity>
+                  {splitQuickAmounts.map(amount => (
+                    <TouchableOpacity
+                      key={amount}
+                      style={[
+                        styles.mobileQuickAmountButton,
+                        splitCash === amount && styles.mobileQuickAmountButtonActive
+                      ]}
+                      onPress={() => handleSplitQuickAmount(amount)}
+                    >
+                      <Text style={[
+                        styles.mobileQuickAmountButtonText,
+                        splitCash === amount && styles.mobileQuickAmountButtonTextActive
+                      ]}>${amount}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              {isSplitValid && (
                 <View style={styles.splitBreakdownContainer}>
                   <View style={styles.splitBreakdownRow}>
-                    <Text style={styles.splitBreakdownLabel}>Cash:</Text>
-                    <Text style={styles.splitBreakdownValue}>${parseFloat(splitCashAmount).toFixed(2)}</Text>
+                    <Text style={styles.splitBreakdownLabel}>Cash Taken:</Text>
+                    <Text style={styles.splitBreakdownValue}>${splitCash.toFixed(2)}</Text>
                   </View>
                   <View style={styles.splitBreakdownRow}>
-                    <Text style={styles.splitBreakdownLabel}>Card ({creditCardFeePercent}% fee):</Text>
-                    <Text style={styles.splitBreakdownValue}>${(totals.subtotal - parseFloat(splitCashAmount)).toFixed(2)}</Text>
+                    <Text style={styles.splitBreakdownLabel}>Card Portion:</Text>
+                    <Text style={styles.splitBreakdownValue}>${(totals.subtotal - splitCash).toFixed(2)}</Text>
                   </View>
-                  {totals.creditCardFee > 0 && (
-                    <View style={styles.splitBreakdownRow}>
-                      <Text style={styles.splitBreakdownLabel}>Card Fee:</Text>
-                      <Text style={styles.splitBreakdownValue}>${totals.creditCardFee.toFixed(2)}</Text>
-                    </View>
-                  )}
+                  <View style={styles.splitBreakdownRow}>
+                    <Text style={styles.splitBreakdownLabel}>Card Fee ({creditCardFeePercent}%):</Text>
+                    <Text style={styles.splitBreakdownValue}>${totals.creditCardFee.toFixed(2)}</Text>
+                  </View>
+                  <View style={styles.splitBreakdownRow}>
+                    <Text style={styles.splitBreakdownLabel}>Card Charged (incl. fee):</Text>
+                    <Text style={styles.splitBreakdownValue}>${splitCardCharge.toFixed(2)}</Text>
+                  </View>
                   <View style={[styles.splitBreakdownRow, styles.splitBreakdownTotalRow]}>
                     <Text style={styles.splitBreakdownTotalLabel}>Grand Total:</Text>
                     <Text style={styles.splitBreakdownTotalValue}>${totals.total.toFixed(2)}</Text>
@@ -742,7 +802,19 @@ export function PaymentScreen({
           {paymentMethod === 'cash' && (
             <View style={styles.mobileSection}>
               <Text style={styles.mobileSectionTitle}>Cash Amount</Text>
-              
+
+              {/* Cash Received display - entered with the on-screen keypad below */}
+              <View style={styles.mobileCashInputContainer}>
+                <Text style={styles.mobileCashInputLabel}>Cash Received:</Text>
+                <Text
+                  style={[styles.mobileCashInput, styles.amountDisplay, !cashAmount && styles.amountDisplayPlaceholder]}
+                  numberOfLines={1}
+                >
+                  {cashAmount ? `$${cashAmount}` : 'Enter amount'}
+                </Text>
+              </View>
+              <AmountKeypad value={cashAmount} onChange={setCashAmount} />
+
               {/* Quick Amount Buttons - Better mobile layout */}
               <View style={styles.mobileQuickAmounts}>
                 <Text style={styles.mobileQuickAmountLabel}>Quick Amount:</Text>
@@ -764,7 +836,7 @@ export function PaymentScreen({
                   ))}
                 </View>
               </View>
-              
+
               {/* Exact Change Button */}
               <TouchableOpacity 
                 style={[
@@ -778,34 +850,7 @@ export function PaymentScreen({
                   parseFloat(cashAmount) === totals.total && styles.mobileExactChangeButtonTextActive
                 ]}>Exact Change (${totals.total.toFixed(2)})</Text>
               </TouchableOpacity>
-              
-              {/* Custom Amount Input */}
-              <TouchableOpacity 
-                style={styles.mobileCustomAmountButton}
-                onPress={() => setShowCashInput(!showCashInput)}
-              >
-                <Text style={styles.mobileCustomAmountButtonText}>
-                  {showCashInput ? 'Hide Custom Amount' : 'Enter Custom Amount'}
-                </Text>
-              </TouchableOpacity>
-              
-              {showCashInput && (
-                <View style={[styles.mobileCashInputContainer, { marginBottom: showCashInput ? 20 : 12 }]}>
-                  <Text style={styles.mobileCashInputLabel}>Cash Received:</Text>
-                  <TextInput
-                    style={styles.mobileCashInput}
-                    placeholder="Enter amount"
-                    placeholderTextColor={TheatreColors.textSecondary}
-                    value={cashAmount}
-                    onChangeText={setCashAmount}
-                    keyboardType="decimal-pad"
-                    autoFocus
-                    returnKeyType="done"
-                    onSubmitEditing={() => setShowCashInput(false)}
-                  />
-                </View>
-              )}
-              
+
               {/* Cash Payment Details */}
               {paymentMethod === 'cash' && cashAmount && parseFloat(cashAmount) > 0 && (
                 <View style={styles.mobileCashPaymentContainer}>
@@ -855,7 +900,7 @@ export function PaymentScreen({
             </Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }
@@ -2291,6 +2336,15 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#0D47A1',
+  },
+  // Read-only amount display shown above the on-screen keypad
+  amountDisplay: {
+    textAlignVertical: 'center',
+    overflow: 'hidden',
+  },
+  amountDisplayPlaceholder: {
+    color: TheatreColors.textSecondary,
+    fontWeight: '500',
   },
   // Split payment styles
   tabletSplitMethodActive: {

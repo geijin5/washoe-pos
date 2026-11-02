@@ -141,6 +141,12 @@ export interface NightlyReport {
     afterClosingCash: number;
     afterClosingCard: number;
   };
+  splitPayments?: {
+    orders: number;
+    cashTaken: number;
+    cardCharged: number;
+    cardFees: number;
+  };
   userBreakdown: {
     userId: string;
     userName: string;
