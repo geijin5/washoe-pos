@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -106,10 +106,14 @@ export function PaymentScreen({
     setCashAmount(totals.total.toFixed(2));
   };
 
-  const handlePayment = async () => {
-    if (Platform.OS !== 'web') {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+  // Blocks a fast double-tap from recording the same sale twice
+  const isSubmittingRef = useRef(false);
+
+  const handlePayment = () => {
+    if (isSubmittingRef.current || !canProceed) return;
+    isSubmittingRef.current = true;
+    setTimeout(() => { isSubmittingRef.current = false; }, 1500);
+
     if (paymentMethod === 'split') {
       onPayment('split', splitCashAmount);
     } else {
